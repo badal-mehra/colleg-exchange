@@ -1,0 +1,406 @@
+import React, { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  Search, 
+  User, 
+  LogIn,
+  Filter,
+  ShoppingBag,
+  Eye,
+  MapPin,
+  Users,
+  Shield,
+  BookOpen,
+  ArrowRight,
+  TrendingUp
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string;
+}
+
+interface Item {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  condition: string;
+  images: string[];
+  location: string;
+  views: number;
+  created_at: string;
+  categories: Category;
+}
+
+const Home = () => {
+  const navigate = useNavigate();
+  const [items, setItems] = useState<Item[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+  useEffect(() => {
+    fetchCategories();
+    fetchItems();
+  }, []);
+
+  const fetchCategories = async () => {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name');
+
+    if (!error) {
+      setCategories(data || []);
+    }
+  };
+
+  const fetchItems = async () => {
+    setLoading(true);
+    let query = supabase
+      .from('items')
+      .select(`
+        *,
+        categories (*)
+      `)
+      .eq('is_sold', false)
+      .order('created_at', { ascending: false })
+      .limit(12);
+
+    if (selectedCategory && selectedCategory !== 'all') {
+      query = query.eq('category_id', selectedCategory);
+    }
+
+    if (searchTerm) {
+      query = query.ilike('title', `%${searchTerm}%`);
+    }
+
+    const { data, error } = await query;
+
+    if (!error) {
+      setItems(data || []);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      fetchItems();
+    }, 500);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm, selectedCategory]);
+
+  const handleItemClick = (itemId: string) => {
+    navigate(`/item/${itemId}`);
+  };
+
+  const stats = [
+    { label: "Active Listings", value: "10,000+", icon: ShoppingBag },
+    { label: "Verified Students", value: "5,000+", icon: Users },
+    { label: "Successful Trades", value: "25,000+", icon: TrendingUp },
+    { label: "Campus Communities", value: "100+", icon: Shield }
+  ];
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <h1 className="text-2xl font-bold text-primary cursor-pointer" onClick={() => navigate('/')}>
+                MyCampusKart
+              </h1>
+              <Badge variant="outline" className="hidden md:flex">
+                Campus Marketplace
+              </Badge>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" size="sm" onClick={() => navigate('/auth')}>
+                <LogIn className="h-4 w-4 mr-2" />
+                Login
+              </Button>
+              <Button size="sm" onClick={() => navigate('/auth')}>
+                <User className="h-4 w-4 mr-2" />
+                Sign Up
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="relative py-16 lg:py-24 bg-gradient-to-br from-primary/5 via-background to-accent/5">
+        <div className="container mx-auto px-4">
+          <div className="text-center space-y-8 max-w-4xl mx-auto">
+            <div className="space-y-4">
+              <h1 className="text-4xl lg:text-6xl font-bold tracking-tight animate-fade-in">
+                Buy & Sell on Your <span className="text-primary">Campus</span>
+              </h1>
+              <p className="text-xl lg:text-2xl text-muted-foreground animate-fade-in">
+                Join thousands of verified students trading safely on MyCampusKart
+              </p>
+            </div>
+
+            {/* Search Bar */}
+            <div className="max-w-2xl mx-auto animate-scale-in">
+              <div className="flex flex-col md:flex-row gap-3 p-3 bg-card/50 rounded-xl border">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search for books, electronics, furniture..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 border-0 bg-background/50"
+                  />
+                </div>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="w-full md:w-48 border-0 bg-background/50">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.icon} {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button className="md:px-8">
+                  <Search className="h-4 w-4 mr-2" />
+                  Search
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-12 bg-card/50">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            {stats.map((stat, index) => (
+              <div key={stat.label} className="text-center space-y-2 animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
+                <stat.icon className="h-8 w-8 text-primary mx-auto" />
+                <div className="text-2xl font-bold">{stat.value}</div>
+                <div className="text-sm text-muted-foreground">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Listings */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Featured Listings</h2>
+              <p className="text-muted-foreground">Discover great deals from verified students</p>
+            </div>
+            <Button variant="outline" onClick={() => navigate('/auth')}>
+              View All
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {[...Array(8)].map((_, i) => (
+                <Card key={i} className="animate-pulse overflow-hidden">
+                  <div className="h-48 bg-muted"></div>
+                  <CardContent className="p-3">
+                    <div className="h-4 bg-muted rounded mb-2"></div>
+                    <div className="h-6 bg-muted rounded mb-2"></div>
+                    <div className="h-3 bg-muted rounded w-20"></div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : items.length === 0 ? (
+            <div className="text-center py-12">
+              <ShoppingBag className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No items found</h3>
+              <p className="text-muted-foreground">
+                Try adjusting your search or check back later for new listings
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {items.map((item, index) => (
+                <Card 
+                  key={item.id} 
+                  className="group hover:shadow-lg transition-all duration-300 cursor-pointer border border-border hover:border-primary/20 overflow-hidden bg-card animate-fade-in hover-scale"
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                  onClick={() => handleItemClick(item.id)}
+                >
+                  <div className="relative">
+                    <div className="h-48 bg-muted flex items-center justify-center overflow-hidden">
+                      {item.images.length > 0 ? (
+                        <img 
+                          src={item.images[0]} 
+                          alt={item.title}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          onError={(e) => {
+                            e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik03NSA3NUgxMjVWMTI1SDc1Vjc1WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
+                          }}
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-muted-foreground">
+                          <ShoppingBag className="h-12 w-12 mb-2" />
+                          <span className="text-xs">No Image</span>
+                        </div>
+                      )}
+                    </div>
+                    <Badge 
+                      variant={item.condition === 'new' ? 'default' : 'secondary'}
+                      className="absolute top-2 right-2 text-xs"
+                    >
+                      {item.condition}
+                    </Badge>
+                    <div className="absolute bottom-2 left-2 bg-background/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <Eye className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">{item.views}</span>
+                    </div>
+                  </div>
+                  <CardContent className="p-3">
+                    <div className="space-y-2">
+                      <h3 className="font-semibold text-sm leading-tight line-clamp-2 text-card-foreground">
+                        {item.title}
+                      </h3>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xl font-bold text-primary">₹{item.price.toLocaleString()}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                        {item.description}
+                      </p>
+                      <div className="flex items-center gap-1 pt-1">
+                        <MapPin className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">
+                          {item.location || 'Campus'}
+                        </span>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        className="w-full h-8 text-xs mt-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate('/auth');
+                        }}
+                      >
+                        Login to View Details
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-16 bg-card/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">Why Choose MyCampusKart?</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Built specifically for students, by students. Safe, verified, and convenient.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="text-center space-y-4 p-6 rounded-xl bg-background border hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                <Shield className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold">Verified Students</h3>
+              <p className="text-muted-foreground">
+                Only verified students can join. Safe transactions guaranteed with ID verification.
+              </p>
+            </div>
+
+            <div className="text-center space-y-4 p-6 rounded-xl bg-background border hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto">
+                <ShoppingBag className="h-8 w-8 text-accent" />
+              </div>
+              <h3 className="text-xl font-semibold">Easy Trading</h3>
+              <p className="text-muted-foreground">
+                List items in seconds, browse by category, and find exactly what you need.
+              </p>
+            </div>
+
+            <div className="text-center space-y-4 p-6 rounded-xl bg-background border hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                <Users className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold">Campus Community</h3>
+              <p className="text-muted-foreground">
+                Connect with students from your college. Built-in chat for easy communication.
+              </p>
+            </div>
+
+            <div className="text-center space-y-4 p-6 rounded-xl bg-background border hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto">
+                <BookOpen className="h-8 w-8 text-accent" />
+              </div>
+              <h3 className="text-xl font-semibold">Student Focused</h3>
+              <p className="text-muted-foreground">
+                From textbooks to furniture, find everything you need for college life.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-16">
+        <div className="container mx-auto px-4 text-center">
+          <div className="max-w-2xl mx-auto space-y-8 p-8 rounded-2xl bg-gradient-to-br from-primary/5 to-accent/5 border">
+            <h2 className="text-3xl lg:text-4xl font-bold">
+              Ready to Start Trading?
+            </h2>
+            <p className="text-xl text-muted-foreground">
+              Join thousands of students already using MyCampusKart to buy and sell safely on campus.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button size="lg" className="text-lg px-8" onClick={() => navigate('/auth')}>
+                Join MyCampusKart
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              <Button size="lg" variant="outline" className="text-lg px-8">
+                Learn More
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t bg-card/50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center text-muted-foreground">
+            <p>&copy; 2024 MyCampusKart. Built for students, by students.</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default Home;
