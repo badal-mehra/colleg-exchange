@@ -229,14 +229,14 @@ const Dashboard = () => {
 
         {/* Items Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[...Array(8)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <div className="h-48 bg-muted rounded-t-lg"></div>
-                <CardContent className="p-4">
+              <Card key={i} className="animate-pulse overflow-hidden">
+                <div className="h-48 bg-muted"></div>
+                <CardContent className="p-3">
                   <div className="h-4 bg-muted rounded mb-2"></div>
                   <div className="h-6 bg-muted rounded mb-2"></div>
-                  <div className="h-4 bg-muted rounded w-20"></div>
+                  <div className="h-3 bg-muted rounded w-20"></div>
                 </CardContent>
               </Card>
             ))}
@@ -253,51 +253,77 @@ const Dashboard = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {items.map((item) => (
-              <Card key={item.id} className="group hover:shadow-lg transition-shadow cursor-pointer">
+              <Card key={item.id} className="group hover:shadow-md transition-all duration-200 cursor-pointer border border-border hover:border-primary/20 overflow-hidden bg-card">
                 <div className="relative">
-                  <div className="h-48 bg-muted rounded-t-lg flex items-center justify-center">
+                  <div className="h-48 bg-muted flex items-center justify-center overflow-hidden">
                     {item.images.length > 0 ? (
                       <img 
                         src={item.images[0]} 
                         alt={item.title}
-                        className="w-full h-full object-cover rounded-t-lg"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                        onError={(e) => {
+                          e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik03NSA3NUgxMjVWMTI1SDc1Vjc1WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
+                        }}
                       />
                     ) : (
-                      <ShoppingBag className="h-12 w-12 text-muted-foreground" />
+                      <div className="flex flex-col items-center justify-center text-muted-foreground">
+                        <ShoppingBag className="h-12 w-12 mb-2" />
+                        <span className="text-xs">No Image</span>
+                      </div>
                     )}
                   </div>
                   <Badge 
                     variant={item.condition === 'new' ? 'default' : 'secondary'}
-                    className="absolute top-2 right-2"
+                    className="absolute top-2 right-2 text-xs"
                   >
                     {item.condition}
                   </Badge>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="absolute top-2 left-2 h-8 w-8 p-0 bg-background/80 hover:bg-background/90 rounded-full"
+                  >
+                    <Heart className="h-4 w-4" />
+                  </Button>
                 </div>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold mb-2 line-clamp-2">{item.title}</h3>
-                  <p className="text-2xl font-bold text-primary mb-2">₹{item.price}</p>
-                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                    {item.description}
-                  </p>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>{item.profiles?.full_name}</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="flex items-center">
-                        <Eye className="h-3 w-3 mr-1" />
-                        {item.views}
+                <CardContent className="p-3">
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-sm leading-tight line-clamp-2 text-card-foreground">
+                      {item.title}
+                    </h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-xl font-bold text-primary">₹{item.price.toLocaleString()}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                      {item.description}
+                    </p>
+                    <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                      <div className="flex items-center gap-1">
+                        <User className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground truncate max-w-[100px]">
+                          {item.profiles?.full_name || 'Anonymous'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Eye className="h-3 w-3" />
+                          <span>{item.views}</span>
+                        </div>
+                        <span>•</span>
+                        <span>{new Date(item.created_at).toLocaleDateString()}</span>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex space-x-2 mt-3">
-                    <Button size="sm" className="flex-1">
-                      <MessageCircle className="h-4 w-4 mr-1" />
-                      Chat
-                    </Button>
-                    <Button size="sm" variant="outline">
-                      <Heart className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-2 pt-2">
+                      <Button size="sm" className="flex-1 h-8 text-xs">
+                        <MessageCircle className="h-3 w-3 mr-1" />
+                        Chat
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-8 px-3">
+                        <Heart className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
