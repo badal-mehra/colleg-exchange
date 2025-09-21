@@ -19,6 +19,8 @@ import {
   Upload
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
+import ImageCarousel from '@/components/ImageCarousel';
 
 interface Profile {
   id: string;
@@ -47,6 +49,7 @@ interface Item {
   is_sold: boolean;
   views: number;
   created_at: string;
+  seller_id: string;
   categories: Category;
   profiles: Profile;
 }
@@ -54,6 +57,7 @@ interface Item {
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -143,6 +147,57 @@ const Dashboard = () => {
     await signOut();
   };
 
+  const handleStartConversation = async (item: Item) => {
+    if (!user || item.seller_id === user.id) return;
+
+    // Check if user is verified
+    if (!isVerified) {
+      toast({
+        title: "Verification Required",
+        description: "Please complete your KYC verification to start chatting",
+        variant: "destructive",
+      });
+      navigate('/kyc');
+      return;
+    }
+
+    // Check if conversation already exists
+    const { data: existingConversation } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('item_id', item.id)
+      .eq('buyer_id', user.id)
+      .eq('seller_id', item.seller_id)
+      .single();
+
+    if (existingConversation) {
+      navigate(`/chat/${existingConversation.id}`);
+      return;
+    }
+
+    // Create new conversation
+    const { data: newConversation, error } = await supabase
+      .from('conversations')
+      .insert({
+        item_id: item.id,
+        buyer_id: user.id,
+        seller_id: item.seller_id
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('Error creating conversation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start conversation",
+        variant: "destructive",
+      });
+    } else {
+      navigate(`/chat/${newConversation.id}`);
+    }
+  };
+
   const isVerified = profile?.is_verified && profile?.verification_status === 'approved';
 
   return (
@@ -161,11 +216,11 @@ const Dashboard = () => {
             </div>
             
             <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => navigate('/sell')}>
                 <Plus className="h-4 w-4 mr-2" />
                 Sell Item
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => navigate('/profile')}>
                 <User className="h-4 w-4 mr-2" />
                 Profile
               </Button>
@@ -189,7 +244,7 @@ const Dashboard = () => {
                   Please verify your student identity to start buying and selling items.
                 </span>
               </div>
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="outline" onClick={() => navigate('/kyc')}>
                 Verify Now
               </Button>
             </div>
@@ -255,25 +310,17 @@ const Dashboard = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {items.map((item) => (
-              <Card key={item.id} className="group hover:shadow-md transition-all duration-200 cursor-pointer border border-border hover:border-primary/20 overflow-hidden bg-card">
+              <Card 
+                key={item.id} 
+                className="group hover:shadow-lg transition-all duration-300 cursor-pointer border border-border hover:border-primary/20 overflow-hidden bg-card animate-fade-in"
+                onClick={() => navigate(`/item/${item.id}`)}
+              >
                 <div className="relative">
-                  <div className="h-48 bg-muted flex items-center justify-center overflow-hidden">
-                    {item.images.length > 0 ? (
-                      <img 
-                        src={item.images[0]} 
-                        alt={item.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                        onError={(e) => {
-                          e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik03NSA3NUgxMjVWMTI1SDc1Vjc1WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
-                        }}
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center text-muted-foreground">
-                        <ShoppingBag className="h-12 w-12 mb-2" />
-                        <span className="text-xs">No Image</span>
-                      </div>
-                    )}
-                  </div>
+                  <ImageCarousel 
+                    images={item.images} 
+                    alt={item.title}
+                    className="h-48"
+                  />
                   <Badge 
                     variant={item.condition === 'new' ? 'default' : 'secondary'}
                     className="absolute top-2 right-2 text-xs"
@@ -316,7 +363,14 @@ const Dashboard = () => {
                       </div>
                     </div>
                     <div className="flex gap-2 pt-2">
-                      <Button size="sm" className="flex-1 h-8 text-xs">
+                      <Button 
+                        size="sm" 
+                        className="flex-1 h-8 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartConversation(item);
+                        }}
+                      >
                         <MessageCircle className="h-3 w-3 mr-1" />
                         Chat
                       </Button>
