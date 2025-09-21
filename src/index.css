@@ -145,6 +145,33 @@ All colors MUST be HSL.
   .hover-scale:hover {
     transform: scale(1.02);
   }
+
+  .glass-effect {
+    @apply bg-background/80 backdrop-blur-md border border-border/50;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent;
+  }
+
+  .shimmer {
+    @apply relative overflow-hidden;
+  }
+
+  .shimmer::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent;
+    animation: shimmer 2s infinite;
+    transform: translateX(-100%);
+  }
+
+  .floating {
+    animation: floating 3s ease-in-out infinite;
+  }
+
+  .pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
 }
 
 @keyframes fade-in {
@@ -166,5 +193,23 @@ All colors MUST be HSL.
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes floating {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
   }
 }

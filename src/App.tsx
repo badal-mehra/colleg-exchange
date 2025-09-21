@@ -14,6 +14,7 @@ import KYC from "./pages/KYC";
 import Profile from "./pages/Profile";
 import SellItem from "./pages/SellItem";
 import Chat from "./pages/Chat";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,9 +51,14 @@ const App = () => (
                 <SellItem />
               </ProtectedRoute>
             } />
-            <Route path="/chat/:conversationId" element={
+            <Route path="/chat/:conversationId?" element={
               <ProtectedRoute>
                 <Chat />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <AdminDashboard />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
