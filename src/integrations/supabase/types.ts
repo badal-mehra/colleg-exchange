@@ -147,6 +147,42 @@ export type Database = {
           },
         ]
       }
+      image_slidebar: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string
+          is_active: boolean
+          link_url: string | null
+          sort_order: number
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url: string
+          is_active?: boolean
+          link_url?: string | null
+          sort_order?: number
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          link_url?: string | null
+          sort_order?: number
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       items: {
         Row: {
           category_id: string | null
@@ -262,6 +298,7 @@ export type Database = {
           is_verified: boolean | null
           phone: string | null
           student_id: string | null
+          university: string | null
           updated_at: string
           user_id: string
           verification_document_url: string | null
@@ -276,6 +313,7 @@ export type Database = {
           is_verified?: boolean | null
           phone?: string | null
           student_id?: string | null
+          university?: string | null
           updated_at?: string
           user_id: string
           verification_document_url?: string | null
@@ -290,6 +328,7 @@ export type Database = {
           is_verified?: boolean | null
           phone?: string | null
           student_id?: string | null
+          university?: string | null
           updated_at?: string
           user_id?: string
           verification_document_url?: string | null

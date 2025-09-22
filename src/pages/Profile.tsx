@@ -165,6 +165,13 @@ const Profile = () => {
                       <div className="h-16 w-16 bg-gradient-to-br from-primary to-primary/60 rounded-2xl flex items-center justify-center shadow-lg">
                         <User className="h-8 w-8 text-white" />
                       </div>
+                      {profile?.verification_status === 'approved' && (
+                        <div className="absolute -top-1 -right-1">
+                          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center animate-pulse">
+                            <Shield className="h-3 w-3 text-white" />
+                          </div>
+                        </div>
+                      )}
                       <div className="absolute -bottom-1 -right-1 h-6 w-6 bg-success rounded-full flex items-center justify-center">
                         <CheckCircle className="h-4 w-4 text-white" />
                       </div>

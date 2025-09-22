@@ -252,7 +252,7 @@ const Dashboard = () => {
             </div>
             
             <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" onClick={() => navigate('/chat')} className="hover-scale">
+              <Button variant="outline" size="sm" onClick={() => navigate('/my-chats')} className="hover-scale">
                 <MessageCircle className="h-4 w-4 mr-2" />
                 My Chats
               </Button>

@@ -17,7 +17,9 @@ import {
   Shield,
   BookOpen,
   ArrowRight,
-  TrendingUp
+  TrendingUp,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -105,12 +107,102 @@ const Home = () => {
     navigate(`/item/${itemId}`);
   };
 
-  const stats = [
-    { label: "Active Listings", value: "10,000+", icon: ShoppingBag },
-    { label: "Verified Students", value: "5,000+", icon: Users },
-    { label: "Successful Trades", value: "25,000+", icon: TrendingUp },
-    { label: "Campus Communities", value: "100+", icon: Shield }
-  ];
+  // Image slidebar component
+  const ImageSlidebarSection = () => {
+    const [sliderImages, setSliderImages] = useState<any[]>([]);
+    const [currentSlide, setCurrentSlide] = useState(0);
+
+    useEffect(() => {
+      fetchSliderImages();
+    }, []);
+
+    const fetchSliderImages = async () => {
+      const { data, error } = await supabase
+        .from('image_slidebar')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order');
+
+      if (!error) {
+        setSliderImages(data || []);
+      }
+    };
+
+    const nextSlide = () => {
+      setCurrentSlide((prev) => (prev + 1) % sliderImages.length);
+    };
+
+    const prevSlide = () => {
+      setCurrentSlide((prev) => (prev - 1 + sliderImages.length) % sliderImages.length);
+    };
+
+    useEffect(() => {
+      if (sliderImages.length > 0) {
+        const interval = setInterval(nextSlide, 5000);
+        return () => clearInterval(interval);
+      }
+    }, [sliderImages.length]);
+
+    if (sliderImages.length === 0) return null;
+
+    return (
+      <section className="py-12 bg-card/50">
+        <div className="container mx-auto px-4">
+          <div className="relative h-64 lg:h-80 rounded-xl overflow-hidden bg-gradient-to-r from-primary/10 to-accent/10">
+            {sliderImages.map((image, index) => (
+              <div
+                key={image.id}
+                className={`absolute inset-0 transition-opacity duration-500 ${
+                  index === currentSlide ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <img
+                  src={image.image_url}
+                  alt={image.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <div className="text-center text-white space-y-4 max-w-2xl px-4">
+                    <h2 className="text-2xl lg:text-4xl font-bold">{image.title}</h2>
+                    {image.description && (
+                      <p className="text-lg lg:text-xl opacity-90">{image.description}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {/* Navigation buttons */}
+            <button
+              onClick={prevSlide}
+              className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              onClick={nextSlide}
+              className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+
+            {/* Dots indicator */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
+              {sliderImages.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentSlide(index)}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    index === currentSlide ? 'bg-white' : 'bg-white/50'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -190,20 +282,8 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-12 bg-card/50">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {stats.map((stat, index) => (
-              <div key={stat.label} className="text-center space-y-2 animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
-                <stat.icon className="h-8 w-8 text-primary mx-auto" />
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Image Slidebar Section */}
+      <ImageSlidebarSection />
 
       {/* Featured Listings */}
       <section className="py-16">

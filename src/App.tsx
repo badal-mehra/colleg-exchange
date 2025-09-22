@@ -14,6 +14,7 @@ import KYC from "./pages/KYC";
 import Profile from "./pages/Profile";
 import SellItem from "./pages/SellItem";
 import Chat from "./pages/Chat";
+import MyChats from "./pages/MyChats";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -54,6 +55,11 @@ const App = () => (
             <Route path="/chat/:conversationId?" element={
               <ProtectedRoute>
                 <Chat />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-chats" element={
+              <ProtectedRoute>
+                <MyChats />
               </ProtectedRoute>
             } />
             <Route path="/admin" element={

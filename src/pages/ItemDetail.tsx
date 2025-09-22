@@ -115,7 +115,7 @@ const ItemDetail = () => {
     }
   };
 
-  const handleChatClick = () => {
+  const handleChatClick = async () => {
     if (!user) {
       toast({
         title: "Login Required",
@@ -136,11 +136,43 @@ const ItemDetail = () => {
       return;
     }
 
-    // TODO: Implement chat functionality
-    toast({
-      title: "Coming Soon",
-      description: "Chat functionality will be available soon",
-    });
+    try {
+      // Check if conversation already exists
+      const { data: existingConversation } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('item_id', item!.id)
+        .eq('buyer_id', user.id)
+        .eq('seller_id', item!.seller_id)
+        .single();
+
+      if (existingConversation) {
+        navigate(`/chat/${existingConversation.id}`);
+        return;
+      }
+
+      // Create new conversation
+      const { data: newConversation, error } = await supabase
+        .from('conversations')
+        .insert({
+          item_id: item!.id,
+          buyer_id: user.id,
+          seller_id: item!.seller_id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      navigate(`/chat/${newConversation.id}`);
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start conversation",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleShare = async () => {

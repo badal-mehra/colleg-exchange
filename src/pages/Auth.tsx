@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ShoppingBag, Users, Shield, BookOpen } from 'lucide-react';
 
 const Auth = () => {
@@ -35,8 +36,9 @@ const Auth = () => {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     const fullName = formData.get('fullName') as string;
+    const university = formData.get('university') as string;
     
-    await signUp(email, password, fullName);
+    await signUp(email, password, fullName, university);
     setIsLoading(false);
   };
 
@@ -148,6 +150,23 @@ const Auth = () => {
                       placeholder="your.email@college.edu"
                       required
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="university">University</Label>
+                    <Select name="university" required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your university" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="lovely-professional-university">Lovely Professional University</SelectItem>
+                        <SelectItem value="delhi-university">Delhi University</SelectItem>
+                        <SelectItem value="mumbai-university">Mumbai University</SelectItem>
+                        <SelectItem value="bangalore-university">Bangalore University</SelectItem>
+                        <SelectItem value="punjab-university">Punjab University</SelectItem>
+                        <SelectItem value="anna-university">Anna University</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>

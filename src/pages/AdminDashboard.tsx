@@ -39,6 +39,8 @@ const AdminDashboard = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [sliderImages, setSliderImages] = useState<any[]>([]);
+  const [newSliderImage, setNewSliderImage] = useState({ url: '', title: '', description: '' });
 
   useEffect(() => {
     checkAdminStatus();
@@ -67,7 +69,7 @@ const AdminDashboard = () => {
       }
 
       setIsAdmin(true);
-      await Promise.all([fetchProfiles(), fetchItems()]);
+      await Promise.all([fetchProfiles(), fetchItems(), fetchSliderImages()]);
     } catch (error) {
       console.error('Error checking admin status:', error);
       navigate('/dashboard');
@@ -198,6 +200,141 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchSliderImages = async () => {
+    const { data, error } = await supabase
+      .from('image_slidebar')
+      .select('*')
+      .order('sort_order');
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch slider images",
+        variant: "destructive",
+      });
+    } else {
+      setSliderImages(data || []);
+    }
+  };
+
+  const addSliderImage = async () => {
+    if (!newSliderImage.url || !newSliderImage.title) return;
+
+    const { error } = await supabase
+      .from('image_slidebar')
+      .insert({
+        image_url: newSliderImage.url,
+        title: newSliderImage.title,
+        description: newSliderImage.description,
+        sort_order: sliderImages.length + 1
+      });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add slider image",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Slider image added successfully",
+      });
+      setNewSliderImage({ url: '', title: '', description: '' });
+      fetchSliderImages();
+    }
+  };
+
+  const deleteSliderImage = async (imageId: string) => {
+    const { error } = await supabase
+      .from('image_slidebar')
+      .delete()
+      .eq('id', imageId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete slider image",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Slider image deleted successfully",
+      });
+      fetchSliderImages();
+    }
+  };
+
+  const SlidebarManagement = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Homepage Slidebar Management</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="image-url">Image URL</Label>
+              <Input
+                id="image-url"
+                placeholder="https://example.com/image.jpg"
+                value={newSliderImage.url}
+                onChange={(e) => setNewSliderImage(prev => ({ ...prev, url: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="image-title">Title</Label>
+              <Input
+                id="image-title"
+                placeholder="Slide title"
+                value={newSliderImage.title}
+                onChange={(e) => setNewSliderImage(prev => ({ ...prev, title: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="image-description">Description</Label>
+              <Input
+                id="image-description"
+                placeholder="Slide description"
+                value={newSliderImage.description}
+                onChange={(e) => setNewSliderImage(prev => ({ ...prev, description: e.target.value }))}
+              />
+            </div>
+          </div>
+          <Button onClick={addSliderImage}>
+            Add Slider Image
+          </Button>
+
+          <div className="space-y-4">
+            {sliderImages.map((image) => (
+              <div key={image.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center gap-4">
+                  <img 
+                    src={image.image_url} 
+                    alt={image.title}
+                    className="w-20 h-12 object-cover rounded"
+                  />
+                  <div>
+                    <h3 className="font-medium">{image.title}</h3>
+                    <p className="text-sm text-muted-foreground">{image.description}</p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => deleteSliderImage(image.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -234,7 +371,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="users">
               <Users className="h-4 w-4 mr-2" />
               Users & KYC
@@ -242,6 +379,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="listings">
               <ShoppingBag className="h-4 w-4 mr-2" />
               Listings
+            </TabsTrigger>
+            <TabsTrigger value="slidebar">
+              <Eye className="h-4 w-4 mr-2" />
+              Slidebar
             </TabsTrigger>
             <TabsTrigger value="admins">
               <Shield className="h-4 w-4 mr-2" />
@@ -370,6 +511,10 @@ const AdminDashboard = () => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+          
+          <TabsContent value="slidebar">
+            <SlidebarManagement />
           </TabsContent>
         </Tabs>
       </div>
