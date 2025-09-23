@@ -128,6 +128,13 @@ export type Database = {
             foreignKeyName: "conversations_buyer_id_fkey"
             columns: ["buyer_id"]
             isOneToOne: false
+            referencedRelation: "monthly_leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "conversations_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
           },
@@ -137,6 +144,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "monthly_leaderboard"
+            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "conversations_seller_id_fkey"
@@ -241,6 +255,13 @@ export type Database = {
             foreignKeyName: "items_seller_id_fkey"
             columns: ["seller_id"]
             isOneToOne: false
+            referencedRelation: "monthly_leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "items_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
           },
@@ -283,6 +304,13 @@ export type Database = {
             foreignKeyName: "messages_sender_id_fkey"
             columns: ["sender_id"]
             isOneToOne: false
+            referencedRelation: "monthly_leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
           },
@@ -290,14 +318,20 @@ export type Database = {
       }
       profiles: {
         Row: {
+          batch: string | null
+          campus_points: number | null
           college_name: string | null
+          course: string | null
           created_at: string
+          deals_completed: number | null
           email: string | null
           full_name: string | null
+          hostel: string | null
           id: string
           is_verified: boolean | null
           phone: string | null
           student_id: string | null
+          trust_seller_badge: boolean | null
           university: string | null
           updated_at: string
           user_id: string
@@ -305,14 +339,20 @@ export type Database = {
           verification_status: string | null
         }
         Insert: {
+          batch?: string | null
+          campus_points?: number | null
           college_name?: string | null
+          course?: string | null
           created_at?: string
+          deals_completed?: number | null
           email?: string | null
           full_name?: string | null
+          hostel?: string | null
           id?: string
           is_verified?: boolean | null
           phone?: string | null
           student_id?: string | null
+          trust_seller_badge?: boolean | null
           university?: string | null
           updated_at?: string
           user_id: string
@@ -320,14 +360,20 @@ export type Database = {
           verification_status?: string | null
         }
         Update: {
+          batch?: string | null
+          campus_points?: number | null
           college_name?: string | null
+          course?: string | null
           created_at?: string
+          deals_completed?: number | null
           email?: string | null
           full_name?: string | null
+          hostel?: string | null
           id?: string
           is_verified?: boolean | null
           phone?: string | null
           student_id?: string | null
+          trust_seller_badge?: boolean | null
           university?: string | null
           updated_at?: string
           user_id?: string
@@ -336,9 +382,87 @@ export type Database = {
         }
         Relationships: []
       }
+      transactions: {
+        Row: {
+          amount: number
+          buyer_id: string
+          created_at: string
+          id: string
+          item_id: string
+          points_awarded: number | null
+          seller_id: string
+          status: string | null
+          transaction_type: string | null
+        }
+        Insert: {
+          amount: number
+          buyer_id: string
+          created_at?: string
+          id?: string
+          item_id: string
+          points_awarded?: number | null
+          seller_id: string
+          status?: string | null
+          transaction_type?: string | null
+        }
+        Update: {
+          amount?: number
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          points_awarded?: number | null
+          seller_id?: string
+          status?: string | null
+          transaction_type?: string | null
+        }
+        Relationships: []
+      }
+      universities: {
+        Row: {
+          code: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          location: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      monthly_leaderboard: {
+        Row: {
+          campus_points: number | null
+          deals_completed: number | null
+          full_name: string | null
+          monthly_revenue: number | null
+          monthly_sales: number | null
+          trust_seller_badge: boolean | null
+          university: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_admin_role: {
