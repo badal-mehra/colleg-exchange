@@ -128,13 +128,6 @@ export type Database = {
             foreignKeyName: "conversations_buyer_id_fkey"
             columns: ["buyer_id"]
             isOneToOne: false
-            referencedRelation: "monthly_leaderboard"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "conversations_buyer_id_fkey"
-            columns: ["buyer_id"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
           },
@@ -144,13 +137,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "conversations_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
-            referencedRelation: "monthly_leaderboard"
-            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "conversations_seller_id_fkey"
@@ -255,13 +241,6 @@ export type Database = {
             foreignKeyName: "items_seller_id_fkey"
             columns: ["seller_id"]
             isOneToOne: false
-            referencedRelation: "monthly_leaderboard"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "items_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
           },
@@ -299,13 +278,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "conversations"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "messages_sender_id_fkey"
-            columns: ["sender_id"]
-            isOneToOne: false
-            referencedRelation: "monthly_leaderboard"
-            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "messages_sender_id_fkey"
@@ -450,24 +422,25 @@ export type Database = {
       }
     }
     Views: {
-      monthly_leaderboard: {
-        Row: {
-          campus_points: number | null
-          deals_completed: number | null
-          full_name: string | null
-          monthly_revenue: number | null
-          monthly_sales: number | null
-          trust_seller_badge: boolean | null
-          university: string | null
-          user_id: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       get_admin_role: {
         Args: { user_id: string }
         Returns: string
+      }
+      get_monthly_leaderboard: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          campus_points: number
+          deals_completed: number
+          full_name: string
+          monthly_revenue: number
+          monthly_sales: number
+          trust_seller_badge: boolean
+          university: string
+          user_id: string
+        }[]
       }
       is_admin: {
         Args: { user_id: string }

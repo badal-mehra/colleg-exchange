@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, CheckCircle, Clock, XCircle, User, Edit3, Save, X, Shield, Zap, Star, Settings } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, CheckCircle, Clock, XCircle, User, Edit3, Save, X, Shield, Zap, Star, Settings, Award, Trophy, Target } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -20,6 +21,13 @@ interface Profile {
   student_id: string;
   is_verified: boolean;
   verification_status: string;
+  university: string;
+  batch: string;
+  course: string;
+  hostel: string;
+  campus_points: number;
+  deals_completed: number;
+  trust_seller_badge: boolean;
 }
 
 const Profile = () => {
@@ -34,12 +42,32 @@ const Profile = () => {
     full_name: '',
     phone: '',
     college_name: '',
-    student_id: ''
+    student_id: '',
+    university: '',
+    batch: '',
+    course: '',
+    hostel: ''
   });
+  const [universities, setUniversities] = useState<any[]>([]);
 
   useEffect(() => {
     fetchProfile();
+    fetchUniversities();
   }, [user]);
+
+  const fetchUniversities = async () => {
+    const { data, error } = await supabase
+      .from('universities')
+      .select('*')
+      .eq('is_active', true)
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching universities:', error);
+    } else {
+      setUniversities(data || []);
+    }
+  };
 
   const fetchProfile = async () => {
     if (!user) return;
@@ -64,7 +92,11 @@ const Profile = () => {
         full_name: data.full_name || '',
         phone: data.phone || '',
         college_name: data.college_name || '',
-        student_id: data.student_id || ''
+        student_id: data.student_id || '',
+        university: data.university || '',
+        batch: data.batch || '',
+        course: data.course || '',
+        hostel: data.hostel || ''
       });
     }
     setLoading(false);
@@ -245,24 +277,39 @@ const Profile = () => {
               </CardContent>
             </Card>
 
-            {/* Quick Stats */}
-            <Card className="bg-gradient-to-br from-muted/50 to-muted/30 hover-scale">
+            {/* Campus Stats & Gamification */}
+            <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-background hover-scale">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Star className="h-5 w-5 text-warning" />
-                  Profile Stats
+                  <Trophy className="h-5 w-5 text-warning" />
+                  Campus Stats
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-3 bg-background/50 rounded-lg">
-                    <div className="text-2xl font-bold text-primary">0</div>
-                    <div className="text-xs text-muted-foreground">Items Sold</div>
+                <div className="space-y-4">
+                  <div className="text-center p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg">
+                    <div className="text-3xl font-bold text-primary">{profile?.campus_points || 0}</div>
+                    <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+                      <Target className="h-4 w-4" />
+                      Campus Points
+                    </div>
                   </div>
-                  <div className="text-center p-3 bg-background/50 rounded-lg">
-                    <div className="text-2xl font-bold text-primary">0</div>
-                    <div className="text-xs text-muted-foreground">Items Bought</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="text-center p-3 bg-background/50 rounded-lg">
+                      <div className="text-xl font-bold text-primary">{profile?.deals_completed || 0}</div>
+                      <div className="text-xs text-muted-foreground">Deals Done</div>
+                    </div>
+                    <div className="text-center p-3 bg-background/50 rounded-lg">
+                      <div className="text-xl font-bold text-success">{profile?.trust_seller_badge ? '✓' : '✗'}</div>
+                      <div className="text-xs text-muted-foreground">Trust Badge</div>
+                    </div>
                   </div>
+                  {profile?.trust_seller_badge && (
+                    <Badge className="w-full justify-center bg-gradient-to-r from-warning to-warning/80">
+                      <Award className="h-3 w-3 mr-1" />
+                      Trusted Seller
+                    </Badge>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -300,7 +347,34 @@ const Profile = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="college_name" className="text-sm font-medium">College Name</Label>
+                    <Label htmlFor="university" className="text-sm font-medium">University</Label>
+                    {editMode ? (
+                      <Select
+                        value={formData.university}
+                        onValueChange={(value) => setFormData({ ...formData, university: value })}
+                      >
+                        <SelectTrigger className="focus:ring-2 focus:ring-primary/20">
+                          <SelectValue placeholder="Select University" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {universities.map((university) => (
+                            <SelectItem key={university.id} value={university.name}>
+                              {university.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        id="university"
+                        value={formData.university}
+                        disabled={true}
+                        className="bg-muted/50"
+                      />
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="college_name" className="text-sm font-medium">College/Department</Label>
                     <Input
                       id="college_name"
                       value={formData.college_name}
@@ -315,6 +389,39 @@ const Profile = () => {
                       id="student_id"
                       value={formData.student_id}
                       onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
+                      disabled={!editMode}
+                      className={`transition-all duration-200 ${!editMode ? 'bg-muted/50' : 'focus:ring-2 focus:ring-primary/20'}`}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="course" className="text-sm font-medium">Course</Label>
+                    <Input
+                      id="course"
+                      placeholder="e.g., B.Tech CSE"
+                      value={formData.course}
+                      onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                      disabled={!editMode}
+                      className={`transition-all duration-200 ${!editMode ? 'bg-muted/50' : 'focus:ring-2 focus:ring-primary/20'}`}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="batch" className="text-sm font-medium">Batch</Label>
+                    <Input
+                      id="batch"
+                      placeholder="e.g., 2021-2025"
+                      value={formData.batch}
+                      onChange={(e) => setFormData({ ...formData, batch: e.target.value })}
+                      disabled={!editMode}
+                      className={`transition-all duration-200 ${!editMode ? 'bg-muted/50' : 'focus:ring-2 focus:ring-primary/20'}`}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="hostel" className="text-sm font-medium">Hostel</Label>
+                    <Input
+                      id="hostel"
+                      placeholder="e.g., Block A-1"
+                      value={formData.hostel}
+                      onChange={(e) => setFormData({ ...formData, hostel: e.target.value })}
                       disabled={!editMode}
                       className={`transition-all duration-200 ${!editMode ? 'bg-muted/50' : 'focus:ring-2 focus:ring-primary/20'}`}
                     />

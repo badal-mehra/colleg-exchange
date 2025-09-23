@@ -19,6 +19,7 @@ interface Profile {
   verification_status: string;
   college_name: string;
   student_id: string;
+  verification_document_url: string;
 }
 
 interface Item {
@@ -41,6 +42,8 @@ const AdminDashboard = () => {
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [sliderImages, setSliderImages] = useState<any[]>([]);
   const [newSliderImage, setNewSliderImage] = useState({ url: '', title: '', description: '' });
+  const [universities, setUniversities] = useState<any[]>([]);
+  const [newUniversity, setNewUniversity] = useState({ name: '', code: '', location: '' });
 
   useEffect(() => {
     checkAdminStatus();
@@ -69,7 +72,7 @@ const AdminDashboard = () => {
       }
 
       setIsAdmin(true);
-      await Promise.all([fetchProfiles(), fetchItems(), fetchSliderImages()]);
+      await Promise.all([fetchProfiles(), fetchItems(), fetchSliderImages(), fetchUniversities()]);
     } catch (error) {
       console.error('Error checking admin status:', error);
       navigate('/dashboard');
@@ -112,91 +115,20 @@ const AdminDashboard = () => {
     }
   };
 
-  const updateVerificationStatus = async (profileId: string, status: string) => {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ verification_status: status })
-      .eq('id', profileId);
+  const fetchUniversities = async () => {
+    const { data, error } = await supabase
+      .from('universities')
+      .select('*')
+      .order('name');
 
     if (error) {
       toast({
         title: "Error",
-        description: "Failed to update verification status",
+        description: "Failed to fetch universities",
         variant: "destructive",
       });
     } else {
-      toast({
-        title: "Success",
-        description: `Verification status updated to ${status}`,
-      });
-      fetchProfiles();
-    }
-  };
-
-  const deleteItem = async (itemId: string) => {
-    const { error } = await supabase
-      .from('items')
-      .delete()
-      .eq('id', itemId);
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete item",
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Success",
-        description: "Item deleted successfully",
-      });
-      fetchItems();
-    }
-  };
-
-  const addAdmin = async () => {
-    if (!newAdminEmail) return;
-
-    try {
-      // First, find the user by email
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('email', newAdminEmail)
-        .single();
-
-      if (userError || !userData) {
-        toast({
-          title: "Error",
-          description: "User not found with this email",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const { error } = await supabase
-        .from('admin_users')
-        .insert({
-          user_id: userData.user_id,
-          email: newAdminEmail,
-          role: 'admin'
-        });
-
-      if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to add admin",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Success",
-          description: "Admin added successfully",
-        });
-        setNewAdminEmail('');
-      }
-    } catch (error) {
-      console.error('Error adding admin:', error);
+      setUniversities(data || []);
     }
   };
 
@@ -216,124 +148,6 @@ const AdminDashboard = () => {
       setSliderImages(data || []);
     }
   };
-
-  const addSliderImage = async () => {
-    if (!newSliderImage.url || !newSliderImage.title) return;
-
-    const { error } = await supabase
-      .from('image_slidebar')
-      .insert({
-        image_url: newSliderImage.url,
-        title: newSliderImage.title,
-        description: newSliderImage.description,
-        sort_order: sliderImages.length + 1
-      });
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add slider image",
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Success",
-        description: "Slider image added successfully",
-      });
-      setNewSliderImage({ url: '', title: '', description: '' });
-      fetchSliderImages();
-    }
-  };
-
-  const deleteSliderImage = async (imageId: string) => {
-    const { error } = await supabase
-      .from('image_slidebar')
-      .delete()
-      .eq('id', imageId);
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete slider image",
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Success",
-        description: "Slider image deleted successfully",
-      });
-      fetchSliderImages();
-    }
-  };
-
-  const SlidebarManagement = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>Homepage Slidebar Management</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="image-url">Image URL</Label>
-              <Input
-                id="image-url"
-                placeholder="https://example.com/image.jpg"
-                value={newSliderImage.url}
-                onChange={(e) => setNewSliderImage(prev => ({ ...prev, url: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="image-title">Title</Label>
-              <Input
-                id="image-title"
-                placeholder="Slide title"
-                value={newSliderImage.title}
-                onChange={(e) => setNewSliderImage(prev => ({ ...prev, title: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="image-description">Description</Label>
-              <Input
-                id="image-description"
-                placeholder="Slide description"
-                value={newSliderImage.description}
-                onChange={(e) => setNewSliderImage(prev => ({ ...prev, description: e.target.value }))}
-              />
-            </div>
-          </div>
-          <Button onClick={addSliderImage}>
-            Add Slider Image
-          </Button>
-
-          <div className="space-y-4">
-            {sliderImages.map((image) => (
-              <div key={image.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-4">
-                  <img 
-                    src={image.image_url} 
-                    alt={image.title}
-                    className="w-20 h-12 object-cover rounded"
-                  />
-                  <div>
-                    <h3 className="font-medium">{image.title}</h3>
-                    <p className="text-sm text-muted-foreground">{image.description}</p>
-                  </div>
-                </div>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => deleteSliderImage(image.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
 
   if (loading) {
     return (
@@ -380,9 +194,9 @@ const AdminDashboard = () => {
               <ShoppingBag className="h-4 w-4 mr-2" />
               Listings
             </TabsTrigger>
-            <TabsTrigger value="slidebar">
-              <Eye className="h-4 w-4 mr-2" />
-              Slidebar
+            <TabsTrigger value="universities">
+              <Shield className="h-4 w-4 mr-2" />
+              Universities
             </TabsTrigger>
             <TabsTrigger value="admins">
               <Shield className="h-4 w-4 mr-2" />
@@ -407,6 +221,19 @@ const AdminDashboard = () => {
                             <p className="text-xs text-muted-foreground">
                               {profile.college_name} • {profile.student_id}
                             </p>
+                            {profile.verification_document_url && (
+                              <div className="mt-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => window.open(profile.verification_document_url, '_blank')}
+                                  className="text-xs p-1 h-6"
+                                >
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  View Document
+                                </Button>
+                              </div>
+                            )}
                           </div>
                           <Badge variant={
                             profile.verification_status === 'approved' ? 'default' :
@@ -415,26 +242,6 @@ const AdminDashboard = () => {
                             {profile.verification_status || 'Not submitted'}
                           </Badge>
                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateVerificationStatus(profile.id, 'approved')}
-                          disabled={profile.verification_status === 'approved'}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => updateVerificationStatus(profile.id, 'rejected')}
-                          disabled={profile.verification_status === 'rejected'}
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Reject
-                        </Button>
                       </div>
                     </div>
                   ))}
@@ -457,27 +264,28 @@ const AdminDashboard = () => {
                         <p className="text-sm text-muted-foreground">
                           ₹{item.price} • {item.is_sold ? 'Sold' : 'Available'}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          Created: {new Date(item.created_at).toLocaleDateString()}
-                        </p>
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => navigate(`/item/${item.id}`)}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => deleteItem(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Delete
-                        </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="universities">
+            <Card>
+              <CardHeader>
+                <CardTitle>University Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {universities.map((university) => (
+                    <div key={university.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <h3 className="font-medium">{university.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {university.code} • {university.location}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -498,23 +306,16 @@ const AdminDashboard = () => {
                       <Label htmlFor="admin-email">Add New Admin</Label>
                       <Input
                         id="admin-email"
-                        placeholder="Enter email address"
+                        placeholder="admin@university.edu"
+                        type="email"
                         value={newAdminEmail}
                         onChange={(e) => setNewAdminEmail(e.target.value)}
                       />
                     </div>
-                    <Button onClick={addAdmin} className="mt-6">
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Add Admin
-                    </Button>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-          
-          <TabsContent value="slidebar">
-            <SlidebarManagement />
           </TabsContent>
         </Tabs>
       </div>

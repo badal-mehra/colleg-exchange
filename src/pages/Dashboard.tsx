@@ -19,7 +19,9 @@ import {
   Upload,
   Shield,
   Star,
-  MapPin
+  MapPin,
+  Package,
+  Trophy
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -255,6 +257,14 @@ const Dashboard = () => {
               <Button variant="outline" size="sm" onClick={() => navigate('/my-chats')} className="hover-scale">
                 <MessageCircle className="h-4 w-4 mr-2" />
                 My Chats
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/my-listings')} className="hover-scale">
+                <Package className="h-4 w-4 mr-2" />
+                My Items
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/leaderboard')} className="hover-scale">
+                <Trophy className="h-4 w-4 mr-2" />
+                Leaderboard
               </Button>
               <Button variant="outline" size="sm" onClick={() => navigate('/profile')} className="hover-scale">
                 <User className="h-4 w-4 mr-2" />

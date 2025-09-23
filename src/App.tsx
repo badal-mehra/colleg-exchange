@@ -15,8 +15,10 @@ import Profile from "./pages/Profile";
 import SellItem from "./pages/SellItem";
 import Chat from "./pages/Chat";
 import MyChats from "./pages/MyChats";
-import AdminDashboard from "./pages/AdminDashboard";
+import MyListings from "./pages/MyListings";
+import Leaderboard from "./pages/Leaderboard";
 import NotFound from "./pages/NotFound";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -57,16 +59,10 @@ const App = () => (
                 <Chat />
               </ProtectedRoute>
             } />
-            <Route path="/my-chats" element={
-              <ProtectedRoute>
-                <MyChats />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin" element={
-              <ProtectedRoute>
-                <AdminDashboard />
-              </ProtectedRoute>
-            } />
+            <Route path="/my-chats" element={<ProtectedRoute><MyChats /></ProtectedRoute>} />
+            <Route path="/my-listings" element={<ProtectedRoute><MyListings /></ProtectedRoute>} />
+            <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
