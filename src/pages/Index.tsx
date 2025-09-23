@@ -6,9 +6,9 @@ import { ShoppingBag, Users, Shield, BookOpen, ArrowRight } from 'lucide-react';
 const Index = () => {
   const { user } = useAuth();
 
-  // Redirect authenticated users to dashboard
+  // Redirect authenticated users to home
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   return <Navigate to="/home" replace />;
