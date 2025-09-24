@@ -19,7 +19,12 @@ import {
   ArrowRight,
   TrendingUp,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Star,
+  Crown,
+  Zap,
+  Clock,
+  Tag
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -41,6 +46,10 @@ interface Item {
   views: number;
   created_at: string;
   categories: Category;
+  ad_type: string;
+  is_negotiable: boolean;
+  tags: string[];
+  expires_at: string;
 }
 
 const Home = () => {
@@ -76,6 +85,8 @@ const Home = () => {
         categories (*)
       `)
       .eq('is_sold', false)
+      .gt('expires_at', new Date().toISOString())
+      .order('ad_type', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(12);
 
@@ -105,6 +116,24 @@ const Home = () => {
 
   const handleItemClick = (itemId: string) => {
     navigate(`/item/${itemId}`);
+  };
+
+  const getAdTypeIcon = (adType: string) => {
+    switch (adType) {
+      case 'featured': return <Star className="h-3 w-3" />;
+      case 'premium': return <Crown className="h-3 w-3" />;
+      case 'urgent': return <Zap className="h-3 w-3" />;
+      default: return null;
+    }
+  };
+
+  const getAdTypeBadge = (adType: string) => {
+    switch (adType) {
+      case 'featured': return { variant: 'default' as const, label: 'Featured', className: 'bg-gradient-to-r from-primary to-primary/80' };
+      case 'premium': return { variant: 'default' as const, label: 'Premium', className: 'bg-gradient-to-r from-warning to-warning/80' };
+      case 'urgent': return { variant: 'destructive' as const, label: 'Urgent', className: 'bg-gradient-to-r from-destructive to-destructive/80' };
+      default: return null;
+    }
   };
 
   // Image slidebar component
@@ -347,16 +376,36 @@ const Home = () => {
                         </div>
                       )}
                     </div>
+                    
+                    {/* Ad Type Badge */}
+                    {getAdTypeBadge(item.ad_type) && (
+                      <Badge 
+                        variant={getAdTypeBadge(item.ad_type)!.variant}
+                        className={`absolute top-2 left-2 text-xs flex items-center gap-1 ${getAdTypeBadge(item.ad_type)!.className}`}
+                      >
+                        {getAdTypeIcon(item.ad_type)}
+                        {getAdTypeBadge(item.ad_type)!.label}
+                      </Badge>
+                    )}
+                    
                     <Badge 
                       variant={item.condition === 'new' ? 'default' : 'secondary'}
                       className="absolute top-2 right-2 text-xs"
                     >
                       {item.condition}
                     </Badge>
+                    
                     <div className="absolute bottom-2 left-2 bg-background/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
                       <Eye className="h-3 w-3 text-muted-foreground" />
                       <span className="text-xs text-muted-foreground">{item.views}</span>
                     </div>
+                    
+                    {/* Negotiable Badge */}
+                    {item.is_negotiable && (
+                      <div className="absolute bottom-2 right-2 bg-background/90 backdrop-blur-sm rounded-full px-2 py-1">
+                        <span className="text-xs text-muted-foreground">Negotiable</span>
+                      </div>
+                    )}
                   </div>
                   <CardContent className="p-3">
                     <div className="space-y-2">
@@ -369,12 +418,36 @@ const Home = () => {
                       <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                         {item.description}
                       </p>
-                      <div className="flex items-center gap-1 pt-1">
-                        <MapPin className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">
-                          {item.location || 'Campus'}
-                        </span>
+                      
+                      {/* Tags */}
+                      {item.tags && item.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {item.tags.slice(0, 3).map((tag, tagIndex) => (
+                            <Badge key={tagIndex} variant="outline" className="text-xs px-1 py-0">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {item.tags.length > 3 && (
+                            <Badge variant="outline" className="text-xs px-1 py-0">
+                              +{item.tags.length - 3}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          <span>{item.location || 'Campus'}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>
+                            {Math.max(0, Math.ceil((new Date(item.expires_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))}d left
+                          </span>
+                        </div>
                       </div>
+                      
                       <Button 
                         size="sm" 
                         className="w-full h-8 text-xs mt-2"

@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Upload, X, Image as ImageIcon, Star, Zap, Clock, Tag, Crown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -18,24 +20,40 @@ interface Category {
   icon: string;
 }
 
+interface AdPackage {
+  id: string;
+  name: string;
+  ad_type: string;
+  duration_days: number;
+  price: number;
+  features: any;
+}
+
 const SellItem = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [adPackages, setAdPackages] = useState<AdPackage[]>([]);
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     price: '',
     condition: '',
     category_id: '',
-    location: ''
+    location: '',
+    ad_type: 'basic',
+    is_negotiable: true,
+    auto_repost: false,
+    tag_input: ''
   });
 
   useEffect(() => {
     fetchCategories();
+    fetchAdPackages();
   }, []);
 
   const fetchCategories = async () => {
@@ -48,6 +66,19 @@ const SellItem = () => {
       console.error('Error fetching categories:', error);
     } else {
       setCategories(data || []);
+    }
+  };
+
+  const fetchAdPackages = async () => {
+    const { data, error } = await supabase
+      .from('ad_packages')
+      .select('*')
+      .order('price');
+
+    if (error) {
+      console.error('Error fetching ad packages:', error);
+    } else {
+      setAdPackages(data || []);
     }
   };
 
@@ -68,6 +99,30 @@ const SellItem = () => {
 
   const removeImage = (index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addTag = () => {
+    if (formData.tag_input.trim() && !tags.includes(formData.tag_input.trim()) && tags.length < 5) {
+      setTags(prev => [...prev, formData.tag_input.trim()]);
+      setFormData({ ...formData, tag_input: '' });
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(prev => prev.filter(tag => tag !== tagToRemove));
+  };
+
+  const getSelectedAdPackage = () => {
+    return adPackages.find(pkg => pkg.ad_type === formData.ad_type);
+  };
+
+  const getAdTypeIcon = (adType: string) => {
+    switch (adType) {
+      case 'featured': return <Star className="h-4 w-4" />;
+      case 'premium': return <Crown className="h-4 w-4" />;
+      case 'urgent': return <Zap className="h-4 w-4" />;
+      default: return <Tag className="h-4 w-4" />;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,6 +168,9 @@ const SellItem = () => {
 
     setLoading(true);
 
+    const selectedPackage = getSelectedAdPackage();
+    const durationDays = selectedPackage?.duration_days || 30;
+    
     const { error } = await supabase
       .from('items')
       .insert({
@@ -123,7 +181,13 @@ const SellItem = () => {
         category_id: formData.category_id || null,
         location: formData.location.trim() || null,
         images: images,
-        seller_id: user.id
+        seller_id: user.id,
+        ad_type: formData.ad_type,
+        ad_duration_days: durationDays,
+        expires_at: new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString(),
+        is_negotiable: formData.is_negotiable,
+        auto_repost: formData.auto_repost,
+        tags: tags
       });
 
     if (error) {
@@ -291,6 +355,103 @@ const SellItem = () => {
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     placeholder="e.g., Campus Building A"
                   />
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div className="space-y-2">
+                <Label>Tags (Max 5)</Label>
+                <div className="flex gap-2 mb-2 flex-wrap">
+                  {tags.map((tag, index) => (
+                    <Badge key={index} variant="secondary" className="gap-1">
+                      {tag}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => removeTag(tag)} />
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={formData.tag_input}
+                    onChange={(e) => setFormData({ ...formData, tag_input: e.target.value })}
+                    placeholder="Add a tag (e.g., urgent, negotiable)"
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                  />
+                  <Button type="button" onClick={addTag} variant="outline" disabled={tags.length >= 5}>
+                    Add
+                  </Button>
+                </div>
+              </div>
+
+              {/* Ad Package Selection */}
+              <div className="space-y-4">
+                <Label>Choose Ad Package</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {adPackages.map((pkg) => (
+                    <Card 
+                      key={pkg.id} 
+                      className={`cursor-pointer transition-all ${
+                        formData.ad_type === pkg.ad_type 
+                          ? 'ring-2 ring-primary bg-primary/5' 
+                          : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => setFormData({ ...formData, ad_type: pkg.ad_type })}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            {getAdTypeIcon(pkg.ad_type)}
+                            <h4 className="font-semibold">{pkg.name}</h4>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-primary">
+                              {pkg.price === 0 ? 'Free' : `₹${pkg.price}`}
+                            </div>
+                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {pkg.duration_days} days
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {pkg.features?.description || 'Standard listing'}
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {pkg.features?.highlighted && (
+                            <Badge variant="secondary" className="text-xs">Highlighted</Badge>
+                          )}
+                          {pkg.features?.top_placement && (
+                            <Badge variant="secondary" className="text-xs">Top Placement</Badge>
+                          )}
+                          {pkg.features?.urgent_badge && (
+                            <Badge variant="destructive" className="text-xs">Urgent Badge</Badge>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              {/* Additional Options */}
+              <div className="space-y-4">
+                <Label>Additional Options</Label>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="negotiable" 
+                      checked={formData.is_negotiable}
+                      onCheckedChange={(checked) => setFormData({ ...formData, is_negotiable: checked as boolean })}
+                    />
+                    <Label htmlFor="negotiable" className="text-sm">Price is negotiable</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="auto-repost" 
+                      checked={formData.auto_repost}
+                      onCheckedChange={(checked) => setFormData({ ...formData, auto_repost: checked as boolean })}
+                    />
+                    <Label htmlFor="auto-repost" className="text-sm">Auto-repost when expired</Label>
+                  </div>
                 </div>
               </div>
 

@@ -33,6 +33,10 @@ interface Item {
   views: number;
   created_at: string;
   seller_id: string;
+  ad_type: string;
+  is_negotiable: boolean;
+  tags: string[];
+  expires_at: string;
 }
 
 const MyListings = () => {
@@ -221,6 +225,36 @@ const MyListings = () => {
             </Card>
           </div>
 
+          {/* Ad Performance Stats */}
+          <Card className="bg-gradient-to-r from-primary/5 to-primary/10">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Ad Performance Overview
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-lg font-bold">{items.filter(item => item.ad_type === 'basic').length}</div>
+                  <div className="text-xs text-muted-foreground">Basic Ads</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-primary">{items.filter(item => item.ad_type === 'featured').length}</div>
+                  <div className="text-xs text-muted-foreground">Featured</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-warning">{items.filter(item => item.ad_type === 'premium').length}</div>
+                  <div className="text-xs text-muted-foreground">Premium</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-destructive">{items.filter(item => item.ad_type === 'urgent').length}</div>
+                  <div className="text-xs text-muted-foreground">Urgent</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Listings Grid */}
           {items.length === 0 ? (
             <div className="text-center py-12">
@@ -244,18 +278,35 @@ const MyListings = () => {
                       alt={item.title}
                       className="h-48"
                     />
-                    <Badge 
-                      variant={item.is_sold ? 'destructive' : 'default'}
-                      className="absolute top-2 left-2 text-xs"
-                    >
-                      {item.is_sold ? 'Sold' : 'Available'}
-                    </Badge>
-                    <Badge 
-                      variant={item.condition === 'new' ? 'default' : 'secondary'}
-                      className="absolute top-2 right-2 text-xs"
-                    >
-                      {item.condition}
-                    </Badge>
+                      <Badge 
+                        variant={item.is_sold ? 'destructive' : 'default'}
+                        className="absolute top-2 left-2 text-xs"
+                      >
+                        {item.is_sold ? 'Sold' : 'Available'}
+                      </Badge>
+                      
+                      {/* Ad Type Badge */}
+                      {item.ad_type && item.ad_type !== 'basic' && (
+                        <Badge 
+                          variant={
+                            item.ad_type === 'featured' ? 'default' : 
+                            item.ad_type === 'premium' ? 'secondary' : 
+                            'destructive'
+                          }
+                          className="absolute top-2 right-2 text-xs"
+                        >
+                          {item.ad_type}
+                        </Badge>
+                      )}
+                      
+                      {item.condition && item.ad_type === 'basic' && (
+                        <Badge 
+                          variant={item.condition === 'new' ? 'default' : 'secondary'}
+                          className="absolute top-2 right-2 text-xs"
+                        >
+                          {item.condition}
+                        </Badge>
+                      )}
                   </div>
                   
                   <CardContent className="p-4">
