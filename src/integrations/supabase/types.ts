@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_packages: {
+        Row: {
+          ad_type: string
+          created_at: string
+          duration_days: number
+          features: Json
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+        }
+        Insert: {
+          ad_type: string
+          created_at?: string
+          duration_days: number
+          features?: Json
+          id?: string
+          is_active?: boolean
+          name: string
+          price?: number
+        }
+        Update: {
+          ad_type?: string
+          created_at?: string
+          duration_days?: number
+          features?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+        }
+        Relationships: []
+      }
       admin_actions: {
         Row: {
           action_type: string
@@ -185,46 +218,76 @@ export type Database = {
       }
       items: {
         Row: {
+          ad_duration_days: number | null
+          ad_type: string | null
+          auto_repost: boolean | null
+          boost_count: number | null
           category_id: string | null
           condition: string | null
           created_at: string
           description: string
+          expires_at: string | null
+          featured_until: string | null
           id: string
           images: string[] | null
+          is_negotiable: boolean | null
+          is_promoted: boolean | null
           is_sold: boolean | null
           location: string | null
           price: number
+          promotion_expires_at: string | null
           seller_id: string
+          tags: string[] | null
           title: string
           updated_at: string
           views: number | null
         }
         Insert: {
+          ad_duration_days?: number | null
+          ad_type?: string | null
+          auto_repost?: boolean | null
+          boost_count?: number | null
           category_id?: string | null
           condition?: string | null
           created_at?: string
           description: string
+          expires_at?: string | null
+          featured_until?: string | null
           id?: string
           images?: string[] | null
+          is_negotiable?: boolean | null
+          is_promoted?: boolean | null
           is_sold?: boolean | null
           location?: string | null
           price: number
+          promotion_expires_at?: string | null
           seller_id: string
+          tags?: string[] | null
           title: string
           updated_at?: string
           views?: number | null
         }
         Update: {
+          ad_duration_days?: number | null
+          ad_type?: string | null
+          auto_repost?: boolean | null
+          boost_count?: number | null
           category_id?: string | null
           condition?: string | null
           created_at?: string
           description?: string
+          expires_at?: string | null
+          featured_until?: string | null
           id?: string
           images?: string[] | null
+          is_negotiable?: boolean | null
+          is_promoted?: boolean | null
           is_sold?: boolean | null
           location?: string | null
           price?: number
+          promotion_expires_at?: string | null
           seller_id?: string
+          tags?: string[] | null
           title?: string
           updated_at?: string
           views?: number | null
@@ -441,6 +504,10 @@ export type Database = {
           university: string
           user_id: string
         }[]
+      }
+      handle_ad_expiry: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       is_admin: {
         Args: { user_id: string }
