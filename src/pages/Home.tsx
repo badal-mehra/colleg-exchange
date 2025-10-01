@@ -27,6 +27,7 @@ import {
   Tag
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Category {
   id: string;
@@ -51,6 +52,34 @@ interface Item {
   tags: string[];
   expires_at: string;
 }
+
+const getAdTypeBenefits = (adType: string) => {
+  switch (adType) {
+    case 'featured':
+      return {
+        icon: <Star className="h-3 w-3" />,
+        label: 'Featured',
+        color: 'bg-gradient-to-r from-primary to-primary/80',
+        benefits: 'Top placement • 3x visibility • Highlighted border'
+      };
+    case 'premium':
+      return {
+        icon: <Crown className="h-3 w-3" />,
+        label: 'Premium',
+        color: 'bg-gradient-to-r from-warning to-warning/80',
+        benefits: 'Priority listing • Boost button • Extended duration'
+      };
+    case 'urgent':
+      return {
+        icon: <Zap className="h-3 w-3" />,
+        label: 'Urgent',
+        color: 'bg-gradient-to-r from-destructive to-destructive/80',
+        benefits: 'Flash indicator • Quick sell price • 48hr highlight'
+      };
+    default:
+      return null;
+  }
+};
 
 const Home = () => {
   const navigate = useNavigate();
@@ -119,21 +148,12 @@ const Home = () => {
   };
 
   const getAdTypeIcon = (adType: string) => {
-    switch (adType) {
-      case 'featured': return <Star className="h-3 w-3" />;
-      case 'premium': return <Crown className="h-3 w-3" />;
-      case 'urgent': return <Zap className="h-3 w-3" />;
-      default: return null;
-    }
+    const benefits = getAdTypeBenefits(adType);
+    return benefits ? benefits.icon : null;
   };
 
   const getAdTypeBadge = (adType: string) => {
-    switch (adType) {
-      case 'featured': return { variant: 'default' as const, label: 'Featured', className: 'bg-gradient-to-r from-primary to-primary/80' };
-      case 'premium': return { variant: 'default' as const, label: 'Premium', className: 'bg-gradient-to-r from-warning to-warning/80' };
-      case 'urgent': return { variant: 'destructive' as const, label: 'Urgent', className: 'bg-gradient-to-r from-destructive to-destructive/80' };
-      default: return null;
-    }
+    return getAdTypeBenefits(adType);
   };
 
   // Image slidebar component
@@ -174,6 +194,12 @@ const Home = () => {
 
     if (sliderImages.length === 0) return null;
 
+    const handleSlideClick = (image: any) => {
+      if (image.link_url) {
+        window.open(image.link_url, '_blank');
+      }
+    };
+
     return (
       <section className="py-12 bg-card/50">
         <div className="container mx-auto px-4">
@@ -183,7 +209,8 @@ const Home = () => {
                 key={image.id}
                 className={`absolute inset-0 transition-opacity duration-500 ${
                   index === currentSlide ? 'opacity-100' : 'opacity-0'
-                }`}
+                } ${image.link_url ? 'cursor-pointer' : ''}`}
+                onClick={() => handleSlideClick(image)}
               >
                 <img
                   src={image.image_url}
@@ -192,7 +219,7 @@ const Home = () => {
                 />
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                   <div className="text-center text-white space-y-4 max-w-2xl px-4">
-                    <h2 className="text-2xl lg:text-4xl font-bold">{image.title}</h2>
+                    {image.title && <h2 className="text-2xl lg:text-4xl font-bold">{image.title}</h2>}
                     {image.description && (
                       <p className="text-lg lg:text-xl opacity-90">{image.description}</p>
                     )}
@@ -350,43 +377,52 @@ const Home = () => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {items.map((item, index) => (
-                <Card 
-                  key={item.id} 
-                  className="group hover:shadow-lg transition-all duration-300 cursor-pointer border border-border hover:border-primary/20 overflow-hidden bg-card animate-fade-in hover-scale"
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                  onClick={() => handleItemClick(item.id)}
-                >
-                  <div className="relative">
-                    <div className="h-48 bg-muted flex items-center justify-center overflow-hidden">
-                      {item.images.length > 0 ? (
-                        <img 
-                          src={item.images[0]} 
-                          alt={item.title}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                          onError={(e) => {
-                            e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik03NSA3NUgxMjVWMTI1SDc1Vjc1WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
-                          }}
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-muted-foreground">
-                          <ShoppingBag className="h-12 w-12 mb-2" />
-                          <span className="text-xs">No Image</span>
+            <TooltipProvider>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {items.map((item, index) => {
+                  const adBenefits = getAdTypeBadge(item.ad_type);
+                  return (
+                    <Card 
+                      key={item.id} 
+                      className="group hover:shadow-lg transition-all duration-300 cursor-pointer border border-border hover:border-primary/20 overflow-hidden bg-card animate-fade-in hover-scale"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                      onClick={() => handleItemClick(item.id)}
+                    >
+                      <div className="relative">
+                        <div className="h-48 bg-muted flex items-center justify-center overflow-hidden">
+                          {item.images.length > 0 ? (
+                            <img 
+                              src={item.images[0]} 
+                              alt={item.title}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                              onError={(e) => {
+                                e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik03NSA3NUgxMjVWMTI1SDc1Vjc1WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
+                              }}
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center text-muted-foreground">
+                              <ShoppingBag className="h-12 w-12 mb-2" />
+                              <span className="text-xs">No Image</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    
-                    {/* Ad Type Badge */}
-                    {getAdTypeBadge(item.ad_type) && (
-                      <Badge 
-                        variant={getAdTypeBadge(item.ad_type)!.variant}
-                        className={`absolute top-2 left-2 text-xs flex items-center gap-1 ${getAdTypeBadge(item.ad_type)!.className}`}
-                      >
-                        {getAdTypeIcon(item.ad_type)}
-                        {getAdTypeBadge(item.ad_type)!.label}
-                      </Badge>
-                    )}
+                        
+                        {/* Ad Type Badge with Tooltip */}
+                        {adBenefits && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge 
+                                className={`absolute top-2 left-2 text-xs flex items-center gap-1 ${adBenefits.color} cursor-help`}
+                              >
+                                {adBenefits.icon}
+                                {adBenefits.label}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">{adBenefits.benefits}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                     
                     <Badge 
                       variant={item.condition === 'new' ? 'default' : 'secondary'}
@@ -460,9 +496,11 @@ const Home = () => {
                       </Button>
                     </div>
                   </CardContent>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
+          </TooltipProvider>
           )}
         </div>
       </section>

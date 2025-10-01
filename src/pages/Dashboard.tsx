@@ -21,11 +21,18 @@ import {
   Star,
   MapPin,
   Package,
-  Trophy
+  Trophy,
+  ChevronLeft,
+  ChevronRight,
+  Crown,
+  Zap,
+  Clock,
+  Tag
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ImageCarousel from '@/components/ImageCarousel';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Profile {
   id: string;
@@ -55,9 +62,41 @@ interface Item {
   views: number;
   created_at: string;
   seller_id: string;
+  ad_type: string;
+  is_negotiable: boolean;
+  tags: string[];
+  expires_at: string;
   categories: Category;
   profiles: Profile;
 }
+
+const getAdTypeBenefits = (adType: string) => {
+  switch (adType) {
+    case 'featured':
+      return {
+        icon: <Star className="h-3 w-3" />,
+        label: 'Featured',
+        color: 'bg-gradient-to-r from-primary to-primary/80',
+        benefits: 'Top placement • 3x visibility • Highlighted border'
+      };
+    case 'premium':
+      return {
+        icon: <Crown className="h-3 w-3" />,
+        label: 'Premium',
+        color: 'bg-gradient-to-r from-warning to-warning/80',
+        benefits: 'Priority listing • Boost button • Extended duration'
+      };
+    case 'urgent':
+      return {
+        icon: <Zap className="h-3 w-3" />,
+        label: 'Urgent',
+        color: 'bg-gradient-to-r from-destructive to-destructive/80',
+        benefits: 'Flash indicator • Quick sell price • 48hr highlight'
+      };
+    default:
+      return null;
+  }
+};
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
@@ -233,6 +272,108 @@ const Dashboard = () => {
 
   const isVerified = profile?.is_verified && profile?.verification_status === 'approved';
 
+  // Image Slider Component
+  const ImageSliderSection = () => {
+    const [sliderImages, setSliderImages] = useState<any[]>([]);
+    const [currentSlide, setCurrentSlide] = useState(0);
+
+    useEffect(() => {
+      fetchSliderImages();
+    }, []);
+
+    const fetchSliderImages = async () => {
+      const { data, error } = await supabase
+        .from('image_slidebar')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order');
+
+      if (!error && data) {
+        setSliderImages(data);
+      }
+    };
+
+    const nextSlide = () => {
+      setCurrentSlide((prev) => (prev + 1) % sliderImages.length);
+    };
+
+    const prevSlide = () => {
+      setCurrentSlide((prev) => (prev - 1 + sliderImages.length) % sliderImages.length);
+    };
+
+    useEffect(() => {
+      if (sliderImages.length > 0) {
+        const interval = setInterval(nextSlide, 5000);
+        return () => clearInterval(interval);
+      }
+    }, [sliderImages.length]);
+
+    if (sliderImages.length === 0) return null;
+
+    const handleSlideClick = (image: any) => {
+      if (image.link_url) {
+        window.open(image.link_url, '_blank');
+      }
+    };
+
+    return (
+      <section className="container mx-auto px-4 py-8">
+        <div className="relative h-64 lg:h-80 rounded-xl overflow-hidden bg-gradient-to-r from-primary/10 to-accent/10 shadow-lg">
+          {sliderImages.map((image, index) => (
+            <div
+              key={image.id}
+              className={`absolute inset-0 transition-opacity duration-500 ${
+                index === currentSlide ? 'opacity-100' : 'opacity-0'
+              } ${image.link_url ? 'cursor-pointer' : ''}`}
+              onClick={() => handleSlideClick(image)}
+            >
+              <img
+                src={image.image_url}
+                alt={image.title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                <div className="text-center text-white space-y-4 max-w-2xl px-4">
+                  {image.title && <h2 className="text-2xl lg:text-4xl font-bold">{image.title}</h2>}
+                  {image.description && (
+                    <p className="text-lg lg:text-xl opacity-90">{image.description}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+          
+          {/* Navigation buttons */}
+          <button
+            onClick={prevSlide}
+            className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors z-10"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            onClick={nextSlide}
+            className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors z-10"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+
+          {/* Dots indicator */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 z-10">
+            {sliderImages.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  index === currentSlide ? 'bg-white' : 'bg-white/50'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Header */}
@@ -317,6 +458,9 @@ const Dashboard = () => {
         </div>
       )}
 
+      {/* Image Slider Section */}
+      <ImageSliderSection />
+
       <div className="container mx-auto px-4 py-6">
         {/* Search and Filters */}
         <div className="mb-8 space-y-4">
@@ -387,33 +531,51 @@ const Dashboard = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {items.map((item) => (
-              <Card 
-                key={item.id} 
-                className="group hover:shadow-xl hover:shadow-primary/10 transition-all duration-500 cursor-pointer border border-border hover:border-primary/30 overflow-hidden bg-card animate-fade-in hover-scale"
-                onClick={() => navigate(`/item/${item.id}`)}
-              >
-                <div className="relative">
-                  <ImageCarousel 
-                    images={item.images} 
-                    alt={item.title}
-                    className="h-48"
-                  />
-                  <Badge 
-                    variant={item.condition === 'new' ? 'default' : 'secondary'}
-                    className="absolute top-2 right-2 text-xs"
+          <TooltipProvider>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {items.map((item) => {
+                const adBenefits = getAdTypeBenefits(item.ad_type);
+                return (
+                  <Card 
+                    key={item.id} 
+                    className="group hover:shadow-xl hover:shadow-primary/10 transition-all duration-500 cursor-pointer border border-border hover:border-primary/30 overflow-hidden bg-card animate-fade-in hover-scale"
+                    onClick={() => navigate(`/item/${item.id}`)}
                   >
-                    {item.condition}
-                  </Badge>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="absolute top-2 left-2 h-8 w-8 p-0 bg-background/80 hover:bg-primary/20 rounded-full backdrop-blur-sm"
-                  >
-                    <Heart className="h-4 w-4" />
-                  </Button>
-                </div>
+                    <div className="relative">
+                      <ImageCarousel 
+                        images={item.images} 
+                        alt={item.title}
+                        className="h-48"
+                      />
+                      {adBenefits && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge 
+                              className={`absolute top-2 left-2 text-xs flex items-center gap-1 ${adBenefits.color} cursor-help`}
+                            >
+                              {adBenefits.icon}
+                              {adBenefits.label}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">{adBenefits.benefits}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                      <Badge 
+                        variant={item.condition === 'new' ? 'default' : 'secondary'}
+                        className="absolute top-2 right-2 text-xs"
+                      >
+                        {item.condition}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="absolute top-2 left-2 h-8 w-8 p-0 bg-background/80 hover:bg-primary/20 rounded-full backdrop-blur-sm"
+                      >
+                        <Heart className="h-4 w-4" />
+                      </Button>
+                    </div>
                 <CardContent className="p-3">
                   <div className="space-y-2">
                     <h3 className="font-semibold text-sm leading-tight line-clamp-2 text-card-foreground">
@@ -468,8 +630,10 @@ const Dashboard = () => {
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          </TooltipProvider>
         )}
       </div>
     </div>

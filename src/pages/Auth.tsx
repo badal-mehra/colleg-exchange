@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,9 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ShoppingBag, Users, Shield, BookOpen } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const Auth = () => {
   const { user, signIn, signUp } = useAuth();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   
   // Redirect if already authenticated
@@ -116,7 +119,42 @@ const Auth = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password">Password</Label>
+                      <Button 
+                        type="button" 
+                        variant="link" 
+                        className="text-xs p-0 h-auto"
+                        onClick={async () => {
+                          const email = (document.getElementById('email') as HTMLInputElement)?.value;
+                          if (!email) {
+                            toast({
+                              title: "Error",
+                              description: "Please enter your email first",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                            redirectTo: `${window.location.origin}/auth`,
+                          });
+                          if (error) {
+                            toast({
+                              title: "Error",
+                              description: error.message,
+                              variant: "destructive",
+                            });
+                          } else {
+                            toast({
+                              title: "Success",
+                              description: "Password reset email sent! Check your inbox.",
+                            });
+                          }
+                        }}
+                      >
+                        Forgot Password?
+                      </Button>
+                    </div>
                     <Input
                       id="password"
                       name="password"

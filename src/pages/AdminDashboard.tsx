@@ -98,6 +98,30 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleVerificationUpdate = async (profileId: string, status: 'approved' | 'rejected') => {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ 
+        verification_status: status,
+        is_verified: status === 'approved'
+      })
+      .eq('id', profileId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update verification status",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: `Verification ${status}`,
+      });
+      fetchProfiles();
+    }
+  };
+
   const fetchItems = async () => {
     const { data, error } = await supabase
       .from('items')
@@ -185,7 +209,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="users">
               <Users className="h-4 w-4 mr-2" />
               Users & KYC
@@ -193,6 +217,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="listings">
               <ShoppingBag className="h-4 w-4 mr-2" />
               Listings
+            </TabsTrigger>
+            <TabsTrigger value="slider">
+              <ShoppingBag className="h-4 w-4 mr-2" />
+              Slider Images
             </TabsTrigger>
             <TabsTrigger value="universities">
               <Shield className="h-4 w-4 mr-2" />
@@ -243,6 +271,26 @@ const AdminDashboard = () => {
                           </Badge>
                         </div>
                       </div>
+                      {profile.verification_status === 'pending' && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleVerificationUpdate(profile.id, 'approved')}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleVerificationUpdate(profile.id, 'rejected')}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -265,8 +313,146 @@ const AdminDashboard = () => {
                           ₹{item.price} • {item.is_sold ? 'Sold' : 'Available'}
                         </p>
                       </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => navigate(`/item/${item.id}`)}
+                      >
+                        View Details
+                      </Button>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="slider">
+            <Card>
+              <CardHeader>
+                <CardTitle>Slider Image Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Add New Slider Image Form */}
+                  <div className="border rounded-lg p-4 space-y-4">
+                    <h3 className="font-medium">Add New Slider Image</h3>
+                    <div className="grid gap-4">
+                      <div>
+                        <Label htmlFor="slider-url">Image URL</Label>
+                        <Input
+                          id="slider-url"
+                          placeholder="https://example.com/image.jpg"
+                          value={newSliderImage.url}
+                          onChange={(e) => setNewSliderImage({ ...newSliderImage, url: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="slider-title">Title (Optional)</Label>
+                        <Input
+                          id="slider-title"
+                          placeholder="Enter title"
+                          value={newSliderImage.title}
+                          onChange={(e) => setNewSliderImage({ ...newSliderImage, title: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="slider-description">Description (Optional)</Label>
+                        <Input
+                          id="slider-description"
+                          placeholder="Enter description"
+                          value={newSliderImage.description}
+                          onChange={(e) => setNewSliderImage({ ...newSliderImage, description: e.target.value })}
+                        />
+                      </div>
+                      <Button
+                        onClick={async () => {
+                          if (!newSliderImage.url) {
+                            toast({
+                              title: "Error",
+                              description: "Please provide an image URL",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          const { error } = await supabase
+                            .from('image_slidebar')
+                            .insert({
+                              image_url: newSliderImage.url,
+                              title: newSliderImage.title,
+                              description: newSliderImage.description,
+                              is_active: true,
+                              sort_order: sliderImages.length
+                            });
+                          if (error) {
+                            toast({
+                              title: "Error",
+                              description: "Failed to add slider image",
+                              variant: "destructive",
+                            });
+                          } else {
+                            toast({
+                              title: "Success",
+                              description: "Slider image added successfully",
+                            });
+                            setNewSliderImage({ url: '', title: '', description: '' });
+                            fetchSliderImages();
+                          }
+                        }}
+                      >
+                        Add Slider Image
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Existing Slider Images */}
+                  <div className="space-y-4">
+                    <h3 className="font-medium">Existing Slider Images</h3>
+                    {sliderImages.map((image) => (
+                      <div key={image.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                        <img
+                          src={image.image_url}
+                          alt={image.title}
+                          className="w-24 h-16 object-cover rounded"
+                        />
+                        <div className="flex-1">
+                          <h4 className="font-medium">{image.title || 'No title'}</h4>
+                          <p className="text-sm text-muted-foreground">{image.description || 'No description'}</p>
+                          {image.link_url && (
+                            <p className="text-xs text-muted-foreground mt-1">Link: {image.link_url}</p>
+                          )}
+                        </div>
+                        <Badge variant={image.is_active ? 'default' : 'secondary'}>
+                          {image.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={async () => {
+                            const { error } = await supabase
+                              .from('image_slidebar')
+                              .delete()
+                              .eq('id', image.id);
+                            if (error) {
+                              toast({
+                                title: "Error",
+                                description: "Failed to delete slider image",
+                                variant: "destructive",
+                              });
+                            } else {
+                              toast({
+                                title: "Success",
+                                description: "Slider image deleted",
+                              });
+                              fetchSliderImages();
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
