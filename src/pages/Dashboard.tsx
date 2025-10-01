@@ -568,13 +568,6 @@ const Dashboard = () => {
                       >
                         {item.condition}
                       </Badge>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="absolute top-2 left-2 h-8 w-8 p-0 bg-background/80 hover:bg-primary/20 rounded-full backdrop-blur-sm"
-                      >
-                        <Heart className="h-4 w-4" />
-                      </Button>
                     </div>
                 <CardContent className="p-3">
                   <div className="space-y-2">
