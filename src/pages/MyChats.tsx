@@ -65,13 +65,13 @@ const MyChats = () => {
     if (!user) return;
 
     setLoading(true);
-    const { data, error } = await supabase
+    
+    // Fetch conversations where user is buyer or seller
+    const { data: conversationsData, error } = await supabase
       .from('conversations')
       .select(`
         *,
-        items (id, title, price, images),
-        buyer_profile:profiles!conversations_buyer_id_fkey (id, user_id, full_name, email, is_verified, verification_status),
-        seller_profile:profiles!conversations_seller_id_fkey (id, user_id, full_name, email, is_verified, verification_status)
+        items (id, title, price, images)
       `)
       .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
       .order('updated_at', { ascending: false });
@@ -83,26 +83,46 @@ const MyChats = () => {
         description: "Failed to load conversations",
         variant: "destructive",
       });
-    } else {
-      // Fetch last message for each conversation
-      const conversationsWithMessages = await Promise.all(
-        (data || []).map(async (conversation) => {
-          const { data: lastMessage } = await supabase
-            .from('messages')
-            .select('content, created_at, sender_id')
-            .eq('conversation_id', conversation.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-
-          return {
-            ...conversation,
-            last_message: lastMessage
-          };
-        })
-      );
-      setConversations(conversationsWithMessages);
+      setLoading(false);
+      return;
     }
+
+    // Fetch profiles and last messages for each conversation
+    const conversationsWithData = await Promise.all(
+      (conversationsData || []).map(async (conversation) => {
+        // Fetch buyer profile
+        const { data: buyerProfile } = await supabase
+          .from('profiles')
+          .select('id, user_id, full_name, email, is_verified, verification_status')
+          .eq('user_id', conversation.buyer_id)
+          .single();
+
+        // Fetch seller profile
+        const { data: sellerProfile } = await supabase
+          .from('profiles')
+          .select('id, user_id, full_name, email, is_verified, verification_status')
+          .eq('user_id', conversation.seller_id)
+          .single();
+
+        // Fetch last message
+        const { data: lastMessage } = await supabase
+          .from('messages')
+          .select('content, created_at, sender_id')
+          .eq('conversation_id', conversation.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        return {
+          ...conversation,
+          buyer_profile: buyerProfile,
+          seller_profile: sellerProfile,
+          last_message: lastMessage
+        };
+      })
+    );
+    
+    setConversations(conversationsWithData);
     setLoading(false);
   };
 
