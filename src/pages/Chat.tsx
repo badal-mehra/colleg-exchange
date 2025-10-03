@@ -48,10 +48,17 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (conversationId) {
+    if (conversationId && user) {
       fetchConversation();
       fetchMessages();
-      subscribeToMessages();
+      markMessagesAsRead();
+      
+      const channel = subscribeToMessages();
+      return () => {
+        if (channel) {
+          supabase.removeChannel(channel);
+        }
+      };
     }
   }, [conversationId, user]);
 
@@ -125,11 +132,28 @@ const Chat = () => {
     setLoading(false);
   };
 
+  const markMessagesAsRead = async () => {
+    if (!conversationId || !user) return;
+
+    try {
+      const { error } = await supabase.rpc('mark_messages_read', {
+        conv_id: conversationId,
+        uid: user.id
+      });
+
+      if (error) {
+        console.error('Error marking messages as read:', error);
+      }
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  };
+
   const subscribeToMessages = () => {
-    if (!conversationId) return;
+    if (!conversationId) return null;
 
     const channel = supabase
-      .channel('messages')
+      .channel(`conversation-${conversationId}`)
       .on(
         'postgres_changes',
         {
@@ -139,14 +163,24 @@ const Chat = () => {
           filter: `conversation_id=eq.${conversationId}`
         },
         (payload) => {
-          setMessages(prev => [...prev, payload.new as Message]);
+          const newMessage = payload.new as Message;
+          setMessages(prev => {
+            // Avoid duplicates
+            if (prev.some(m => m.id === newMessage.id)) {
+              return prev;
+            }
+            return [...prev, newMessage];
+          });
+          
+          // Mark as read if it's not from current user
+          if (newMessage.sender_id !== user?.id) {
+            setTimeout(markMessagesAsRead, 500);
+          }
         }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return channel;
   };
 
   const sendMessage = async (e: React.FormEvent) => {

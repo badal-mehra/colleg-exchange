@@ -46,6 +46,7 @@ interface Conversation {
     created_at: string;
     sender_id: string;
   };
+  unread_count?: number;
 }
 
 const MyChats = () => {
@@ -95,14 +96,14 @@ const MyChats = () => {
           .from('profiles')
           .select('id, user_id, full_name, email, is_verified, verification_status')
           .eq('user_id', conversation.buyer_id)
-          .single();
+          .maybeSingle();
 
         // Fetch seller profile
         const { data: sellerProfile } = await supabase
           .from('profiles')
           .select('id, user_id, full_name, email, is_verified, verification_status')
           .eq('user_id', conversation.seller_id)
-          .single();
+          .maybeSingle();
 
         // Fetch last message
         const { data: lastMessage } = await supabase
@@ -111,13 +112,20 @@ const MyChats = () => {
           .eq('conversation_id', conversation.id)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
+
+        // Get unread count using RPC function
+        const { data: unreadCount } = await supabase.rpc('get_unread_count', {
+          conv_id: conversation.id,
+          uid: user.id
+        });
 
         return {
           ...conversation,
-          buyer_profile: buyerProfile,
-          seller_profile: sellerProfile,
-          last_message: lastMessage
+          buyer_profile: buyerProfile || { id: '', user_id: conversation.buyer_id, full_name: 'Unknown User', email: '', is_verified: false, verification_status: 'pending' },
+          seller_profile: sellerProfile || { id: '', user_id: conversation.seller_id, full_name: 'Unknown User', email: '', is_verified: false, verification_status: 'pending' },
+          last_message: lastMessage || undefined,
+          unread_count: unreadCount || 0
         };
       })
     );
@@ -234,6 +242,11 @@ const MyChats = () => {
                             <Badge variant="outline" className="text-xs">
                               {isBuyer ? 'Buying' : 'Selling'}
                             </Badge>
+                            {conversation.unread_count && conversation.unread_count > 0 && (
+                              <Badge variant="destructive" className="text-xs px-2 py-0.5 animate-pulse">
+                                {conversation.unread_count} new
+                              </Badge>
+                            )}
                           </div>
                           <span className="text-sm font-semibold text-primary">
                             ₹{conversation.items?.price?.toLocaleString()}

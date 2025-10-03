@@ -505,6 +505,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_unread_count: {
+        Args: { conv_id: string; uid: string }
+        Returns: number
+      }
       handle_ad_expiry: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -512,6 +516,10 @@ export type Database = {
       is_admin: {
         Args: { user_id: string }
         Returns: boolean
+      }
+      mark_messages_read: {
+        Args: { conv_id: string; uid: string }
+        Returns: undefined
       }
     }
     Enums: {

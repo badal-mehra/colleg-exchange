@@ -395,16 +395,19 @@ const ItemDetail = () => {
               <div className="flex gap-3">
                 {!isOwner && (
                   <Button 
-                    className="flex-1" 
+                    className="flex-1 relative group overflow-hidden" 
                     size="lg"
                     onClick={handleChatClick}
                     disabled={!user || (!isVerified && !isOwner)}
                   >
-                    <MessageCircle className="h-5 w-5 mr-2" />
-                    Chat with Seller
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <MessageCircle className="h-5 w-5 mr-2 relative z-10" />
+                    <span className="relative z-10 font-semibold">
+                      Chat with {item.profiles?.full_name?.split(' ')[0] || 'Seller'}
+                    </span>
                   </Button>
                 )}
-                <Button variant="outline" size="lg">
+                <Button variant="outline" size="lg" className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive transition-colors">
                   <Heart className="h-5 w-5" />
                 </Button>
               </div>
