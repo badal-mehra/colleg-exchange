@@ -66,13 +66,11 @@ const Chat = () => {
   const fetchConversation = async () => {
     if (!conversationId || !user) return;
 
-    const { data, error } = await supabase
+    const { data: conversationData, error } = await supabase
       .from('conversations')
       .select(`
         *,
-        items (title, price, images),
-        buyer_profile:profiles!buyer_id (full_name),
-        seller_profile:profiles!seller_id (full_name)
+        items (title, price, images)
       `)
       .eq('id', conversationId)
       .single();
@@ -85,9 +83,28 @@ const Chat = () => {
         variant: "destructive",
       });
       navigate('/dashboard');
-    } else {
-      setConversation(data);
+      return;
     }
+
+    // Fetch buyer profile
+    const { data: buyerProfile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('user_id', conversationData.buyer_id)
+      .maybeSingle();
+
+    // Fetch seller profile
+    const { data: sellerProfile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('user_id', conversationData.seller_id)
+      .maybeSingle();
+
+    setConversation({
+      ...conversationData,
+      buyer_profile: buyerProfile || { full_name: 'Unknown User' },
+      seller_profile: sellerProfile || { full_name: 'Unknown User' }
+    });
   };
 
   const fetchMessages = async () => {
