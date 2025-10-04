@@ -27,6 +27,11 @@ interface Profile {
   email: string;
   is_verified: boolean;
   verification_status: string;
+  avatar_url: string | null;
+  mck_id: string;
+  trust_seller_badge: boolean;
+  campus_points: number;
+  deals_completed: number;
 }
 
 interface Category {
@@ -334,33 +339,45 @@ const ItemDetail = () => {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="hover-scale cursor-pointer" onClick={() => item.profiles?.mck_id && navigate(`/profile/${item.profiles.mck_id}`)}>
               <CardHeader>
                 <CardTitle className="text-lg">Seller Information</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src="" />
-                    <AvatarFallback>
-                      <User className="h-6 w-6" />
+                  <Avatar className="h-16 w-16 border-2 border-primary/20">
+                    <AvatarImage 
+                      src={item.profiles?.avatar_url ? supabase.storage.from('avatars').getPublicUrl(item.profiles.avatar_url).data.publicUrl : undefined} 
+                      alt={item.profiles?.full_name} 
+                    />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xl">
+                      {item.profiles?.full_name?.charAt(0) || <User className="h-8 w-8" />}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">
-                        {item.profiles?.full_name || 'Anonymous'}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-lg">
+                        {item.profiles?.full_name || 'Anonymous User'}
                       </h3>
-                      {item.profiles?.is_verified && item.profiles?.verification_status === 'approved' && (
-                        <Badge variant="secondary" className="text-xs">
+                      {item.profiles?.verification_status === 'approved' && (
+                        <Badge variant="secondary" className="text-xs bg-success/10 text-success">
                           <Shield className="h-3 w-3 mr-1" />
                           Verified
                         </Badge>
                       )}
+                      {item.profiles?.trust_seller_badge && (
+                        <Badge variant="secondary" className="text-xs bg-warning/10 text-warning">
+                          ★ Trusted
+                        </Badge>
+                      )}
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Member since {new Date(item.created_at).getFullYear()}
-                    </p>
+                    {item.profiles?.mck_id && (
+                      <p className="text-sm font-mono text-primary mb-1">{item.profiles.mck_id}</p>
+                    )}
+                    <div className="flex gap-4 text-sm text-muted-foreground">
+                      <span>{item.profiles?.campus_points || 0} points</span>
+                      <span>{item.profiles?.deals_completed || 0} deals</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>

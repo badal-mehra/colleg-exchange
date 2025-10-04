@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, CheckCircle, Clock, XCircle, User, Edit3, Save, X, Shield, Zap, Star, Settings, Award, Trophy, Target } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, XCircle, User, Edit3, Save, X, Shield, Zap, Star, Settings, Award, Trophy, Target, Upload, Camera, Copy } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -28,6 +29,8 @@ interface Profile {
   campus_points: number;
   deals_completed: number;
   trust_seller_badge: boolean;
+  mck_id: string;
+  avatar_url: string | null;
 }
 
 const Profile = () => {
@@ -49,6 +52,7 @@ const Profile = () => {
     hostel: ''
   });
   const [universities, setUniversities] = useState<any[]>([]);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -102,6 +106,66 @@ const Profile = () => {
     setLoading(false);
   };
 
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user || !profile) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Please upload an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "Image must be less than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: fileName })
+        .eq('user_id', user.id);
+
+      if (updateError) throw updateError;
+
+      setProfile({ ...profile, avatar_url: fileName });
+      toast({
+        title: "Success",
+        description: "Profile picture updated successfully",
+      });
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload profile picture",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!user || !profile) return;
     
@@ -127,6 +191,23 @@ const Profile = () => {
       });
     }
     setSaving(false);
+  };
+
+  const copyMckId = () => {
+    if (profile?.mck_id) {
+      navigator.clipboard.writeText(profile.mck_id);
+      toast({
+        title: "Copied!",
+        description: "MCK-ID copied to clipboard",
+      });
+    }
+  };
+
+  const getAvatarUrl = (avatarPath: string | null) => {
+    if (!avatarPath) return null;
+    if (avatarPath.startsWith('http')) return avatarPath;
+    const { data } = supabase.storage.from('avatars').getPublicUrl(avatarPath);
+    return data.publicUrl;
   };
 
   const getVerificationStatusInfo = (status: string) => {
@@ -175,6 +256,7 @@ const Profile = () => {
   }
 
   const statusInfo = getVerificationStatusInfo(profile?.verification_status || '');
+  const avatarUrl = getAvatarUrl(profile?.avatar_url);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -187,54 +269,95 @@ const Profile = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Profile Header - Futuristic Design */}
+          {/* Profile Header with Avatar */}
           <div className="lg:col-span-3">
             <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-primary/20 shadow-lg">
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <div className="h-16 w-16 bg-gradient-to-br from-primary to-primary/60 rounded-2xl flex items-center justify-center shadow-lg">
-                        <User className="h-8 w-8 text-white" />
+                <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+                  <div className="relative group">
+                    <Avatar className="h-32 w-32 border-4 border-primary/20">
+                      <AvatarImage src={avatarUrl || undefined} alt={profile?.full_name} />
+                      <AvatarFallback className="text-4xl bg-gradient-to-br from-primary to-primary/60 text-white">
+                        {profile?.full_name?.charAt(0) || <User className="h-16 w-16" />}
+                      </AvatarFallback>
+                    </Avatar>
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-full">
+                      <Camera className="h-8 w-8 text-white" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleAvatarUpload}
+                        disabled={uploadingAvatar}
+                      />
+                    </label>
+                    {uploadingAvatar && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full">
+                        <div className="animate-spin h-8 w-8 border-4 border-white border-t-transparent rounded-full" />
                       </div>
-                      {profile?.verification_status === 'approved' && (
-                        <div className="absolute -top-1 -right-1">
-                          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center animate-pulse">
-                            <Shield className="h-3 w-3 text-white" />
-                          </div>
+                    )}
+                    {profile?.verification_status === 'approved' && (
+                      <div className="absolute top-0 right-0">
+                        <div className="w-8 h-8 bg-success rounded-full flex items-center justify-center border-2 border-background">
+                          <Shield className="h-4 w-4 text-white" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 text-center md:text-left">
+                    <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
+                      <CardTitle className="text-2xl gradient-text">
+                        {profile?.full_name || 'Complete your profile'}
+                      </CardTitle>
+                      {!editMode ? (
+                        <Button variant="outline" size="sm" onClick={() => setEditMode(true)} className="hover-scale w-fit mx-auto md:mx-0">
+                          <Edit3 className="h-4 w-4 mr-2" />
+                          Edit Profile
+                        </Button>
+                      ) : (
+                        <div className="flex gap-2 mx-auto md:mx-0">
+                          <Button variant="outline" size="sm" onClick={() => setEditMode(false)}>
+                            <X className="h-4 w-4 mr-2" />
+                            Cancel
+                          </Button>
+                          <Button size="sm" onClick={handleSave} disabled={saving} className="bg-gradient-to-r from-primary to-primary/80">
+                            <Save className="h-4 w-4 mr-2" />
+                            {saving ? 'Saving...' : 'Save'}
+                          </Button>
                         </div>
                       )}
-                      <div className="absolute -bottom-1 -right-1 h-6 w-6 bg-success rounded-full flex items-center justify-center">
-                        <CheckCircle className="h-4 w-4 text-white" />
-                      </div>
                     </div>
-                    <div>
-                      <CardTitle className="text-2xl bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
-                        Profile Command Center
-                      </CardTitle>
-                      <p className="text-muted-foreground flex items-center gap-2">
+
+                    <div className="space-y-2 mb-4">
+                      <p className="text-muted-foreground flex items-center gap-2 justify-center md:justify-start">
                         <Zap className="h-4 w-4" />
                         {profile?.email}
                       </p>
+                      {profile?.mck_id && (
+                        <div className="flex items-center gap-2 justify-center md:justify-start">
+                          <code className="px-3 py-1 bg-primary/10 rounded-lg font-mono text-primary font-semibold">
+                            {profile.mck_id}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={copyMckId}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/profile/${profile.mck_id}`)}
+                          >
+                            View Public Profile
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  {!editMode ? (
-                    <Button variant="outline" size="sm" onClick={() => setEditMode(true)} className="hover-scale">
-                      <Edit3 className="h-4 w-4 mr-2" />
-                      Edit Profile
-                    </Button>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setEditMode(false)}>
-                        <X className="h-4 w-4 mr-2" />
-                        Cancel
-                      </Button>
-                      <Button size="sm" onClick={handleSave} disabled={saving} className="bg-gradient-to-r from-primary to-primary/80">
-                        <Save className="h-4 w-4 mr-2" />
-                        {saving ? 'Saving...' : 'Save'}
-                      </Button>
-                    </div>
-                  )}
                 </div>
               </CardHeader>
             </Card>

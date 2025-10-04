@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import ItemDetail from "./pages/ItemDetail";
 import KYC from "./pages/KYC";
 import Profile from "./pages/Profile";
+import PublicProfile from "./pages/PublicProfile";
 import SellItem from "./pages/SellItem";
 import Chat from "./pages/Chat";
 import MyChats from "./pages/MyChats";
@@ -51,6 +52,7 @@ const App = () => (
                 <Profile />
               </ProtectedRoute>
             } />
+            <Route path="/profile/:mckId" element={<PublicProfile />} />
             <Route path="/sell" element={
               <ProtectedRoute>
                 <SellItem />

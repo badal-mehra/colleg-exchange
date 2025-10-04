@@ -353,6 +353,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           batch: string | null
           campus_points: number | null
           college_name: string | null
@@ -364,6 +365,7 @@ export type Database = {
           hostel: string | null
           id: string
           is_verified: boolean | null
+          mck_id: string | null
           phone: string | null
           student_id: string | null
           trust_seller_badge: boolean | null
@@ -374,6 +376,7 @@ export type Database = {
           verification_status: string | null
         }
         Insert: {
+          avatar_url?: string | null
           batch?: string | null
           campus_points?: number | null
           college_name?: string | null
@@ -385,6 +388,7 @@ export type Database = {
           hostel?: string | null
           id?: string
           is_verified?: boolean | null
+          mck_id?: string | null
           phone?: string | null
           student_id?: string | null
           trust_seller_badge?: boolean | null
@@ -395,6 +399,7 @@ export type Database = {
           verification_status?: string | null
         }
         Update: {
+          avatar_url?: string | null
           batch?: string | null
           campus_points?: number | null
           college_name?: string | null
@@ -406,6 +411,7 @@ export type Database = {
           hostel?: string | null
           id?: string
           is_verified?: boolean | null
+          mck_id?: string | null
           phone?: string | null
           student_id?: string | null
           trust_seller_badge?: boolean | null
@@ -488,6 +494,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_mck_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_admin_role: {
         Args: { user_id: string }
         Returns: string

@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { 
   ArrowLeft, 
@@ -41,11 +41,17 @@ interface Conversation {
     full_name: string;
     is_verified?: boolean;
     verification_status?: string;
+    avatar_url?: string | null;
+    mck_id?: string;
+    trust_seller_badge?: boolean;
   };
   seller_profile: {
     full_name: string;
     is_verified?: boolean;
     verification_status?: string;
+    avatar_url?: string | null;
+    mck_id?: string;
+    trust_seller_badge?: boolean;
   };
 }
 
@@ -111,14 +117,14 @@ const Chat = () => {
     // Fetch buyer profile
     const { data: buyerProfile } = await supabase
       .from('profiles')
-      .select('full_name, is_verified, verification_status')
+      .select('full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
       .eq('user_id', conversationData.buyer_id)
       .maybeSingle();
 
     // Fetch seller profile
     const { data: sellerProfile } = await supabase
       .from('profiles')
-      .select('full_name, is_verified, verification_status')
+      .select('full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
       .eq('user_id', conversationData.seller_id)
       .maybeSingle();
 
@@ -282,21 +288,30 @@ const Chat = () => {
               </Button>
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10 border-2 border-primary/20">
+                  <AvatarImage 
+                    src={otherUser.avatar_url ? supabase.storage.from('avatars').getPublicUrl(otherUser.avatar_url).data.publicUrl : undefined} 
+                    alt={otherUser.full_name} 
+                  />
                   <AvatarFallback className="bg-primary/10 text-primary">
-                    <User className="h-5 w-5" />
+                    {otherUser.full_name?.charAt(0) || <User className="h-5 w-5" />}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="font-semibold text-sm">{otherUser.full_name}</h2>
-                    {otherUser.is_verified && otherUser.verification_status === 'approved' && (
-                      <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                    <h2 className="font-semibold text-sm">{otherUser.full_name || 'Anonymous User'}</h2>
+                    {otherUser.verification_status === 'approved' && (
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0 bg-success/10 text-success">
                         <Shield className="h-3 w-3" />
+                      </Badge>
+                    )}
+                    {otherUser.trust_seller_badge && (
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0 bg-warning/10 text-warning">
+                        ★
                       </Badge>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {isBuyer ? 'Seller' : 'Buyer'}
+                    {isBuyer ? 'Seller' : 'Buyer'} {otherUser.mck_id ? `• ${otherUser.mck_id}` : ''}
                   </p>
                 </div>
               </div>
