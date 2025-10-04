@@ -14,10 +14,12 @@ import {
   Target,
   ArrowLeft,
   Crown,
-  Zap
+  Zap,
+  User as UserIcon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface LeaderboardEntry {
   user_id: string;
@@ -28,6 +30,8 @@ interface LeaderboardEntry {
   trust_seller_badge: boolean;
   monthly_sales: number;
   monthly_revenue: number;
+  avatar_url: string | null;
+  mck_id: string;
 }
 
 const Leaderboard = () => {
@@ -170,6 +174,16 @@ const Leaderboard = () => {
                           {getRankIcon(index)}
                         </div>
                         
+                        <Avatar className="h-14 w-14 border-2 border-primary/20">
+                          <AvatarImage 
+                            src={entry.avatar_url ? `${supabase.storage.from('avatars').getPublicUrl(entry.avatar_url).data.publicUrl}` : undefined} 
+                            alt={entry.full_name} 
+                          />
+                          <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-white">
+                            {entry.full_name?.charAt(0) || <UserIcon className="h-7 w-7" />}
+                          </AvatarFallback>
+                        </Avatar>
+                        
                         <div>
                           <div className="flex items-center gap-2">
                             <h3 className="text-lg font-semibold">{entry.full_name}</h3>
@@ -180,7 +194,7 @@ const Leaderboard = () => {
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-muted-foreground">{entry.university}</p>
+                          <p className="text-sm text-muted-foreground">{entry.university || entry.mck_id}</p>
                         </div>
                       </div>
 

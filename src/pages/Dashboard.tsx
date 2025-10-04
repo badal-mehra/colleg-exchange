@@ -33,6 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ImageCarousel from '@/components/ImageCarousel';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface Profile {
   id: string;
@@ -41,6 +42,9 @@ interface Profile {
   email: string;
   is_verified: boolean;
   verification_status: string;
+  avatar_url: string | null;
+  mck_id: string;
+  trust_seller_badge: boolean;
 }
 
 interface Category {
@@ -407,8 +411,18 @@ const Dashboard = () => {
                 <Trophy className="h-4 w-4 mr-2" />
                 Leaderboard
               </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate('/profile')} className="hover-scale">
-                <User className="h-4 w-4 mr-2" />
+              <Button variant="outline" size="sm" onClick={() => navigate('/profile')} className="hover-scale gap-2">
+                {profile?.avatar_url ? (
+                  <Avatar className="h-5 w-5">
+                    <AvatarImage 
+                      src={`${supabase.storage.from('avatars').getPublicUrl(profile.avatar_url).data.publicUrl}`} 
+                      alt={profile.full_name} 
+                    />
+                    <AvatarFallback className="text-xs">{profile.full_name?.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                ) : (
+                  <User className="h-4 w-4" />
+                )}
                 Profile
               </Button>
               {isAdmin && (
