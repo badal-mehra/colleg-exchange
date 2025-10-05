@@ -30,8 +30,8 @@ interface LeaderboardEntry {
   trust_seller_badge: boolean;
   monthly_sales: number;
   monthly_revenue: number;
-  avatar_url: string | null;
-  mck_id: string;
+  avatar_url?: string | null;
+  mck_id?: string;
 }
 
 const Leaderboard = () => {

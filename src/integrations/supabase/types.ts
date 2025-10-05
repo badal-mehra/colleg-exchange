@@ -505,9 +505,11 @@ export type Database = {
       get_monthly_leaderboard: {
         Args: Record<PropertyKey, never>
         Returns: {
+          avatar_url: string
           campus_points: number
           deals_completed: number
           full_name: string
+          mck_id: string
           monthly_revenue: number
           monthly_sales: number
           trust_seller_badge: boolean
