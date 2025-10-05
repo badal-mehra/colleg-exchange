@@ -351,6 +351,56 @@ export type Database = {
           },
         ]
       }
+      orders: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          id: string
+          item_id: string
+          qr_code: string | null
+          qr_expires_at: string | null
+          qr_signature: string | null
+          qr_used: boolean | null
+          seller_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          id?: string
+          item_id: string
+          qr_code?: string | null
+          qr_expires_at?: string | null
+          qr_signature?: string | null
+          qr_used?: boolean | null
+          seller_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          qr_code?: string | null
+          qr_expires_at?: string | null
+          qr_signature?: string | null
+          qr_used?: boolean | null
+          seller_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -494,6 +544,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      complete_order: {
+        Args: { order_id: string }
+        Returns: Json
+      }
       generate_mck_id: {
         Args: Record<PropertyKey, never>
         Returns: string

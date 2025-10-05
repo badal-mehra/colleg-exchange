@@ -16,9 +16,11 @@ import {
   Eye,
   User,
   AlertCircle,
-  Shield
+  Shield,
+  ShoppingCart
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { toast as sonnerToast } from 'sonner';
 
 interface Profile {
   id: string;
@@ -175,6 +177,55 @@ const ItemDetail = () => {
       toast({
         title: "Error",
         description: "Failed to start conversation",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please login to make a purchase",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
+
+    if (!userProfile?.is_verified || userProfile?.verification_status !== 'approved') {
+      toast({
+        title: "Verification Required",
+        description: "Please complete your KYC verification to make purchases",
+        variant: "destructive",
+      });
+      navigate('/kyc');
+      return;
+    }
+
+    try {
+      const { data: order, error } = await supabase
+        .from('orders')
+        .insert({
+          item_id: item!.id,
+          buyer_id: user.id,
+          seller_id: item!.seller_id,
+          status: 'pending',
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      sonnerToast.success('Order created successfully! Ask the seller to meet you to complete the transaction.');
+      
+      // Navigate to chat to coordinate with seller
+      handleChatClick();
+    } catch (error) {
+      console.error('Error creating order:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create order",
         variant: "destructive",
       });
     }
@@ -409,24 +460,39 @@ const ItemDetail = () => {
                 </div>
               )}
 
-              <div className="flex gap-3">
+              <div className="space-y-3">
                 {!isOwner && (
-                  <Button 
-                    className="flex-1 relative group overflow-hidden" 
-                    size="lg"
-                    onClick={handleChatClick}
-                    disabled={!user || (!isVerified && !isOwner)}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <MessageCircle className="h-5 w-5 mr-2 relative z-10" />
-                    <span className="relative z-10 font-semibold">
-                      Chat with {item.profiles?.full_name?.split(' ')[0] || 'Seller'}
-                    </span>
-                  </Button>
+                  <>
+                    <Button 
+                      className="w-full relative group overflow-hidden" 
+                      size="lg"
+                      onClick={handleBuyNow}
+                      disabled={!user || (!isVerified && !isOwner) || item.is_sold}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ShoppingCart className="h-5 w-5 mr-2 relative z-10" />
+                      <span className="relative z-10 font-semibold">
+                        {item.is_sold ? 'Sold Out' : 'Buy Now'}
+                      </span>
+                    </Button>
+                    
+                    <div className="flex gap-3">
+                      <Button 
+                        variant="outline"
+                        className="flex-1" 
+                        size="lg"
+                        onClick={handleChatClick}
+                        disabled={!user || (!isVerified && !isOwner)}
+                      >
+                        <MessageCircle className="h-5 w-5 mr-2" />
+                        <span className="font-semibold">Chat</span>
+                      </Button>
+                      <Button variant="outline" size="lg" className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive transition-colors">
+                        <Heart className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </>
                 )}
-                <Button variant="outline" size="lg" className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive transition-colors">
-                  <Heart className="h-5 w-5" />
-                </Button>
               </div>
 
               {isOwner && (
