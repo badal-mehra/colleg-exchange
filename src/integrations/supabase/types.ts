@@ -353,40 +353,55 @@ export type Database = {
       }
       orders: {
         Row: {
+          buyer_confirmed: boolean | null
+          buyer_confirmed_at: string | null
           buyer_id: string
           created_at: string
+          dispute_raised_by: string | null
+          dispute_reason: string | null
+          dispute_status: string | null
           id: string
           item_id: string
-          qr_code: string | null
-          qr_expires_at: string | null
-          qr_signature: string | null
-          qr_used: boolean | null
+          meetup_location: string | null
+          meetup_time: string | null
+          seller_confirmed: boolean | null
+          seller_confirmed_at: string | null
           seller_id: string
           status: string
           updated_at: string
         }
         Insert: {
+          buyer_confirmed?: boolean | null
+          buyer_confirmed_at?: string | null
           buyer_id: string
           created_at?: string
+          dispute_raised_by?: string | null
+          dispute_reason?: string | null
+          dispute_status?: string | null
           id?: string
           item_id: string
-          qr_code?: string | null
-          qr_expires_at?: string | null
-          qr_signature?: string | null
-          qr_used?: boolean | null
+          meetup_location?: string | null
+          meetup_time?: string | null
+          seller_confirmed?: boolean | null
+          seller_confirmed_at?: string | null
           seller_id: string
           status?: string
           updated_at?: string
         }
         Update: {
+          buyer_confirmed?: boolean | null
+          buyer_confirmed_at?: string | null
           buyer_id?: string
           created_at?: string
+          dispute_raised_by?: string | null
+          dispute_reason?: string | null
+          dispute_status?: string | null
           id?: string
           item_id?: string
-          qr_code?: string | null
-          qr_expires_at?: string | null
-          qr_signature?: string | null
-          qr_used?: boolean | null
+          meetup_location?: string | null
+          meetup_time?: string | null
+          seller_confirmed?: boolean | null
+          seller_confirmed_at?: string | null
           seller_id?: string
           status?: string
           updated_at?: string
@@ -404,6 +419,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          average_rating: number | null
           batch: string | null
           campus_points: number | null
           college_name: string | null
@@ -418,6 +434,7 @@ export type Database = {
           mck_id: string | null
           phone: string | null
           student_id: string | null
+          total_ratings: number | null
           trust_seller_badge: boolean | null
           university: string | null
           updated_at: string
@@ -427,6 +444,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          average_rating?: number | null
           batch?: string | null
           campus_points?: number | null
           college_name?: string | null
@@ -441,6 +459,7 @@ export type Database = {
           mck_id?: string | null
           phone?: string | null
           student_id?: string | null
+          total_ratings?: number | null
           trust_seller_badge?: boolean | null
           university?: string | null
           updated_at?: string
@@ -450,6 +469,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          average_rating?: number | null
           batch?: string | null
           campus_points?: number | null
           college_name?: string | null
@@ -464,6 +484,7 @@ export type Database = {
           mck_id?: string | null
           phone?: string | null
           student_id?: string | null
+          total_ratings?: number | null
           trust_seller_badge?: boolean | null
           university?: string | null
           updated_at?: string
@@ -472,6 +493,44 @@ export type Database = {
           verification_status?: string | null
         }
         Relationships: []
+      }
+      ratings: {
+        Row: {
+          created_at: string | null
+          from_user_id: string
+          id: string
+          order_id: string
+          rating: number
+          review: string | null
+          to_user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          from_user_id: string
+          id?: string
+          order_id: string
+          rating: number
+          review?: string | null
+          to_user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          from_user_id?: string
+          id?: string
+          order_id?: string
+          rating?: number
+          review?: string | null
+          to_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transactions: {
         Row: {
@@ -546,6 +605,14 @@ export type Database = {
     Functions: {
       complete_order: {
         Args: { order_id: string }
+        Returns: Json
+      }
+      complete_order_with_confirmation: {
+        Args: {
+          confirming_user_id: string
+          order_id: string
+          user_type: string
+        }
         Returns: Json
       }
       generate_mck_id: {
