@@ -250,17 +250,20 @@ const AdminDashboard = () => {
                               {profile.college_name} • {profile.student_id}
                             </p>
                             {profile.verification_document_url && (
-                              <div className="mt-2">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => window.open(profile.verification_document_url, '_blank')}
-                                  className="text-xs p-1 h-6"
+                              <div className="mt-2 flex items-center gap-2">
+                                <a
+                                  href={`https://mtaeqtmcixlrudjsxcew.supabase.co/storage/v1/object/public/avatars/${profile.verification_document_url}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                                 >
-                                  <Eye className="h-3 w-3 mr-1" />
-                                  View Document
-                                </Button>
+                                  <Eye className="h-3 w-3" />
+                                  View Uploaded Document
+                                </a>
                               </div>
+                            )}
+                            {!profile.verification_document_url && profile.verification_status === 'pending' && (
+                              <p className="text-xs text-muted-foreground mt-2">No document uploaded</p>
                             )}
                           </div>
                           <Badge variant={
@@ -365,6 +368,16 @@ const AdminDashboard = () => {
                           onChange={(e) => setNewSliderImage({ ...newSliderImage, description: e.target.value })}
                         />
                       </div>
+                      <div>
+                        <Label htmlFor="slider-link">Link URL (Optional)</Label>
+                        <Input
+                          id="slider-link"
+                          placeholder="https://example.com/page"
+                          value={(newSliderImage as any).link_url || ''}
+                          onChange={(e) => setNewSliderImage({ ...newSliderImage, link_url: e.target.value } as any)}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Add a clickable link to this slider image</p>
+                      </div>
                       <Button
                         onClick={async () => {
                           if (!newSliderImage.url) {
@@ -381,6 +394,7 @@ const AdminDashboard = () => {
                               image_url: newSliderImage.url,
                               title: newSliderImage.title,
                               description: newSliderImage.description,
+                              link_url: (newSliderImage as any).link_url || null,
                               is_active: true,
                               sort_order: sliderImages.length
                             });

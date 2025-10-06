@@ -321,13 +321,13 @@ const Dashboard = () => {
     };
 
     return (
-      <section className="container mx-auto px-4 py-8">
-        <div className="relative h-64 lg:h-80 rounded-xl overflow-hidden bg-gradient-to-r from-primary/10 to-accent/10 shadow-lg">
+      <section className="container mx-auto px-4 py-4 sm:py-6 lg:py-8">
+        <div className="relative h-48 sm:h-56 md:h-64 lg:h-80 rounded-xl overflow-hidden bg-gradient-to-r from-primary/10 to-accent/10 shadow-lg">
           {sliderImages.map((image, index) => (
             <div
               key={image.id}
-              className={`absolute inset-0 transition-opacity duration-500 ${
-                index === currentSlide ? 'opacity-100' : 'opacity-0'
+              className={`absolute inset-0 transition-opacity duration-700 ease-in-out will-change-opacity ${
+                index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
               } ${image.link_url ? 'cursor-pointer' : ''}`}
               onClick={() => handleSlideClick(image)}
             >
@@ -335,12 +335,13 @@ const Dashboard = () => {
                 src={image.image_url}
                 alt={image.title}
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                <div className="text-center text-white space-y-4 max-w-2xl px-4">
-                  {image.title && <h2 className="text-2xl lg:text-4xl font-bold">{image.title}</h2>}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent flex items-center justify-center">
+                <div className="text-center text-white space-y-2 sm:space-y-4 max-w-2xl px-4">
+                  {image.title && <h2 className="text-xl sm:text-2xl lg:text-4xl font-bold drop-shadow-lg">{image.title}</h2>}
                   {image.description && (
-                    <p className="text-lg lg:text-xl opacity-90">{image.description}</p>
+                    <p className="text-sm sm:text-base lg:text-xl opacity-90 drop-shadow-md">{image.description}</p>
                   )}
                 </div>
               </div>
@@ -349,27 +350,39 @@ const Dashboard = () => {
           
           {/* Navigation buttons */}
           <button
-            onClick={prevSlide}
-            className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors z-10"
+            onClick={(e) => {
+              e.stopPropagation();
+              prevSlide();
+            }}
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 sm:p-2 rounded-full transition-all z-20 hover:scale-110"
+            aria-label="Previous slide"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
           <button
-            onClick={nextSlide}
-            className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors z-10"
+            onClick={(e) => {
+              e.stopPropagation();
+              nextSlide();
+            }}
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 sm:p-2 rounded-full transition-all z-20 hover:scale-110"
+            aria-label="Next slide"
           >
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
 
           {/* Dots indicator */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 z-10">
+          <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 flex space-x-1.5 sm:space-x-2 z-20">
             {sliderImages.map((_, index) => (
               <button
                 key={index}
-                onClick={() => setCurrentSlide(index)}
-                className={`w-2 h-2 rounded-full transition-colors ${
-                  index === currentSlide ? 'bg-white' : 'bg-white/50'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentSlide(index);
+                }}
+                className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all ${
+                  index === currentSlide ? 'bg-white w-4 sm:w-6' : 'bg-white/50'
                 }`}
+                aria-label={`Go to slide ${index + 1}`}
               />
             ))}
           </div>
@@ -381,39 +394,50 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Header */}
-      <header className="border-b glass-effect sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 bg-gradient-to-br from-primary to-primary/60 rounded-xl flex items-center justify-center">
-                  <ShoppingBag className="h-5 w-5 text-white" />
+      <header className="border-b glass-effect sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-primary to-primary/60 rounded-xl flex items-center justify-center shrink-0">
+                  <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <h1 className="text-2xl font-bold gradient-text">MyCampusKart</h1>
+                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold gradient-text">MyCampusKart</h1>
+                {profile && (
+                  <Badge variant={isVerified ? "default" : "secondary"} className="hidden sm:flex animate-pulse text-xs">
+                    {isVerified ? "✓ Verified" : "Pending"}
+                  </Badge>
+                )}
               </div>
-              {profile && (
-                <Badge variant={isVerified ? "default" : "secondary"} className="animate-pulse">
-                  {isVerified ? "✓ Verified" : "Pending Verification"}
-                </Badge>
-              )}
+              <Button 
+                size="sm"
+                onClick={() => navigate('/sell')}
+                className="lg:hidden bg-gradient-to-r from-primary to-primary/80 hover-scale"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
             </div>
             
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" onClick={() => navigate('/my-chats')} className="hover-scale">
-                <MessageCircle className="h-4 w-4 mr-2" />
-                My Chats
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-hide">
+              <Button variant="outline" size="sm" onClick={() => navigate('/my-chats')} className="hover-scale shrink-0">
+                <MessageCircle className="h-4 w-4 lg:mr-2" />
+                <span className="hidden lg:inline">My Chats</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate('/my-listings')} className="hover-scale">
-                <Package className="h-4 w-4 mr-2" />
-                My Items
+              <Button variant="outline" size="sm" onClick={() => navigate('/my-orders')} className="hover-scale shrink-0">
+                <ShoppingBag className="h-4 w-4 lg:mr-2" />
+                <span className="hidden lg:inline">Orders</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate('/leaderboard')} className="hover-scale">
-                <Trophy className="h-4 w-4 mr-2" />
-                Leaderboard
+              <Button variant="outline" size="sm" onClick={() => navigate('/my-listings')} className="hover-scale shrink-0">
+                <Package className="h-4 w-4 lg:mr-2" />
+                <span className="hidden lg:inline">My Items</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate('/profile')} className="hover-scale gap-2">
+              <Button variant="outline" size="sm" onClick={() => navigate('/leaderboard')} className="hover-scale shrink-0">
+                <Trophy className="h-4 w-4 lg:mr-2" />
+                <span className="hidden lg:inline">Leaderboard</span>
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/profile')} className="hover-scale gap-2 shrink-0">
                 {profile?.avatar_url ? (
-                  <Avatar className="h-5 w-5">
+                  <Avatar className="h-4 w-4 lg:h-5 lg:w-5">
                     <AvatarImage 
                       src={`${supabase.storage.from('avatars').getPublicUrl(profile.avatar_url).data.publicUrl}`} 
                       alt={profile.full_name} 
@@ -423,30 +447,30 @@ const Dashboard = () => {
                 ) : (
                   <User className="h-4 w-4" />
                 )}
-                Profile
+                <span className="hidden lg:inline">Profile</span>
               </Button>
               {isAdmin && (
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={() => navigate('/admin')}
-                  className="hover-scale border-primary/50 text-primary"
+                  className="hover-scale border-primary/50 text-primary shrink-0"
                 >
-                  <Shield className="h-4 w-4 mr-2" />
-                  Admin
+                  <Shield className="h-4 w-4 lg:mr-2" />
+                  <span className="hidden lg:inline">Admin</span>
                 </Button>
               )}
               <Button 
                 size="sm"
                 onClick={() => navigate('/sell')}
-                className="bg-gradient-to-r from-primary to-primary/80 hover-scale"
+                className="hidden lg:flex bg-gradient-to-r from-primary to-primary/80 hover-scale shrink-0"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Sell Item
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="shrink-0">
+                <LogOut className="h-4 w-4 lg:mr-2" />
+                <span className="hidden lg:inline">Logout</span>
               </Button>
             </div>
           </div>
