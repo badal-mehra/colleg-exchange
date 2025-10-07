@@ -42,6 +42,8 @@ const AdminDashboard = () => {
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [sliderImages, setSliderImages] = useState<any[]>([]);
   const [newSliderImage, setNewSliderImage] = useState({ url: '', title: '', description: '' });
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [universities, setUniversities] = useState<any[]>([]);
   const [newUniversity, setNewUniversity] = useState({ name: '', code: '', location: '' });
 
@@ -338,18 +340,72 @@ const AdminDashboard = () => {
               <CardContent>
                 <div className="space-y-6">
                   {/* Add New Slider Image Form */}
-                  <div className="border rounded-lg p-4 space-y-4">
-                    <h3 className="font-medium">Add New Slider Image</h3>
+                  <div className="border rounded-lg p-4 space-y-4 bg-card">
+                    <h3 className="font-medium text-lg">Add New Slider Image</h3>
                     <div className="grid gap-4">
-                      <div>
-                        <Label htmlFor="slider-url">Image URL</Label>
+                      {/* File Upload Option */}
+                      <div className="space-y-2">
+                        <Label>Upload Image File</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+
+                              // Validate file type
+                              if (!file.type.startsWith('image/')) {
+                                toast({
+                                  title: "Error",
+                                  description: "Please upload an image file",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+
+                              // Validate file size (10MB)
+                              if (file.size > 10 * 1024 * 1024) {
+                                toast({
+                                  title: "Error",
+                                  description: "Image must be less than 10MB",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+
+                              setImageFile(file);
+                            }}
+                            className="flex-1"
+                          />
+                          {imageFile && (
+                            <Button
+                              variant="outline"
+                              onClick={() => setImageFile(null)}
+                            >
+                              Clear
+                            </Button>
+                          )}
+                        </div>
+                        {imageFile && (
+                          <p className="text-sm text-muted-foreground">
+                            Selected: {imageFile.name}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Or URL Option */}
+                      <div className="space-y-2">
+                        <Label htmlFor="slider-url">Or Enter Image URL</Label>
                         <Input
                           id="slider-url"
                           placeholder="https://example.com/image.jpg"
                           value={newSliderImage.url}
                           onChange={(e) => setNewSliderImage({ ...newSliderImage, url: e.target.value })}
+                          disabled={!!imageFile}
                         />
                       </div>
+
                       <div>
                         <Label htmlFor="slider-title">Title (Optional)</Label>
                         <Input
@@ -380,41 +436,71 @@ const AdminDashboard = () => {
                       </div>
                       <Button
                         onClick={async () => {
-                          if (!newSliderImage.url) {
+                          if (!imageFile && !newSliderImage.url) {
                             toast({
                               title: "Error",
-                              description: "Please provide an image URL",
+                              description: "Please provide an image file or URL",
                               variant: "destructive",
                             });
                             return;
                           }
-                          const { error } = await supabase
-                            .from('image_slidebar')
-                            .insert({
-                              image_url: newSliderImage.url,
-                              title: newSliderImage.title,
-                              description: newSliderImage.description,
-                              link_url: (newSliderImage as any).link_url || null,
-                              is_active: true,
-                              sort_order: sliderImages.length
-                            });
-                          if (error) {
-                            toast({
-                              title: "Error",
-                              description: "Failed to add slider image",
-                              variant: "destructive",
-                            });
-                          } else {
+
+                          setUploadingImage(true);
+                          try {
+                            let imageUrl = newSliderImage.url;
+
+                            // Upload file if provided
+                            if (imageFile) {
+                              const fileExt = imageFile.name.split('.').pop();
+                              const fileName = `slider/${Date.now()}.${fileExt}`;
+
+                              const { error: uploadError } = await supabase.storage
+                                .from('avatars')
+                                .upload(fileName, imageFile, { upsert: true });
+
+                              if (uploadError) throw uploadError;
+
+                              const { data: publicUrlData } = supabase.storage
+                                .from('avatars')
+                                .getPublicUrl(fileName);
+
+                              imageUrl = publicUrlData.publicUrl;
+                            }
+
+                            const { error } = await supabase
+                              .from('image_slidebar')
+                              .insert({
+                                image_url: imageUrl,
+                                title: newSliderImage.title,
+                                description: newSliderImage.description,
+                                link_url: (newSliderImage as any).link_url || null,
+                                is_active: true,
+                                sort_order: sliderImages.length
+                              });
+
+                            if (error) throw error;
+
                             toast({
                               title: "Success",
                               description: "Slider image added successfully",
                             });
                             setNewSliderImage({ url: '', title: '', description: '' });
+                            setImageFile(null);
                             fetchSliderImages();
+                          } catch (error) {
+                            console.error('Error adding slider image:', error);
+                            toast({
+                              title: "Error",
+                              description: "Failed to add slider image",
+                              variant: "destructive",
+                            });
+                          } finally {
+                            setUploadingImage(false);
                           }
                         }}
+                        disabled={uploadingImage}
                       >
-                        Add Slider Image
+                        {uploadingImage ? 'Uploading...' : 'Add Slider Image'}
                       </Button>
                     </div>
                   </div>

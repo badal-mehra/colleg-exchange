@@ -11,6 +11,7 @@ import { ArrowLeft, CheckCircle, Clock, XCircle, User, Edit3, Save, X, Shield, Z
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import ImageCropModal from '@/components/ImageCropModal';
 
 interface Profile {
   id: string;
@@ -53,6 +54,8 @@ const Profile = () => {
   });
   const [universities, setUniversities] = useState<any[]>([]);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProfile();
@@ -108,7 +111,7 @@ const Profile = () => {
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !user || !profile) return;
+    if (!file) return;
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
@@ -130,15 +133,27 @@ const Profile = () => {
       return;
     }
 
+    // Read file and open crop modal
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageToCrop(reader.result as string);
+      setCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropComplete = async (croppedImage: Blob) => {
+    if (!user || !profile) return;
+
     setUploadingAvatar(true);
 
     try {
-      const fileExt = file.name.split('.').pop();
+      const fileExt = 'jpg';
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, croppedImage, { upsert: true });
 
       if (uploadError) throw uploadError;
 
@@ -555,6 +570,20 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
+      {/* Image Crop Modal */}
+      {imageToCrop && (
+        <ImageCropModal
+          image={imageToCrop}
+          isOpen={cropModalOpen}
+          onClose={() => {
+            setCropModalOpen(false);
+            setImageToCrop(null);
+          }}
+          onCropComplete={handleCropComplete}
+          aspectRatio={1}
+        />
+      )}
     </div>
   );
 };
