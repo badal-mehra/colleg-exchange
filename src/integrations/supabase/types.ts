@@ -532,6 +532,36 @@ export type Database = {
           },
         ]
       }
+      terms_and_conditions: {
+        Row: {
+          content: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          updated_at: string | null
+          version: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
+          version: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
@@ -598,15 +628,44 @@ export type Database = {
         }
         Relationships: []
       }
+      user_terms_acceptance: {
+        Row: {
+          accepted_at: string | null
+          id: string
+          ip_address: string | null
+          terms_id: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          id?: string
+          ip_address?: string | null
+          terms_id: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          id?: string
+          ip_address?: string | null
+          terms_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_terms_acceptance_terms_id_fkey"
+            columns: ["terms_id"]
+            isOneToOne: false
+            referencedRelation: "terms_and_conditions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      complete_order: {
-        Args: { order_id: string }
-        Returns: Json
-      }
+      complete_order: { Args: { order_id: string }; Returns: Json }
       complete_order_with_confirmation: {
         Args: {
           confirming_user_id: string
@@ -615,16 +674,10 @@ export type Database = {
         }
         Returns: Json
       }
-      generate_mck_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_admin_role: {
-        Args: { user_id: string }
-        Returns: string
-      }
+      generate_mck_id: { Args: never; Returns: string }
+      get_admin_role: { Args: { user_id: string }; Returns: string }
       get_monthly_leaderboard: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           avatar_url: string
           campus_points: number
@@ -642,14 +695,8 @@ export type Database = {
         Args: { conv_id: string; uid: string }
         Returns: number
       }
-      handle_ad_expiry: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      is_admin: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
+      handle_ad_expiry: { Args: never; Returns: undefined }
+      is_admin: { Args: { user_id: string }; Returns: boolean }
       mark_messages_read: {
         Args: { conv_id: string; uid: string }
         Returns: undefined

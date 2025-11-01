@@ -46,6 +46,8 @@ const AdminDashboard = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [universities, setUniversities] = useState<any[]>([]);
   const [newUniversity, setNewUniversity] = useState({ name: '', code: '', location: '' });
+  const [termsConditions, setTermsConditions] = useState<any[]>([]);
+  const [newTerms, setNewTerms] = useState({ content: '', version: '' });
 
   useEffect(() => {
     checkAdminStatus();
@@ -74,7 +76,7 @@ const AdminDashboard = () => {
       }
 
       setIsAdmin(true);
-      await Promise.all([fetchProfiles(), fetchItems(), fetchSliderImages(), fetchUniversities()]);
+      await Promise.all([fetchProfiles(), fetchItems(), fetchSliderImages(), fetchUniversities(), fetchTermsConditions()]);
     } catch (error) {
       console.error('Error checking admin status:', error);
       navigate('/dashboard');
@@ -158,6 +160,23 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchTermsConditions = async () => {
+    const { data, error } = await supabase
+      .from('terms_and_conditions')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch terms",
+        variant: "destructive",
+      });
+    } else {
+      setTermsConditions(data || []);
+    }
+  };
+
   const fetchSliderImages = async () => {
     const { data, error } = await supabase
       .from('image_slidebar')
@@ -211,7 +230,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="users">
               <Users className="h-4 w-4 mr-2" />
               Users & KYC
@@ -227,6 +246,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="universities">
               <Shield className="h-4 w-4 mr-2" />
               Universities
+            </TabsTrigger>
+            <TabsTrigger value="terms">
+              <Shield className="h-4 w-4 mr-2" />
+              Terms & Conditions
             </TabsTrigger>
             <TabsTrigger value="admins">
               <Shield className="h-4 w-4 mr-2" />
@@ -601,6 +624,176 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="terms">
+            <Card>
+              <CardHeader>
+                <CardTitle>Terms & Conditions Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Add New Terms Form */}
+                  <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                    <h3 className="font-medium">Add New Terms & Conditions</h3>
+                    <div className="space-y-2">
+                      <Label htmlFor="terms-version">Version</Label>
+                      <Input
+                        id="terms-version"
+                        placeholder="e.g., 1.0, 2.1"
+                        value={newTerms.version}
+                        onChange={(e) => setNewTerms({ ...newTerms, version: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="terms-content">Content</Label>
+                      <textarea
+                        id="terms-content"
+                        className="w-full min-h-[200px] p-3 rounded-md border border-input bg-background"
+                        placeholder="Enter terms and conditions content..."
+                        value={newTerms.content}
+                        onChange={(e) => setNewTerms({ ...newTerms, content: e.target.value })}
+                      />
+                    </div>
+                    <Button
+                      onClick={async () => {
+                        if (!newTerms.content || !newTerms.version) {
+                          toast({
+                            title: "Error",
+                            description: "Please provide both version and content",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+
+                        try {
+                          // Deactivate all existing terms
+                          await supabase
+                            .from('terms_and_conditions')
+                            .update({ is_active: false })
+                            .eq('is_active', true);
+
+                          // Insert new terms as active
+                          const { error } = await supabase
+                            .from('terms_and_conditions')
+                            .insert({
+                              content: newTerms.content,
+                              version: newTerms.version,
+                              is_active: true,
+                              created_by: user?.id
+                            });
+
+                          if (error) throw error;
+
+                          toast({
+                            title: "Success",
+                            description: "Terms & Conditions added successfully",
+                          });
+                          setNewTerms({ content: '', version: '' });
+                          fetchTermsConditions();
+                        } catch (error: any) {
+                          toast({
+                            title: "Error",
+                            description: error?.message || "Failed to add terms",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      Add Terms & Conditions
+                    </Button>
+                  </div>
+
+                  {/* Existing Terms */}
+                  <div className="space-y-4">
+                    <h3 className="font-medium">Existing Terms & Conditions</h3>
+                    {termsConditions.map((terms) => (
+                      <div key={terms.id} className="p-4 border rounded-lg">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h4 className="font-medium">Version {terms.version}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              Created: {new Date(terms.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <Badge variant={terms.is_active ? 'success' : 'secondary'}>
+                            {terms.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-3">
+                          {terms.content}
+                        </p>
+                        <div className="mt-4 flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const newWindow = window.open('', '_blank');
+                              if (newWindow) {
+                                newWindow.document.write(`
+                                  <html>
+                                    <head>
+                                      <title>Terms and Conditions v${terms.version}</title>
+                                      <style>
+                                        body { font-family: system-ui; padding: 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+                                        h1 { color: #333; }
+                                        .version { color: #666; font-size: 0.9rem; }
+                                      </style>
+                                    </head>
+                                    <body>
+                                      <h1>Terms and Conditions</h1>
+                                      <p class="version">Version: ${terms.version}</p>
+                                      <div>${terms.content.replace(/\n/g, '<br>')}</div>
+                                    </body>
+                                  </html>
+                                `);
+                                newWindow.document.close();
+                              }
+                            }}
+                          >
+                            View Full
+                          </Button>
+                          {!terms.is_active && (
+                            <Button
+                              size="sm"
+                              onClick={async () => {
+                                // Deactivate all terms
+                                await supabase
+                                  .from('terms_and_conditions')
+                                  .update({ is_active: false })
+                                  .eq('is_active', true);
+
+                                // Activate this one
+                                const { error } = await supabase
+                                  .from('terms_and_conditions')
+                                  .update({ is_active: true })
+                                  .eq('id', terms.id);
+
+                                if (error) {
+                                  toast({
+                                    title: "Error",
+                                    description: "Failed to activate terms",
+                                    variant: "destructive",
+                                  });
+                                } else {
+                                  toast({
+                                    title: "Success",
+                                    description: "Terms activated",
+                                  });
+                                  fetchTermsConditions();
+                                }
+                              }}
+                            >
+                              Activate
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>

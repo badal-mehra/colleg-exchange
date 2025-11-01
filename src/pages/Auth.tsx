@@ -40,8 +40,41 @@ const Auth = () => {
     const password = formData.get('password') as string;
     const fullName = formData.get('fullName') as string;
     const university = formData.get('university') as string;
+    const termsAccepted = formData.get('terms') as string;
     
-    await signUp(email, password, fullName, university);
+    if (!termsAccepted) {
+      toast({
+        title: "Terms Required",
+        description: "Please accept the terms and conditions to continue",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // Sign up the user
+    const result = await signUp(email, password, fullName, university);
+    
+    // If signup successful, record terms acceptance
+    if (result?.data?.user) {
+      const { data: activeTerms } = await supabase
+        .from('terms_and_conditions')
+        .select('id')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (activeTerms) {
+        await supabase
+          .from('user_terms_acceptance')
+          .insert({
+            user_id: result.data.user.id,
+            terms_id: activeTerms.id,
+          });
+      }
+    }
+    
     setIsLoading(false);
   };
 
@@ -215,6 +248,64 @@ const Auth = () => {
                       placeholder="Create a strong password"
                       required
                     />
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <input
+                      type="checkbox"
+                      id="terms"
+                      name="terms"
+                      required
+                      className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                    />
+                    <Label htmlFor="terms" className="text-sm leading-tight cursor-pointer">
+                      I agree to the{' '}
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 text-sm text-primary hover:underline"
+                        onClick={async () => {
+                          const { data: terms } = await supabase
+                            .from('terms_and_conditions')
+                            .select('*')
+                            .eq('is_active', true)
+                            .order('created_at', { ascending: false })
+                            .limit(1)
+                            .single();
+                          
+                          if (terms) {
+                            const newWindow = window.open('', '_blank');
+                            if (newWindow) {
+                              newWindow.document.write(`
+                                <html>
+                                  <head>
+                                    <title>Terms and Conditions - MyCampusKart</title>
+                                    <style>
+                                      body { font-family: system-ui; padding: 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+                                      h1 { color: #333; }
+                                      .version { color: #666; font-size: 0.9rem; }
+                                    </style>
+                                  </head>
+                                  <body>
+                                    <h1>Terms and Conditions</h1>
+                                    <p class="version">Version: ${terms.version}</p>
+                                    <div>${terms.content.replace(/\n/g, '<br>')}</div>
+                                  </body>
+                                </html>
+                              `);
+                              newWindow.document.close();
+                            }
+                          } else {
+                            toast({
+                              title: "Terms not available",
+                              description: "Terms and conditions are not currently available. Please contact support.",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                      >
+                        Terms and Conditions
+                      </Button>
+                    </Label>
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Creating account..." : "Create Account"}
