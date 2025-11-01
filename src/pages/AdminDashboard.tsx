@@ -254,7 +254,7 @@ const AdminDashboard = () => {
                             {profile.verification_document_url && (
                               <div className="mt-2 flex items-center gap-2">
                                 <a
-                                  href={`https://mtaeqtmcixlrudjsxcew.supabase.co/storage/v1/object/public/avatars/${profile.verification_document_url}`}
+                                  href={profile.verification_document_url}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
@@ -262,6 +262,14 @@ const AdminDashboard = () => {
                                   <Eye className="h-3 w-3" />
                                   View Uploaded Document
                                 </a>
+                                <img 
+                                  src={profile.verification_document_url} 
+                                  alt="Verification Document" 
+                                  className="max-w-xs rounded border mt-1"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
                               </div>
                             )}
                             {!profile.verification_document_url && profile.verification_status === 'pending' && (
@@ -454,20 +462,33 @@ const AdminDashboard = () => {
                               const fileExt = imageFile.name.split('.').pop();
                               const fileName = `slider/${Date.now()}.${fileExt}`;
 
-                              const { error: uploadError } = await supabase.storage
-                                .from('avatars')
-                                .upload(fileName, imageFile, { upsert: true });
+                              console.log('Uploading slider image:', fileName);
 
-                              if (uploadError) throw uploadError;
+                              const { data: uploadData, error: uploadError } = await supabase.storage
+                                .from('avatars')
+                                .upload(fileName, imageFile, { 
+                                  upsert: true,
+                                  contentType: imageFile.type
+                                });
+
+                              if (uploadError) {
+                                console.error('Upload error:', uploadError);
+                                throw uploadError;
+                              }
+
+                              console.log('Upload success:', uploadData);
 
                               const { data: publicUrlData } = supabase.storage
                                 .from('avatars')
                                 .getPublicUrl(fileName);
 
                               imageUrl = publicUrlData.publicUrl;
+                              console.log('Public URL:', imageUrl);
                             }
 
-                            const { error } = await supabase
+                            console.log('Inserting into database with URL:', imageUrl);
+
+                            const { data: insertData, error } = await supabase
                               .from('image_slidebar')
                               .insert({
                                 image_url: imageUrl,
@@ -478,7 +499,12 @@ const AdminDashboard = () => {
                                 sort_order: sliderImages.length
                               });
 
-                            if (error) throw error;
+                            if (error) {
+                              console.error('Database insert error:', error);
+                              throw error;
+                            }
+
+                            console.log('Database insert success:', insertData);
 
                             toast({
                               title: "Success",
@@ -487,11 +513,11 @@ const AdminDashboard = () => {
                             setNewSliderImage({ url: '', title: '', description: '' });
                             setImageFile(null);
                             fetchSliderImages();
-                          } catch (error) {
+                          } catch (error: any) {
                             console.error('Error adding slider image:', error);
                             toast({
                               title: "Error",
-                              description: "Failed to add slider image",
+                              description: error?.message || "Failed to add slider image. Check console for details.",
                               variant: "destructive",
                             });
                           } finally {

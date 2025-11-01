@@ -133,11 +133,24 @@ const KYC = () => {
       // Upload document if new file is selected
       if (formData.verification_document) {
         const fileExt = formData.verification_document.name.split('.').pop();
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const fileName = `${user.id}/verification-${Date.now()}.${fileExt}`;
         
-        // For now, we'll just simulate file upload since we don't have storage configured
-        // In production, you would upload to Supabase Storage
-        verification_document_url = `simulated-upload-${fileName}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, formData.verification_document, {
+            upsert: true,
+            contentType: formData.verification_document.type
+          });
+
+        if (uploadError) {
+          throw new Error(`Upload failed: ${uploadError.message}`);
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+        
+        verification_document_url = urlData.publicUrl;
       }
 
       const updateData = {
