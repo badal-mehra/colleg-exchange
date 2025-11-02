@@ -215,7 +215,7 @@ const Home = () => {
                 <img
                   src={image.image_url}
                   alt={image.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain bg-gradient-to-br from-muted/50 to-muted"
                 />
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                   <div className="text-center text-white space-y-4 max-w-2xl px-4">

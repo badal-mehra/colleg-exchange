@@ -13,10 +13,14 @@ import {
   Shield,
   Package,
   Image as ImageIcon,
-  Loader2
+  Loader2,
+  Check,
+  CheckCheck,
+  Circle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useParams } from 'react-router-dom';
+import TypingIndicator from '@/components/TypingIndicator';
 
 interface Message {
   id: string;
@@ -65,8 +69,12 @@ const Chat = () => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [isOtherUserOnline, setIsOtherUserOnline] = useState(false);
+  const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
+  const [lastSeen, setLastSeen] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     if (conversationId && user) {
@@ -74,11 +82,14 @@ const Chat = () => {
       fetchMessages();
       markMessagesAsRead();
       
-      const channel = subscribeToMessages();
+      const messageChannel = subscribeToMessages();
+      const presenceChannel = subscribeToPresence();
+      const typingChannel = subscribeToTyping();
+      
       return () => {
-        if (channel) {
-          supabase.removeChannel(channel);
-        }
+        if (messageChannel) supabase.removeChannel(messageChannel);
+        if (presenceChannel) supabase.removeChannel(presenceChannel);
+        if (typingChannel) supabase.removeChannel(typingChannel);
       };
     }
   }, [conversationId, user]);
@@ -114,14 +125,12 @@ const Chat = () => {
       return;
     }
 
-    // Fetch buyer profile
     const { data: buyerProfile } = await supabase
       .from('profiles')
       .select('full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
       .eq('user_id', conversationData.buyer_id)
       .maybeSingle();
 
-    // Fetch seller profile
     const { data: sellerProfile } = await supabase
       .from('profiles')
       .select('full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
@@ -186,22 +195,122 @@ const Chat = () => {
         (payload) => {
           const newMessage = payload.new as Message;
           setMessages(prev => {
-            // Avoid duplicates
             if (prev.some(m => m.id === newMessage.id)) {
               return prev;
             }
             return [...prev, newMessage];
           });
           
-          // Mark as read if it's not from current user
           if (newMessage.sender_id !== user?.id) {
             setTimeout(markMessagesAsRead, 500);
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        (payload) => {
+          const updatedMessage = payload.new as Message;
+          setMessages(prev => prev.map(m => m.id === updatedMessage.id ? updatedMessage : m));
+        }
+      )
       .subscribe();
 
     return channel;
+  };
+
+  const subscribeToPresence = () => {
+    if (!conversationId || !user) return null;
+
+    const otherUserId = conversation?.buyer_id === user.id 
+      ? conversation.seller_id 
+      : conversation?.buyer_id;
+
+    const channel = supabase.channel(`presence-${conversationId}`)
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const isOnline = Object.values(state).some((presences: any) => 
+          presences.some((p: any) => p.user_id === otherUserId)
+        );
+        setIsOtherUserOnline(isOnline);
+        
+        if (!isOnline) {
+          const allPresences = Object.values(state).flat() as any[];
+          const otherUserPresence = allPresences.find((p: any) => p.user_id === otherUserId);
+          if (otherUserPresence?.last_seen) {
+            setLastSeen(otherUserPresence.last_seen);
+          }
+        }
+      })
+      .on('presence', { event: 'join' }, ({ newPresences }) => {
+        const isOtherUser = newPresences.some((p: any) => p.user_id === otherUserId);
+        if (isOtherUser) {
+          setIsOtherUserOnline(true);
+          setLastSeen(null);
+        }
+      })
+      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+        const isOtherUser = leftPresences.some((p: any) => p.user_id === otherUserId);
+        if (isOtherUser) {
+          setIsOtherUserOnline(false);
+          setLastSeen(new Date().toISOString());
+        }
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({
+            user_id: user.id,
+            online_at: new Date().toISOString()
+          });
+        }
+      });
+
+    return channel;
+  };
+
+  const subscribeToTyping = () => {
+    if (!conversationId || !user) return null;
+
+    const otherUserId = conversation?.buyer_id === user.id 
+      ? conversation.seller_id 
+      : conversation?.buyer_id;
+
+    const channel = supabase.channel(`typing-${conversationId}`)
+      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+        if (payload.user_id === otherUserId) {
+          setIsOtherUserTyping(payload.isTyping);
+        }
+      })
+      .subscribe();
+
+    return channel;
+  };
+
+  const handleTyping = () => {
+    if (!conversationId || !user) return;
+
+    supabase.channel(`typing-${conversationId}`).send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { user_id: user.id, isTyping: true }
+    });
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      supabase.channel(`typing-${conversationId}`).send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { user_id: user.id, isTyping: false }
+      });
+    }, 2000);
   };
 
   const sendMessage = async (e: React.FormEvent) => {
@@ -218,10 +327,15 @@ const Chat = () => {
       is_read: false
     };
 
-    // Optimistically add message to UI
     setMessages(prev => [...prev, optimisticMessage]);
     setNewMessage('');
     setSending(true);
+
+    supabase.channel(`typing-${conversationId}`).send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { user_id: user.id, isTyping: false }
+    });
 
     const { data, error } = await supabase
       .from('messages')
@@ -235,7 +349,6 @@ const Chat = () => {
 
     if (error) {
       console.error('Error sending message:', error);
-      // Remove optimistic message on error
       setMessages(prev => prev.filter(m => m.id !== tempId));
       setNewMessage(messageContent);
       toast({
@@ -244,11 +357,22 @@ const Chat = () => {
         variant: "destructive",
       });
     } else if (data) {
-      // Replace optimistic message with real one
       setMessages(prev => prev.map(m => m.id === tempId ? data : m));
     }
     
     setSending(false);
+  };
+
+  const formatLastSeen = (timestamp: string | null) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+
+    if (diffInMinutes < 1) return 'just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
   };
 
   if (loading || !conversation) {
@@ -271,9 +395,9 @@ const Chat = () => {
   const isBuyer = user?.id === conversation.buyer_id;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/10">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 shadow-sm">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -281,38 +405,55 @@ const Chat = () => {
                 variant="ghost" 
                 size="sm" 
                 onClick={() => navigate('/my-chats')}
-                className="hover:bg-primary/10"
+                className="hover:bg-primary/10 hover:text-primary transition-colors"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
               <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10 border-2 border-primary/20">
-                  <AvatarImage 
-                    src={otherUser.avatar_url ? supabase.storage.from('avatars').getPublicUrl(otherUser.avatar_url).data.publicUrl : undefined} 
-                    alt={otherUser.full_name} 
-                  />
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    {otherUser.full_name?.charAt(0) || <User className="h-5 w-5" />}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar className="h-11 w-11 border-2 border-primary/30 shadow-lg">
+                    <AvatarImage 
+                      src={otherUser.avatar_url ? supabase.storage.from('avatars').getPublicUrl(otherUser.avatar_url).data.publicUrl : undefined} 
+                      alt={otherUser.full_name} 
+                    />
+                    <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-primary font-semibold">
+                      {otherUser.full_name?.charAt(0) || <User className="h-5 w-5" />}
+                    </AvatarFallback>
+                  </Avatar>
+                  {isOtherUserOnline && (
+                    <Circle className="absolute -bottom-0.5 -right-0.5 h-4 w-4 fill-emerald-500 text-emerald-500 border-2 border-background rounded-full animate-pulse" />
+                  )}
+                </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="font-semibold text-sm">{otherUser.full_name || 'Anonymous User'}</h2>
                     {otherUser.verification_status === 'approved' && (
-                      <Badge variant="secondary" className="text-xs px-1.5 py-0 bg-success/10 text-success">
+                      <Badge variant="verified" className="text-xs px-1.5 py-0 h-5">
                         <Shield className="h-3 w-3" />
                       </Badge>
                     )}
                     {otherUser.trust_seller_badge && (
-                      <Badge variant="secondary" className="text-xs px-1.5 py-0 bg-warning/10 text-warning">
+                      <Badge variant="warning" className="text-xs px-1.5 py-0 h-5">
                         ★
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {isBuyer ? 'Seller' : 'Buyer'} {otherUser.mck_id ? `• ${otherUser.mck_id}` : ''}
-                  </p>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    {isOtherUserOnline ? (
+                      <Badge variant="online" className="text-xs px-2 py-0 h-4 animate-pulse">
+                        Online
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        {lastSeen ? `Last seen ${formatLastSeen(lastSeen)}` : 'Offline'}
+                      </span>
+                    )}
+                    <span className="text-muted-foreground">•</span>
+                    <span className="text-muted-foreground">
+                      {isBuyer ? 'Seller' : 'Buyer'}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -321,11 +462,11 @@ const Chat = () => {
       </header>
 
       <div className="container mx-auto px-4 py-6 max-w-6xl">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Item Info Sidebar */}
           <div className="lg:col-span-1 order-2 lg:order-1">
-            <Card className="overflow-hidden">
-              <div className="p-4 bg-gradient-to-br from-primary/5 to-primary/10 border-b">
+            <Card className="overflow-hidden shadow-lg border-primary/10">
+              <div className="p-4 bg-gradient-to-br from-primary/5 via-primary/10 to-accent/5 border-b">
                 <div className="flex items-center gap-2 text-sm font-semibold text-primary mb-2">
                   <Package className="h-4 w-4" />
                   Item Details
@@ -333,34 +474,35 @@ const Chat = () => {
               </div>
               <div className="p-4 space-y-4">
                 {conversation.items.images && conversation.items.images.length > 0 ? (
-                  <div className="relative aspect-square rounded-lg overflow-hidden bg-muted group">
+                  <div className="relative aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-muted/50 to-muted shadow-inner group">
                     <img
                       src={conversation.items.images[0]}
                       alt={conversation.items.title}
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                     />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 ) : (
-                  <div className="aspect-square rounded-lg bg-muted flex items-center justify-center">
-                    <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                  <div className="aspect-square rounded-xl bg-gradient-to-br from-muted/30 to-muted flex items-center justify-center shadow-inner">
+                    <ImageIcon className="h-12 w-12 text-muted-foreground/50" />
                   </div>
                 )}
                 <div>
-                  <h3 className="font-semibold text-sm line-clamp-2 mb-2">
+                  <h3 className="font-semibold text-sm line-clamp-2 mb-3 text-foreground">
                     {conversation.items.title}
                   </h3>
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold text-primary">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                       ₹{conversation.items.price.toLocaleString()}
                     </span>
                   </div>
                 </div>
                 <Button 
                   variant="outline" 
-                  className="w-full"
+                  className="w-full border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-all"
                   onClick={() => navigate(`/item/${conversation.item_id}`)}
                 >
-                  View Item
+                  View Full Details
                 </Button>
               </div>
             </Card>
@@ -368,20 +510,20 @@ const Chat = () => {
 
           {/* Chat Interface */}
           <div className="lg:col-span-3 order-1 lg:order-2">
-            <Card className="flex flex-col h-[calc(100vh-200px)] lg:h-[600px] overflow-hidden">
+            <Card className="flex flex-col h-[calc(100vh-180px)] lg:h-[650px] overflow-hidden shadow-xl border-primary/10">
               {/* Messages Container */}
               <div 
                 ref={messagesContainerRef}
-                className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-muted/10 to-background"
+                className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-muted/5 via-background to-background"
               >
                 {messages.length === 0 ? (
                   <div className="h-full flex items-center justify-center">
-                    <div className="text-center text-muted-foreground space-y-2">
-                      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                        <User className="h-8 w-8 text-primary" />
+                    <div className="text-center text-muted-foreground space-y-3">
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center mx-auto mb-4 shadow-lg">
+                        <User className="h-10 w-10 text-primary" />
                       </div>
-                      <p className="font-medium">Start your conversation</p>
-                      <p className="text-sm">Send a message to begin chatting about this item</p>
+                      <p className="font-semibold text-lg text-foreground">Start your conversation</p>
+                      <p className="text-sm max-w-xs mx-auto">Send a message to begin chatting about this item</p>
                     </div>
                   </div>
                 ) : (
@@ -389,15 +531,16 @@ const Chat = () => {
                     {messages.map((message, index) => {
                       const isOwnMessage = message.sender_id === user?.id;
                       const showAvatar = index === 0 || messages[index - 1].sender_id !== message.sender_id;
+                      const isLastMessage = index === messages.length - 1;
                       
                       return (
                         <div
                           key={message.id}
-                          className={`flex gap-2 ${isOwnMessage ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}
+                          className={`flex gap-3 ${isOwnMessage ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}
                         >
                           {!isOwnMessage && showAvatar && (
-                            <Avatar className="h-8 w-8 mt-1">
-                              <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+                            <Avatar className="h-8 w-8 mt-1 shadow-md border border-primary/20">
+                              <AvatarFallback className="bg-gradient-to-br from-muted to-muted-foreground/20 text-muted-foreground text-xs">
                                 <User className="h-4 w-4" />
                               </AvatarFallback>
                             </Avatar>
@@ -405,40 +548,62 @@ const Chat = () => {
                           {!isOwnMessage && !showAvatar && <div className="w-8" />}
                           
                           <div
-                            className={`max-w-[75%] rounded-2xl px-4 py-2 ${
+                            className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-md ${
                               isOwnMessage
-                                ? 'bg-primary text-primary-foreground rounded-br-sm'
-                                : 'bg-muted rounded-bl-sm'
+                                ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-br-sm'
+                                : 'bg-gradient-to-br from-muted to-muted/80 rounded-bl-sm border border-border/50'
                             }`}
                           >
-                            <p className="text-sm break-words whitespace-pre-wrap">{message.content}</p>
-                            <p className={`text-xs mt-1 ${
+                            <p className="text-sm break-words whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                            <div className={`flex items-center gap-1.5 mt-1.5 ${
                               isOwnMessage 
-                                ? 'text-primary-foreground/70' 
+                                ? 'text-primary-foreground/80 justify-end' 
                                 : 'text-muted-foreground'
                             }`}>
-                              {new Date(message.created_at).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </p>
+                              <p className="text-xs">
+                                {new Date(message.created_at).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                              {isOwnMessage && isLastMessage && (
+                                message.is_read ? (
+                                  <CheckCheck className="h-3.5 w-3.5 text-accent" />
+                                ) : (
+                                  <Check className="h-3.5 w-3.5" />
+                                )
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
                     })}
+                    {isOtherUserTyping && (
+                      <div className="flex gap-3 justify-start animate-in slide-in-from-bottom-2 duration-200">
+                        <Avatar className="h-8 w-8 mt-1 shadow-md border border-primary/20">
+                          <AvatarFallback className="bg-gradient-to-br from-muted to-muted-foreground/20 text-muted-foreground text-xs">
+                            <User className="h-4 w-4" />
+                          </AvatarFallback>
+                        </Avatar>
+                        <TypingIndicator />
+                      </div>
+                    )}
                     <div ref={messagesEndRef} />
                   </>
                 )}
               </div>
 
               {/* Message Input */}
-              <div className="border-t bg-background p-4">
-                <form onSubmit={sendMessage} className="flex gap-2">
+              <div className="border-t bg-gradient-to-r from-background to-muted/5 p-4 shadow-lg">
+                <form onSubmit={sendMessage} className="flex gap-3">
                   <Input
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={(e) => {
+                      setNewMessage(e.target.value);
+                      handleTyping();
+                    }}
                     placeholder="Type your message..."
-                    className="flex-1 rounded-full px-4 bg-muted/50 border-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="flex-1 rounded-full px-5 py-2.5 bg-muted/60 border-muted-foreground/20 focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary transition-all"
                     disabled={sending}
                     autoFocus
                   />
@@ -446,12 +611,12 @@ const Chat = () => {
                     type="submit" 
                     size="icon"
                     disabled={sending || !newMessage.trim()}
-                    className="rounded-full h-10 w-10 shrink-0"
+                    className="rounded-full h-11 w-11 shrink-0 shadow-lg hover:shadow-xl transition-all hover:scale-105 disabled:opacity-50"
                   >
                     {sending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
-                      <Send className="h-4 w-4" />
+                      <Send className="h-5 w-5" />
                     )}
                   </Button>
                 </form>
