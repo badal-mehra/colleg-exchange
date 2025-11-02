@@ -6,13 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   ArrowLeft, 
   MessageCircle, 
   User,
   Shield,
   Clock,
-  Circle
+  Circle,
+  ShoppingBag,
+  Store
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -225,7 +228,7 @@ const MyChats = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-6 max-w-4xl">
         {conversations.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center mx-auto mb-6 shadow-lg">
@@ -243,8 +246,32 @@ const MyChats = () => {
             </Button>
           </div>
         ) : (
-          <div className="space-y-3 max-w-4xl mx-auto">
-            {conversations.map((conversation) => {
+          <Tabs defaultValue="buying" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="buying" className="flex items-center gap-2">
+                <ShoppingBag className="h-4 w-4" />
+                <span>Buying</span>
+                <Badge variant="secondary" className="ml-2">
+                  {conversations.filter(c => c.buyer_id === user?.id).length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="selling" className="flex items-center gap-2">
+                <Store className="h-4 w-4" />
+                <span>Selling</span>
+                <Badge variant="secondary" className="ml-2">
+                  {conversations.filter(c => c.seller_id === user?.id).length}
+                </Badge>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="buying" className="space-y-3">
+              {conversations.filter(c => c.buyer_id === user?.id).length === 0 ? (
+                <div className="text-center py-12">
+                  <ShoppingBag className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+                  <p className="text-muted-foreground">No buying conversations yet</p>
+                </div>
+              ) : (
+                conversations.filter(c => c.buyer_id === user?.id).map((conversation) => {
               const otherUser = getOtherUser(conversation);
               const otherUserId = getOtherUserId(conversation);
               const isBuyer = conversation.buyer_id === user?.id;
@@ -341,8 +368,116 @@ const MyChats = () => {
                   </CardContent>
                 </Card>
               );
-            })}
-          </div>
+            }))}
+            </TabsContent>
+
+            <TabsContent value="selling" className="space-y-3">
+              {conversations.filter(c => c.seller_id === user?.id).length === 0 ? (
+                <div className="text-center py-12">
+                  <Store className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+                  <p className="text-muted-foreground">No selling conversations yet</p>
+                </div>
+              ) : (
+                conversations.filter(c => c.seller_id === user?.id).map((conversation) => {
+              const otherUser = getOtherUser(conversation);
+              const otherUserId = getOtherUserId(conversation);
+              const isBuyer = conversation.buyer_id === user?.id;
+              const isOnline = onlineUsers.has(otherUserId);
+              
+              return (
+                <Card 
+                  key={conversation.id} 
+                  className="hover:shadow-xl transition-all duration-300 cursor-pointer border-border/50 hover:border-primary/30 overflow-hidden group bg-gradient-to-br from-card to-card/50"
+                  onClick={() => handleConversationClick(conversation.id)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-4">
+                      {/* Item Image */}
+                      <div className="w-20 h-20 rounded-xl overflow-hidden bg-gradient-to-br from-muted/50 to-muted shadow-md flex-shrink-0 group-hover:shadow-lg transition-shadow">
+                        {conversation.items?.images?.length > 0 ? (
+                          <img 
+                            src={conversation.items.images[0]} 
+                            alt={conversation.items.title}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <MessageCircle className="h-8 w-8 text-muted-foreground/50" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Chat Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-2 flex-wrap">
+                            <h3 className="font-semibold text-sm truncate text-foreground">
+                              {conversation.items?.title || 'Item'}
+                            </h3>
+                            <Badge variant="outline" className="text-xs border-primary/30">
+                              {isBuyer ? 'Buying' : 'Selling'}
+                            </Badge>
+                            {conversation.unread_count && conversation.unread_count > 0 && (
+                              <Badge variant="destructive" className="text-xs px-2 py-0.5">
+                                {conversation.unread_count} new
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="text-sm font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                            ₹{conversation.items?.price?.toLocaleString()}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center space-x-2 mb-2">
+                          <div className="relative">
+                            <Avatar className="h-7 w-7 border border-primary/20">
+                              <AvatarFallback className="text-xs bg-gradient-to-br from-primary/10 to-accent/10 text-primary">
+                                <User className="h-4 w-4" />
+                              </AvatarFallback>
+                            </Avatar>
+                            {isOnline && (
+                              <Circle className="absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-emerald-500 text-emerald-500 border border-background rounded-full" />
+                            )}
+                          </div>
+                          <div className="flex items-center space-x-2 min-w-0 flex-1">
+                            <span className="text-sm text-muted-foreground truncate font-medium">
+                              {otherUser?.full_name || 'Unknown User'}
+                            </span>
+                            {otherUser?.is_verified && otherUser?.verification_status === 'approved' && (
+                              <Badge variant="verified" className="h-4 px-1">
+                                <Shield className="h-2.5 w-2.5" />
+                              </Badge>
+                            )}
+                            {isOnline && (
+                              <Badge variant="online" className="text-xs px-1.5 py-0 h-4">
+                                Online
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {conversation.last_message && (
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground truncate flex-1 leading-relaxed">
+                              {conversation.last_message.sender_id === user?.id && (
+                                <span className="font-medium">You: </span>
+                              )}
+                              {conversation.last_message.content}
+                            </p>
+                            <div className="flex items-center space-x-1 text-xs text-muted-foreground/70 ml-3">
+                              <Clock className="h-3 w-3" />
+                              <span>{formatTime(conversation.last_message.created_at)}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            }))}
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </div>

@@ -395,235 +395,208 @@ const Chat = () => {
   const isBuyer = user?.id === conversation.buyer_id;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/10">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 shadow-sm">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => navigate('/my-chats')}
-                className="hover:bg-primary/10 hover:text-primary transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <Avatar className="h-11 w-11 border-2 border-primary/30 shadow-lg">
-                    <AvatarImage 
-                      src={otherUser.avatar_url ? supabase.storage.from('avatars').getPublicUrl(otherUser.avatar_url).data.publicUrl : undefined} 
-                      alt={otherUser.full_name} 
-                    />
-                    <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-primary font-semibold">
-                      {otherUser.full_name?.charAt(0) || <User className="h-5 w-5" />}
-                    </AvatarFallback>
-                  </Avatar>
-                  {isOtherUserOnline && (
-                    <Circle className="absolute -bottom-0.5 -right-0.5 h-4 w-4 fill-emerald-500 text-emerald-500 border-2 border-background rounded-full animate-pulse" />
+    <div className="flex flex-col h-screen bg-gradient-to-b from-background via-background to-muted/10">
+      {/* Mobile-Optimized Header */}
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-xl shadow-sm flex-shrink-0">
+        <div className="px-3 sm:px-4 py-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => navigate('/my-chats')}
+              className="h-9 w-9 hover:bg-primary/10 hover:text-primary flex-shrink-0"
+            >
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+            </Button>
+            
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+              <div className="relative flex-shrink-0">
+                <Avatar className="h-9 w-9 sm:h-11 sm:w-11 border-2 border-primary/20 shadow-md">
+                  <AvatarImage 
+                    src={otherUser.avatar_url ? supabase.storage.from('avatars').getPublicUrl(otherUser.avatar_url).data.publicUrl : undefined} 
+                    alt={otherUser.full_name} 
+                  />
+                  <AvatarFallback className="bg-gradient-to-br from-primary/10 to-accent/10 text-primary text-xs sm:text-sm">
+                    {otherUser.full_name?.charAt(0) || <User className="h-4 w-4 sm:h-5 sm:w-5" />}
+                  </AvatarFallback>
+                </Avatar>
+                {isOtherUserOnline && (
+                  <Circle className="absolute -bottom-0.5 -right-0.5 h-3 w-3 sm:h-4 sm:w-4 fill-emerald-500 text-emerald-500 border-2 border-background rounded-full" />
+                )}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+                  <h2 className="font-semibold text-sm sm:text-base truncate">{otherUser.full_name || 'User'}</h2>
+                  {otherUser.verification_status === 'approved' && (
+                    <Badge variant="verified" showTooltip tooltip="Verified User" className="h-4 px-1">
+                      <Shield className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                    </Badge>
                   )}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-semibold text-sm">{otherUser.full_name || 'Anonymous User'}</h2>
-                    {otherUser.verification_status === 'approved' && (
-                      <Badge variant="verified" className="text-xs px-1.5 py-0 h-5">
-                        <Shield className="h-3 w-3" />
-                      </Badge>
-                    )}
-                    {otherUser.trust_seller_badge && (
-                      <Badge variant="warning" className="text-xs px-1.5 py-0 h-5">
-                        ★
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs">
-                    {isOtherUserOnline ? (
-                      <Badge variant="online" className="text-xs px-2 py-0 h-4 animate-pulse">
-                        Online
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">
-                        {lastSeen ? `Last seen ${formatLastSeen(lastSeen)}` : 'Offline'}
-                      </span>
-                    )}
-                    <span className="text-muted-foreground">•</span>
-                    <span className="text-muted-foreground">
-                      {isBuyer ? 'Seller' : 'Buyer'}
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                  {isOtherUserOnline ? (
+                    <span className="flex items-center gap-1">
+                      <Circle className="h-1.5 w-1.5 sm:h-2 sm:w-2 fill-emerald-500 text-emerald-500" />
+                      Online
                     </span>
-                  </div>
-                </div>
+                  ) : lastSeen ? (
+                    `Last seen ${formatLastSeen(lastSeen)}`
+                  ) : (
+                    'Offline'
+                  )}
+                </p>
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 max-w-6xl">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Item Info Sidebar */}
-          <div className="lg:col-span-1 order-2 lg:order-1">
-            <Card className="overflow-hidden shadow-lg border-primary/10">
-              <div className="p-4 bg-gradient-to-br from-primary/5 via-primary/10 to-accent/5 border-b">
-                <div className="flex items-center gap-2 text-sm font-semibold text-primary mb-2">
-                  <Package className="h-4 w-4" />
-                  Item Details
+      {/* Item Info Banner - Mobile Optimized */}
+      {conversation.items && (
+        <div className="border-b bg-card/50 backdrop-blur flex-shrink-0">
+          <div 
+            className="px-3 sm:px-4 py-2 flex items-center gap-2 sm:gap-3 cursor-pointer hover:bg-accent/5 transition-colors"
+            onClick={() => navigate(`/item/${conversation.item_id}`)}
+          >
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden bg-gradient-to-br from-muted/50 to-muted flex-shrink-0 shadow">
+              {conversation.items.images && conversation.items.images.length > 0 ? (
+                <img 
+                  src={conversation.items.images[0]} 
+                  alt={conversation.items.title}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Package className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground/50" />
                 </div>
-              </div>
-              <div className="p-4 space-y-4">
-                {conversation.items.images && conversation.items.images.length > 0 ? (
-                  <div className="relative aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-muted/50 to-muted shadow-inner group">
-                    <img
-                      src={conversation.items.images[0]}
-                      alt={conversation.items.title}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                ) : (
-                  <div className="aspect-square rounded-xl bg-gradient-to-br from-muted/30 to-muted flex items-center justify-center shadow-inner">
-                    <ImageIcon className="h-12 w-12 text-muted-foreground/50" />
-                  </div>
-                )}
-                <div>
-                  <h3 className="font-semibold text-sm line-clamp-2 mb-3 text-foreground">
-                    {conversation.items.title}
-                  </h3>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                      ₹{conversation.items.price.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-                <Button 
-                  variant="outline" 
-                  className="w-full border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-all"
-                  onClick={() => navigate(`/item/${conversation.item_id}`)}
-                >
-                  View Full Details
-                </Button>
-              </div>
-            </Card>
-          </div>
+              )}
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-xs sm:text-sm truncate">{conversation.items.title}</h3>
+              <p className="text-sm sm:text-base font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                ₹{conversation.items.price.toLocaleString()}
+              </p>
+            </div>
 
-          {/* Chat Interface */}
-          <div className="lg:col-span-3 order-1 lg:order-2">
-            <Card className="flex flex-col h-[calc(100vh-180px)] lg:h-[650px] overflow-hidden shadow-xl border-primary/10">
-              {/* Messages Container */}
-              <div 
-                ref={messagesContainerRef}
-                className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-muted/5 via-background to-background"
-              >
-                {messages.length === 0 ? (
-                  <div className="h-full flex items-center justify-center">
-                    <div className="text-center text-muted-foreground space-y-3">
-                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                        <User className="h-10 w-10 text-primary" />
-                      </div>
-                      <p className="font-semibold text-lg text-foreground">Start your conversation</p>
-                      <p className="text-sm max-w-xs mx-auto">Send a message to begin chatting about this item</p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {messages.map((message, index) => {
-                      const isOwnMessage = message.sender_id === user?.id;
-                      const showAvatar = index === 0 || messages[index - 1].sender_id !== message.sender_id;
-                      const isLastMessage = index === messages.length - 1;
-                      
-                      return (
-                        <div
-                          key={message.id}
-                          className={`flex gap-3 ${isOwnMessage ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}
-                        >
-                          {!isOwnMessage && showAvatar && (
-                            <Avatar className="h-8 w-8 mt-1 shadow-md border border-primary/20">
-                              <AvatarFallback className="bg-gradient-to-br from-muted to-muted-foreground/20 text-muted-foreground text-xs">
-                                <User className="h-4 w-4" />
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
-                          {!isOwnMessage && !showAvatar && <div className="w-8" />}
-                          
-                          <div
-                            className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-md ${
-                              isOwnMessage
-                                ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-br-sm'
-                                : 'bg-gradient-to-br from-muted to-muted/80 rounded-bl-sm border border-border/50'
-                            }`}
-                          >
-                            <p className="text-sm break-words whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                            <div className={`flex items-center gap-1.5 mt-1.5 ${
-                              isOwnMessage 
-                                ? 'text-primary-foreground/80 justify-end' 
-                                : 'text-muted-foreground'
-                            }`}>
-                              <p className="text-xs">
-                                {new Date(message.created_at).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </p>
-                              {isOwnMessage && isLastMessage && (
-                                message.is_read ? (
-                                  <CheckCheck className="h-3.5 w-3.5 text-accent" />
-                                ) : (
-                                  <Check className="h-3.5 w-3.5" />
-                                )
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {isOtherUserTyping && (
-                      <div className="flex gap-3 justify-start animate-in slide-in-from-bottom-2 duration-200">
-                        <Avatar className="h-8 w-8 mt-1 shadow-md border border-primary/20">
-                          <AvatarFallback className="bg-gradient-to-br from-muted to-muted-foreground/20 text-muted-foreground text-xs">
-                            <User className="h-4 w-4" />
-                          </AvatarFallback>
-                        </Avatar>
-                        <TypingIndicator />
-                      </div>
-                    )}
-                    <div ref={messagesEndRef} />
-                  </>
-                )}
-              </div>
-
-              {/* Message Input */}
-              <div className="border-t bg-gradient-to-r from-background to-muted/5 p-4 shadow-lg">
-                <form onSubmit={sendMessage} className="flex gap-3">
-                  <Input
-                    value={newMessage}
-                    onChange={(e) => {
-                      setNewMessage(e.target.value);
-                      handleTyping();
-                    }}
-                    placeholder="Type your message..."
-                    className="flex-1 rounded-full px-5 py-2.5 bg-muted/60 border-muted-foreground/20 focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary transition-all"
-                    disabled={sending}
-                    autoFocus
-                  />
-                  <Button 
-                    type="submit" 
-                    size="icon"
-                    disabled={sending || !newMessage.trim()}
-                    className="rounded-full h-11 w-11 shrink-0 shadow-lg hover:shadow-xl transition-all hover:scale-105 disabled:opacity-50"
-                  >
-                    {sending ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <Send className="h-5 w-5" />
-                    )}
-                  </Button>
-                </form>
-              </div>
-            </Card>
+            <Button variant="outline" size="sm" className="flex-shrink-0 text-[10px] sm:text-xs px-2 sm:px-3 h-7 sm:h-8">
+              View
+            </Button>
           </div>
         </div>
+      )}
+
+      {/* Messages Container - Flexible Height */}
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-4 bg-gradient-to-b from-muted/5 to-background"
+      >
+        {messages.length === 0 ? (
+          <div className="h-full flex items-center justify-center px-4">
+            <div className="text-center text-muted-foreground space-y-2 sm:space-y-3">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg">
+                <User className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
+              </div>
+              <p className="font-semibold text-base sm:text-lg text-foreground">Start your conversation</p>
+              <p className="text-xs sm:text-sm max-w-xs mx-auto">Send a message to begin chatting about this item</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {messages.map((message, index) => {
+              const isOwnMessage = message.sender_id === user?.id;
+              const showAvatar = index === 0 || messages[index - 1].sender_id !== message.sender_id;
+              const isLastMessage = index === messages.length - 1;
+              
+              return (
+                <div
+                  key={message.id}
+                  className={`flex gap-1.5 sm:gap-2 mb-2 sm:mb-3 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                >
+                  {!isOwnMessage && showAvatar && (
+                    <Avatar className="h-6 w-6 sm:h-7 sm:w-7 mt-1 shadow-sm border border-primary/20 flex-shrink-0">
+                      <AvatarFallback className="bg-gradient-to-br from-muted to-muted-foreground/20 text-muted-foreground text-[10px]">
+                        <User className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  {!isOwnMessage && !showAvatar && <div className="w-6 sm:w-7 flex-shrink-0" />}
+                  
+                  <div
+                    className={`max-w-[75%] sm:max-w-[70%] rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 shadow-sm ${
+                      isOwnMessage
+                        ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-br-sm'
+                        : 'bg-card border border-border/50 rounded-bl-sm'
+                    }`}
+                  >
+                    <p className="text-xs sm:text-sm break-words whitespace-pre-wrap leading-relaxed">
+                      {message.content}
+                    </p>
+                    <div className={`flex items-center gap-1 mt-1 ${
+                      isOwnMessage 
+                        ? 'text-primary-foreground/70 justify-end' 
+                        : 'text-muted-foreground'
+                    }`}>
+                      <p className="text-[10px] sm:text-xs">
+                        {new Date(message.created_at).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                      {isOwnMessage && isLastMessage && (
+                        message.is_read ? (
+                          <CheckCheck className="h-3 w-3 text-accent flex-shrink-0" />
+                        ) : (
+                          <Check className="h-3 w-3 flex-shrink-0" />
+                        )
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {isOtherUserTyping && (
+              <div className="flex gap-1.5 sm:gap-2 justify-start mb-2">
+                <Avatar className="h-6 w-6 sm:h-7 sm:w-7 mt-1 shadow-sm border border-primary/20">
+                  <AvatarFallback className="bg-gradient-to-br from-muted to-muted-foreground/20 text-muted-foreground text-[10px]">
+                    <User className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  </AvatarFallback>
+                </Avatar>
+                <TypingIndicator />
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </>
+        )}
+      </div>
+
+      {/* Message Input - Mobile Optimized */}
+      <div className="border-t bg-background/95 backdrop-blur-xl shadow-lg p-2 sm:p-3 flex-shrink-0">
+        <form onSubmit={sendMessage} className="flex gap-2">
+          <Input
+            value={newMessage}
+            onChange={(e) => {
+              setNewMessage(e.target.value);
+              handleTyping();
+            }}
+            placeholder="Type a message..."
+            className="flex-1 rounded-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm bg-muted/60 border-muted-foreground/20 focus-visible:ring-2 focus-visible:ring-primary"
+            disabled={sending}
+          />
+          <Button 
+            type="submit" 
+            size="icon"
+            disabled={sending || !newMessage.trim()}
+            className="rounded-full h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 shadow-lg"
+          >
+            {sending ? (
+              <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4 sm:h-5 sm:w-5" />
+            )}
+          </Button>
+        </form>
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
 import ScanQR from "./pages/ScanQR";
 import MyOrders from "./pages/MyOrders";
+import MyCart from "./pages/MyCart";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,7 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/my-chats" element={<ProtectedRoute><MyChats /></ProtectedRoute>} />
+            <Route path="/my-cart" element={<ProtectedRoute><MyCart /></ProtectedRoute>} />
             <Route path="/my-listings" element={<ProtectedRoute><MyListings /></ProtectedRoute>} />
             <Route path="/my-orders" element={<ProtectedRoute><MyOrders /></ProtectedRoute>} />
             <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />

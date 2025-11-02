@@ -213,32 +213,19 @@ const Auth = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">LPU Email</Label>
                     <Input
                       id="email"
                       name="email"
                       type="email"
-                      placeholder="your.email@college.edu"
+                      placeholder="yourname@lpu.in"
                       required
+                      pattern=".*@lpu\.in$"
+                      title="Please use your LPU email address (@lpu.in)"
                     />
+                    <p className="text-xs text-muted-foreground">Use your @lpu.in email only</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="university">University</Label>
-                    <Select name="university" required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your university" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="lovely-professional-university">Lovely Professional University</SelectItem>
-                        <SelectItem value="delhi-university">Delhi University</SelectItem>
-                        <SelectItem value="mumbai-university">Mumbai University</SelectItem>
-                        <SelectItem value="bangalore-university">Bangalore University</SelectItem>
-                        <SelectItem value="punjab-university">Punjab University</SelectItem>
-                        <SelectItem value="anna-university">Anna University</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <input type="hidden" name="university" value="Lovely Professional University" />
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
                     <Input
