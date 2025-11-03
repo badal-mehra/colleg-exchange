@@ -17,7 +17,8 @@ import {
   User,
   AlertCircle,
   Shield,
-  ShoppingCart
+  ShoppingCart,
+  Star
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
@@ -68,15 +69,93 @@ const ItemDetail = () => {
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [checkingFavorite, setCheckingFavorite] = useState(false);
 
   useEffect(() => {
     if (id) {
       fetchItem();
       if (user) {
         fetchUserProfile();
+        checkIfFavorited();
       }
     }
   }, [id, user]);
+
+  const checkIfFavorited = async () => {
+    if (!user || !id) return;
+    
+    setCheckingFavorite(true);
+    const { data, error } = await supabase
+      .from('favorites')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('item_id', id)
+      .maybeSingle();
+
+    if (!error && data) {
+      setIsFavorited(true);
+    }
+    setCheckingFavorite(false);
+  };
+
+  const toggleFavorite = async () => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please login to add items to your cart",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
+
+    if (!userProfile?.is_verified || userProfile?.verification_status !== 'approved') {
+      toast({
+        title: "Verification Required",
+        description: "Please complete your KYC verification",
+        variant: "destructive",
+      });
+      navigate('/kyc');
+      return;
+    }
+
+    try {
+      if (isFavorited) {
+        // Remove from favorites
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('item_id', id);
+
+        if (error) throw error;
+
+        setIsFavorited(false);
+        sonnerToast.success('Removed from cart');
+      } else {
+        // Add to favorites
+        const { error } = await supabase
+          .from('favorites')
+          .insert({
+            user_id: user.id,
+            item_id: id,
+          });
+
+        if (error) throw error;
+
+        setIsFavorited(true);
+        sonnerToast.success('Added to cart');
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update cart",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchItem = async () => {
     setLoading(true);
@@ -411,14 +490,13 @@ const ItemDetail = () => {
                         {item.profiles?.full_name || 'Anonymous User'}
                       </h3>
                       {item.profiles?.verification_status === 'approved' && (
-                        <Badge variant="secondary" className="text-xs bg-success/10 text-success">
-                          <Shield className="h-3 w-3 mr-1" />
-                          Verified
+                        <Badge variant="verified" tooltip="Verified User" className="h-4 px-1">
+                          <Shield className="h-3 w-3" />
                         </Badge>
                       )}
                       {item.profiles?.trust_seller_badge && (
-                        <Badge variant="secondary" className="text-xs bg-warning/10 text-warning">
-                          ★ Trusted
+                        <Badge variant="warning" tooltip="Trusted Seller" className="h-4 px-1">
+                          <Star className="h-3 w-3" />
                         </Badge>
                       )}
                     </div>
@@ -487,8 +565,21 @@ const ItemDetail = () => {
                         <MessageCircle className="h-5 w-5 mr-2" />
                         <span className="font-semibold">Chat</span>
                       </Button>
-                      <Button variant="outline" size="lg" className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive transition-colors">
-                        <Heart className="h-5 w-5" />
+                      <Button 
+                        variant="outline" 
+                        size="lg" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite();
+                        }}
+                        disabled={checkingFavorite}
+                        className={`transition-colors ${
+                          isFavorited 
+                            ? 'bg-destructive/10 text-destructive border-destructive hover:bg-destructive/20' 
+                            : 'hover:bg-destructive/10 hover:text-destructive hover:border-destructive'
+                        }`}
+                      >
+                        <Heart className={`h-5 w-5 ${isFavorited ? 'fill-current' : ''}`} />
                       </Button>
                     </div>
                   </>

@@ -337,13 +337,13 @@ const MyChats = () => {
                               {otherUser?.full_name || 'Unknown User'}
                             </span>
                             {otherUser?.is_verified && otherUser?.verification_status === 'approved' && (
-                              <Badge variant="verified" className="h-4 px-1">
+                              <Badge variant="verified" tooltip="Verified User" className="h-4 px-1">
                                 <Shield className="h-2.5 w-2.5" />
                               </Badge>
                             )}
                             {isOnline && (
-                              <Badge variant="online" className="text-xs px-1.5 py-0 h-4">
-                                Online
+                              <Badge variant="online" tooltip="Online" className="h-4 w-4 rounded-full p-0 flex items-center justify-center">
+                                <div className="h-2 w-2 bg-white rounded-full animate-pulse" />
                               </Badge>
                             )}
                           </div>
@@ -444,13 +444,13 @@ const MyChats = () => {
                               {otherUser?.full_name || 'Unknown User'}
                             </span>
                             {otherUser?.is_verified && otherUser?.verification_status === 'approved' && (
-                              <Badge variant="verified" className="h-4 px-1">
+                              <Badge variant="verified" tooltip="Verified User" className="h-4 px-1">
                                 <Shield className="h-2.5 w-2.5" />
                               </Badge>
                             )}
                             {isOnline && (
-                              <Badge variant="online" className="text-xs px-1.5 py-0 h-4">
-                                Online
+                              <Badge variant="online" tooltip="Online" className="h-4 w-4 rounded-full p-0 flex items-center justify-center">
+                                <div className="h-2 w-2 bg-white rounded-full animate-pulse" />
                               </Badge>
                             )}
                           </div>

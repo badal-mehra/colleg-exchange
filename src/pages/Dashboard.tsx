@@ -328,6 +328,10 @@ const Dashboard = () => {
                 <ShoppingBag className="h-4 w-4 lg:mr-2" />
                 <span className="hidden lg:inline">Orders</span>
               </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/my-cart')} className="hover-scale shrink-0">
+                <Heart className="h-4 w-4 lg:mr-2" />
+                <span className="hidden lg:inline">My Cart</span>
+              </Button>
               <Button variant="outline" size="sm" onClick={() => navigate('/my-listings')} className="hover-scale shrink-0">
                 <Package className="h-4 w-4 lg:mr-2" />
                 <span className="hidden lg:inline">My Items</span>
@@ -496,7 +500,65 @@ const Dashboard = () => {
                         <MessageCircle className="h-3 w-3 mr-1" />
                         Chat
                       </Button>
-                      <Button size="sm" variant="outline" className="h-8 px-3">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="h-8 px-3"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!user) {
+                            toast({
+                              title: "Login Required",
+                              description: "Please login to add items to your cart",
+                              variant: "destructive",
+                            });
+                            navigate('/auth');
+                            return;
+                          }
+
+                          if (!isVerified) {
+                            toast({
+                              title: "Verification Required",
+                              description: "Please complete your KYC verification",
+                              variant: "destructive",
+                            });
+                            navigate('/kyc');
+                            return;
+                          }
+
+                          try {
+                            // Check if already favorited
+                            const { data: existing } = await supabase
+                              .from('favorites')
+                              .select('id')
+                              .eq('user_id', user.id)
+                              .eq('item_id', item.id)
+                              .maybeSingle();
+
+                            if (existing) {
+                              await supabase
+                                .from('favorites')
+                                .delete()
+                                .eq('id', existing.id);
+                              toast({
+                                title: "Removed from cart",
+                              });
+                            } else {
+                              await supabase
+                                .from('favorites')
+                                .insert({
+                                  user_id: user.id,
+                                  item_id: item.id,
+                                });
+                              toast({
+                                title: "Added to cart",
+                              });
+                            }
+                          } catch (error) {
+                            console.error('Error:', error);
+                          }
+                        }}
+                      >
                         <Heart className="h-3 w-3" />
                       </Button>
                     </div>

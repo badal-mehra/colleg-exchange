@@ -37,24 +37,31 @@ export interface BadgeProps
     VariantProps<typeof badgeVariants> {
   tooltip?: string;
   showTooltip?: boolean;
+  iconOnly?: boolean;
 }
 
-function Badge({ className, variant, tooltip, showTooltip = false, children, ...props }: BadgeProps) {
+function Badge({ className, variant, tooltip, showTooltip = true, iconOnly = false, children, ...props }: BadgeProps) {
   const badge = (
     <div className={cn(badgeVariants({ variant }), className)} {...props}>
       {children}
     </div>
   );
 
-  if (showTooltip && tooltip) {
+  // Always show tooltip if tooltip prop is provided or if iconOnly mode
+  if ((showTooltip && tooltip) || (iconOnly && typeof children === 'string')) {
+    const tooltipText = tooltip || (typeof children === 'string' ? children : '');
+    const badgeContent = iconOnly && typeof children === 'string' ? null : children;
+    
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            {badge}
+            <div className={cn(badgeVariants({ variant }), className)} {...props}>
+              {badgeContent}
+            </div>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{tooltip}</p>
+            <p>{tooltipText}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

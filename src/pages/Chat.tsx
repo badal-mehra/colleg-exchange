@@ -429,7 +429,7 @@ const Chat = () => {
                 <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
                   <h2 className="font-semibold text-sm sm:text-base truncate">{otherUser.full_name || 'User'}</h2>
                   {otherUser.verification_status === 'approved' && (
-                    <Badge variant="verified" showTooltip tooltip="Verified User" className="h-4 px-1">
+                    <Badge variant="verified" tooltip="Verified User" className="h-4 px-1">
                       <Shield className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     </Badge>
                   )}
