@@ -313,7 +313,6 @@ const Dashboard = () => {
                   <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
                 <h1 className="text-lg sm:text-xl lg:text-2xl font-bold gradient-text">MyCampusKart</h1>
-                {profile}
               </div>
               <Button size="sm" onClick={() => navigate('/sell')} className="lg:hidden bg-gradient-to-r from-primary to-primary/80 hover-scale">
                 <Plus className="h-4 w-4" />
