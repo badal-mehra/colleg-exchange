@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, CheckCircle, Clock, XCircle, User, Edit3, Save, X, Shield, Zap, Star, Settings, Award, Trophy, Target, Upload, Camera, Copy } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, XCircle, User, Edit3, Save, X, Shield, Zap, Star, Settings, Award, Trophy, Target, Upload, Camera, Copy, AlertTriangle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -411,6 +411,15 @@ const Profile = () => {
                       {profile?.verification_status ? 'Update KYC' : 'Complete KYC'}
                     </Button>
                   )}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => navigate('/my-reports')}
+                    className="w-full hover-scale"
+                  >
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    My Reports
+                  </Button>
                 </div>
               </CardContent>
             </Card>

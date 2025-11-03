@@ -553,6 +553,51 @@ export type Database = {
           },
         ]
       }
+      reports: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          id: string
+          reason: string
+          report_type: string
+          reported_by: string
+          reporter_email: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          target_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          reason: string
+          report_type: string
+          reported_by: string
+          reporter_email?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          target_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          reason?: string
+          report_type?: string
+          reported_by?: string
+          reporter_email?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          target_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       terms_and_conditions: {
         Row: {
           content: string

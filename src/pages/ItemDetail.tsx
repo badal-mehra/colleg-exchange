@@ -18,10 +18,12 @@ import {
   AlertCircle,
   Shield,
   ShoppingCart,
-  Star
+  Star,
+  AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
+import { ReportModal } from '@/components/ReportModal';
 
 interface Profile {
   id: string;
@@ -71,6 +73,7 @@ const ItemDetail = () => {
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [isFavorited, setIsFavorited] = useState(false);
   const [checkingFavorite, setCheckingFavorite] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -380,6 +383,9 @@ const ItemDetail = () => {
               <Button variant="ghost" size="sm" onClick={handleShare}>
                 <Share2 className="h-4 w-4" />
               </Button>
+              <Button variant="ghost" size="sm" onClick={() => setReportModalOpen(true)}>
+                <AlertTriangle className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>
@@ -600,6 +606,15 @@ const ItemDetail = () => {
           </div>
         </div>
       </div>
+
+      {/* Report Modal */}
+      <ReportModal 
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        reportType="listing"
+        targetId={item?.id}
+        targetName={item?.title}
+      />
     </div>
   );
 };

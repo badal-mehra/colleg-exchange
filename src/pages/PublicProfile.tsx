@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Award, Star, Trophy, Package, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, Award, Star, Trophy, Package, User as UserIcon, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ReportModal } from '@/components/ReportModal';
 
 interface Profile {
   id: string;
@@ -39,6 +40,7 @@ const PublicProfile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [listings, setListings] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   useEffect(() => {
     fetchProfileAndListings();
@@ -175,6 +177,16 @@ const PublicProfile = () => {
                   )}
                 </div>
               </div>
+
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setReportModalOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <AlertTriangle className="h-4 w-4" />
+                Report User
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -235,6 +247,15 @@ const PublicProfile = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Report Modal */}
+      <ReportModal 
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        reportType="seller"
+        targetId={profile?.user_id}
+        targetName={profile?.full_name}
+      />
     </div>
   );
 };

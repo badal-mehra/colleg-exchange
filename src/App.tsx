@@ -24,6 +24,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ScanQR from "./pages/ScanQR";
 import MyOrders from "./pages/MyOrders";
 import MyCart from "./pages/MyCart";
+import MyReports from "./pages/MyReports";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,7 @@ const App = () => (
             } />
             <Route path="/my-chats" element={<ProtectedRoute><MyChats /></ProtectedRoute>} />
             <Route path="/my-cart" element={<ProtectedRoute><MyCart /></ProtectedRoute>} />
+            <Route path="/my-reports" element={<ProtectedRoute><MyReports /></ProtectedRoute>} />
             <Route path="/my-listings" element={<ProtectedRoute><MyListings /></ProtectedRoute>} />
             <Route path="/my-orders" element={<ProtectedRoute><MyOrders /></ProtectedRoute>} />
             <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />

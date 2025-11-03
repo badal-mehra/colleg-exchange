@@ -7,9 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, Users, ShoppingBag, CheckCircle, XCircle, UserPlus, Trash2, Eye } from 'lucide-react';
+import { Shield, Users, ShoppingBag, CheckCircle, XCircle, UserPlus, Trash2, Eye, AlertTriangle, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Profile {
   id: string;
@@ -48,6 +50,8 @@ const AdminDashboard = () => {
   const [newUniversity, setNewUniversity] = useState({ name: '', code: '', location: '' });
   const [termsConditions, setTermsConditions] = useState<any[]>([]);
   const [newTerms, setNewTerms] = useState({ content: '', version: '' });
+  const [reports, setReports] = useState<any[]>([]);
+  const [reportFilter, setReportFilter] = useState<string>('all');
 
   useEffect(() => {
     checkAdminStatus();
@@ -76,7 +80,7 @@ const AdminDashboard = () => {
       }
 
       setIsAdmin(true);
-      await Promise.all([fetchProfiles(), fetchItems(), fetchSliderImages(), fetchUniversities(), fetchTermsConditions()]);
+      await Promise.all([fetchProfiles(), fetchItems(), fetchSliderImages(), fetchUniversities(), fetchTermsConditions(), fetchReports()]);
     } catch (error) {
       console.error('Error checking admin status:', error);
       navigate('/dashboard');
@@ -102,13 +106,10 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleVerificationUpdate = async (profileId: string, status: 'approved' | 'rejected') => {
+  const handleVerificationUpdate = async (profileId: string, newStatus: string) => {
     const { error } = await supabase
       .from('profiles')
-      .update({ 
-        verification_status: status,
-        is_verified: status === 'approved'
-      })
+      .update({ verification_status: newStatus })
       .eq('id', profileId);
 
     if (error) {
@@ -120,7 +121,7 @@ const AdminDashboard = () => {
     } else {
       toast({
         title: "Success",
-        description: `Verification ${status}`,
+        description: `Verification status updated to ${newStatus}`,
       });
       fetchProfiles();
     }
@@ -169,11 +170,31 @@ const AdminDashboard = () => {
     if (error) {
       toast({
         title: "Error",
-        description: "Failed to fetch terms",
+        description: "Failed to fetch terms and conditions",
         variant: "destructive",
       });
     } else {
       setTermsConditions(data || []);
+    }
+  };
+
+  const fetchReports = async () => {
+    const { data, error } = await supabase
+      .from('reports')
+      .select(`
+        *,
+        reported_user:profiles!reports_reported_by_fkey(full_name, email)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch reports",
+        variant: "destructive",
+      });
+    } else {
+      setReports(data || []);
     }
   };
 
@@ -193,6 +214,37 @@ const AdminDashboard = () => {
       setSliderImages(data || []);
     }
   };
+
+  const handleReportStatusUpdate = async (reportId: string, newStatus: string, adminNotes?: string) => {
+    const { error } = await supabase
+      .from('reports')
+      .update({ 
+        status: newStatus,
+        admin_notes: adminNotes,
+        reviewed_by: user?.id,
+        reviewed_at: new Date().toISOString()
+      })
+      .eq('id', reportId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update report status",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: `Report marked as ${newStatus}`,
+      });
+      fetchReports();
+    }
+  };
+
+  const filteredReports = reports.filter(report => {
+    if (reportFilter === 'all') return true;
+    return report.status === reportFilter;
+  });
 
   if (loading) {
     return (
@@ -230,7 +282,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="users">
               <Users className="h-4 w-4 mr-2" />
               Users & KYC
@@ -239,21 +291,16 @@ const AdminDashboard = () => {
               <ShoppingBag className="h-4 w-4 mr-2" />
               Listings
             </TabsTrigger>
-            <TabsTrigger value="slider">
-              <ShoppingBag className="h-4 w-4 mr-2" />
-              Slider Images
+            <TabsTrigger value="reports">
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Reports
             </TabsTrigger>
-            <TabsTrigger value="universities">
-              <Shield className="h-4 w-4 mr-2" />
-              Universities
-            </TabsTrigger>
-            <TabsTrigger value="terms">
-              <Shield className="h-4 w-4 mr-2" />
-              Terms & Conditions
-            </TabsTrigger>
+            <TabsTrigger value="slider">Images</TabsTrigger>
+            <TabsTrigger value="universities">Universities</TabsTrigger>
+            <TabsTrigger value="terms">Terms</TabsTrigger>
             <TabsTrigger value="admins">
               <Shield className="h-4 w-4 mr-2" />
-              Admin Management
+              Admins
             </TabsTrigger>
           </TabsList>
 
@@ -358,6 +405,121 @@ const AdminDashboard = () => {
                       </Button>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="reports">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Reports & Feedback Management</CardTitle>
+                  <Select value={reportFilter} onValueChange={setReportFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Filter reports" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Reports</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="reviewed">Reviewed</SelectItem>
+                      <SelectItem value="resolved">Resolved</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {filteredReports.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <AlertTriangle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No reports found</p>
+                    </div>
+                  ) : (
+                    filteredReports.map((report) => (
+                      <Card key={report.id} className="border-2">
+                        <CardContent className="pt-6">
+                          <div className="space-y-4">
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant={
+                                    report.status === 'pending' ? 'default' :
+                                    report.status === 'reviewed' ? 'secondary' : 'outline'
+                                  } className="capitalize">
+                                    {report.status}
+                                  </Badge>
+                                  <Badge variant="outline" className="capitalize">
+                                    {report.report_type}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  Reported by: {report.reported_user?.full_name} ({report.reporter_email})
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(report.created_at).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div>
+                              <p className="text-sm font-medium mb-1">Reason:</p>
+                              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                                {report.reason}
+                              </p>
+                            </div>
+
+                            {report.admin_notes && (
+                              <div>
+                                <p className="text-sm font-medium mb-1">Admin Notes:</p>
+                                <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                                  {report.admin_notes}
+                                </p>
+                              </div>
+                            )}
+
+                            <div className="flex gap-2 pt-2">
+                              {report.status === 'pending' && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleReportStatusUpdate(report.id, 'reviewed')}
+                                  >
+                                    Mark as Reviewed
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleReportStatusUpdate(report.id, 'resolved', 'Issue resolved by admin')}
+                                  >
+                                    Resolve
+                                  </Button>
+                                </>
+                              )}
+                              {report.status === 'reviewed' && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleReportStatusUpdate(report.id, 'resolved', 'Issue resolved after review')}
+                                >
+                                  Mark as Resolved
+                                </Button>
+                              )}
+                              {report.target_id && report.report_type === 'listing' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => navigate(`/item/${report.target_id}`)}
+                                >
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Listing
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -650,7 +812,7 @@ const AdminDashboard = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="terms-content">Content</Label>
-                      <textarea
+                      <Textarea
                         id="terms-content"
                         className="w-full min-h-[200px] p-3 rounded-md border border-input bg-background"
                         placeholder="Enter terms and conditions content..."
