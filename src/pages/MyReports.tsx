@@ -50,7 +50,7 @@ export default function MyReports() {
       setReports(data || []);
     } catch (error: any) {
       console.error("Error fetching reports:", error);
-      toast.error("Failed to load reports");
+      toast.error(error.message || "Failed to load reports");
     } finally {
       setLoading(false);
     }
