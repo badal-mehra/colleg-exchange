@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Footer } from '@/components/Footer';
 
 interface Category {
   id: string;
@@ -583,13 +584,7 @@ const Home = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t bg-card/50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center text-muted-foreground">
-            <p>&copy; 2024 MyCampusKart. Built for students, by students.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

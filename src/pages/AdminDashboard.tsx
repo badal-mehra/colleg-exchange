@@ -52,6 +52,9 @@ const AdminDashboard = () => {
   const [newTerms, setNewTerms] = useState({ content: '', version: '' });
   const [reports, setReports] = useState<any[]>([]);
   const [reportFilter, setReportFilter] = useState<string>('all');
+  const [footerSettings, setFooterSettings] = useState<any[]>([]);
+  const [newFooterSetting, setNewFooterSetting] = useState({ section: 'quick_links', key: '', value: '', link_url: '' });
+  const [editingFooter, setEditingFooter] = useState<any>(null);
 
   useEffect(() => {
     checkAdminStatus();
@@ -80,7 +83,7 @@ const AdminDashboard = () => {
       }
 
       setIsAdmin(true);
-      await Promise.all([fetchProfiles(), fetchItems(), fetchSliderImages(), fetchUniversities(), fetchTermsConditions(), fetchReports()]);
+      await Promise.all([fetchProfiles(), fetchItems(), fetchSliderImages(), fetchUniversities(), fetchTermsConditions(), fetchReports(), fetchFooterSettings()]);
     } catch (error) {
       console.error('Error checking admin status:', error);
       navigate('/dashboard');
@@ -196,6 +199,24 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchFooterSettings = async () => {
+    const { data, error } = await supabase
+      .from('footer_settings')
+      .select('*')
+      .order('section')
+      .order('sort_order');
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch footer settings",
+        variant: "destructive",
+      });
+    } else {
+      setFooterSettings(data || []);
+    }
+  };
+
   const fetchSliderImages = async () => {
     const { data, error } = await supabase
       .from('image_slidebar')
@@ -280,7 +301,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="users">
               <Users className="h-4 w-4 mr-2" />
               Users & KYC
@@ -300,6 +321,7 @@ const AdminDashboard = () => {
               <Shield className="h-4 w-4 mr-2" />
               Admins
             </TabsTrigger>
+            <TabsTrigger value="footer">Footer</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users">
@@ -977,6 +999,245 @@ const AdminDashboard = () => {
                         onChange={(e) => setNewAdminEmail(e.target.value)}
                       />
                     </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="footer">
+            <Card>
+              <CardHeader>
+                <CardTitle>Footer Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Add/Edit Footer Setting Form */}
+                  <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                    <h3 className="font-medium">{editingFooter ? 'Edit' : 'Add'} Footer Setting</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="section">Section</Label>
+                        <Select 
+                          value={editingFooter ? editingFooter.section : newFooterSetting.section}
+                          onValueChange={(value) => {
+                            if (editingFooter) {
+                              setEditingFooter({ ...editingFooter, section: value });
+                            } else {
+                              setNewFooterSetting({ ...newFooterSetting, section: value });
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select section" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="about">About</SelectItem>
+                            <SelectItem value="quick_links">Quick Links</SelectItem>
+                            <SelectItem value="support">Support & Feedback</SelectItem>
+                            <SelectItem value="contact">Connect With Us</SelectItem>
+                            <SelectItem value="copyright">Copyright</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="key">Key</Label>
+                        <Input
+                          id="key"
+                          placeholder="unique-key"
+                          value={editingFooter ? editingFooter.key : newFooterSetting.key}
+                          onChange={(e) => {
+                            if (editingFooter) {
+                              setEditingFooter({ ...editingFooter, key: e.target.value });
+                            } else {
+                              setNewFooterSetting({ ...newFooterSetting, key: e.target.value });
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Label htmlFor="value">Display Text</Label>
+                        <Textarea
+                          id="value"
+                          placeholder="Display text"
+                          value={editingFooter ? editingFooter.value : newFooterSetting.value}
+                          onChange={(e) => {
+                            if (editingFooter) {
+                              setEditingFooter({ ...editingFooter, value: e.target.value });
+                            } else {
+                              setNewFooterSetting({ ...newFooterSetting, value: e.target.value });
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Label htmlFor="link_url">Link URL (optional)</Label>
+                        <Input
+                          id="link_url"
+                          placeholder="https://example.com or /route"
+                          value={editingFooter ? editingFooter.link_url || '' : newFooterSetting.link_url}
+                          onChange={(e) => {
+                            if (editingFooter) {
+                              setEditingFooter({ ...editingFooter, link_url: e.target.value });
+                            } else {
+                              setNewFooterSetting({ ...newFooterSetting, link_url: e.target.value });
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={async () => {
+                          if (editingFooter) {
+                            const { error } = await supabase
+                              .from('footer_settings')
+                              .update({
+                                section: editingFooter.section,
+                                key: editingFooter.key,
+                                value: editingFooter.value,
+                                link_url: editingFooter.link_url || null,
+                              })
+                              .eq('id', editingFooter.id);
+
+                            if (error) {
+                              toast({
+                                title: "Error",
+                                description: "Failed to update footer setting",
+                                variant: "destructive",
+                              });
+                            } else {
+                              toast({
+                                title: "Success",
+                                description: "Footer setting updated",
+                              });
+                              setEditingFooter(null);
+                              fetchFooterSettings();
+                            }
+                          } else {
+                            const { error } = await supabase
+                              .from('footer_settings')
+                              .insert([newFooterSetting]);
+
+                            if (error) {
+                              toast({
+                                title: "Error",
+                                description: error.message || "Failed to add footer setting",
+                                variant: "destructive",
+                              });
+                            } else {
+                              toast({
+                                title: "Success",
+                                description: "Footer setting added",
+                              });
+                              setNewFooterSetting({ section: 'quick_links', key: '', value: '', link_url: '' });
+                              fetchFooterSettings();
+                            }
+                          }
+                        }}
+                      >
+                        {editingFooter ? 'Update' : 'Add'} Setting
+                      </Button>
+                      {editingFooter && (
+                        <Button variant="outline" onClick={() => setEditingFooter(null)}>
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Existing Footer Settings */}
+                  <div className="space-y-4">
+                    <h3 className="font-medium">Existing Footer Settings</h3>
+                    {['about', 'quick_links', 'support', 'contact', 'copyright'].map((section) => {
+                      const sectionItems = footerSettings.filter(item => item.section === section);
+                      if (sectionItems.length === 0) return null;
+                      
+                      return (
+                        <div key={section} className="space-y-2">
+                          <h4 className="text-sm font-medium text-muted-foreground capitalize">
+                            {section.replace('_', ' ')}
+                          </h4>
+                          {sectionItems.map((item) => (
+                            <div key={item.id} className="flex items-start justify-between p-4 border rounded-lg">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-medium">{item.key}</h4>
+                                  <Badge variant={item.is_active ? 'default' : 'secondary'}>
+                                    {item.is_active ? 'Active' : 'Inactive'}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-1">{item.value}</p>
+                                {item.link_url && (
+                                  <p className="text-xs text-muted-foreground mt-1">Link: {item.link_url}</p>
+                                )}
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setEditingFooter(item)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={async () => {
+                                    const { error } = await supabase
+                                      .from('footer_settings')
+                                      .update({ is_active: !item.is_active })
+                                      .eq('id', item.id);
+
+                                    if (error) {
+                                      toast({
+                                        title: "Error",
+                                        description: "Failed to toggle status",
+                                        variant: "destructive",
+                                      });
+                                    } else {
+                                      toast({
+                                        title: "Success",
+                                        description: `Setting ${item.is_active ? 'deactivated' : 'activated'}`,
+                                      });
+                                      fetchFooterSettings();
+                                    }
+                                  }}
+                                >
+                                  {item.is_active ? 'Deactivate' : 'Activate'}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={async () => {
+                                    const { error } = await supabase
+                                      .from('footer_settings')
+                                      .delete()
+                                      .eq('id', item.id);
+
+                                    if (error) {
+                                      toast({
+                                        title: "Error",
+                                        description: "Failed to delete setting",
+                                        variant: "destructive",
+                                      });
+                                    } else {
+                                      toast({
+                                        title: "Success",
+                                        description: "Setting deleted",
+                                      });
+                                      fetchFooterSettings();
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </CardContent>

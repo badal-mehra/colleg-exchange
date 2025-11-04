@@ -201,6 +201,42 @@ export type Database = {
         }
         Relationships: []
       }
+      footer_settings: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          key: string
+          link_url: string | null
+          section: string
+          sort_order: number
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key: string
+          link_url?: string | null
+          section: string
+          sort_order?: number
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key?: string
+          link_url?: string | null
+          section?: string
+          sort_order?: number
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       image_slidebar: {
         Row: {
           created_at: string
