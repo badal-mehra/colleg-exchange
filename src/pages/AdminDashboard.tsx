@@ -181,16 +181,14 @@ const AdminDashboard = () => {
   const fetchReports = async () => {
     const { data, error } = await supabase
       .from('reports')
-      .select(`
-        *,
-        reported_user:profiles!reports_reported_by_fkey(full_name, email)
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
+      console.error('Error fetching reports:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch reports",
+        description: error.message || "Failed to fetch reports",
         variant: "destructive",
       });
     } else {
