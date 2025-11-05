@@ -5,7 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
+import logo from '@/assets/mycampuskart-logo.png';
+import {
   Search, 
   User, 
   LogIn,
@@ -268,9 +269,12 @@ const Home = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-primary cursor-pointer" onClick={() => navigate('/')}>
-                MyCampusKart
-              </h1>
+              <img 
+                src={logo} 
+                alt="MyCampusKart" 
+                className="h-12 cursor-pointer"
+                onClick={() => navigate('/')}
+              />
               <Badge variant="outline" className="hidden md:flex">
                 Campus Marketplace
               </Badge>

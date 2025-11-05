@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { Linkedin, Instagram, Mail } from 'lucide-react';
+import logo from '@/assets/mycampuskart-logo.png';
 
 interface FooterSetting {
   id: string;
@@ -66,6 +67,15 @@ export const Footer = () => {
   return (
     <footer className="border-t bg-card/50">
       <div className="container mx-auto px-4 py-12">
+        {/* Logo */}
+        <div className="mb-8">
+          <img 
+            src={logo} 
+            alt="MyCampusKart" 
+            className="h-12"
+          />
+        </div>
+        
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           {/* About Column */}

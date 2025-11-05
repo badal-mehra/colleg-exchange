@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
+import logo from '@/assets/mycampuskart-logo.png';
+import {
   ArrowLeft, 
   MessageCircle, 
   Heart, 
@@ -378,7 +379,11 @@ const ItemDetail = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <h1 className="text-xl font-bold text-primary">MyCampusKart</h1>
+            <img 
+              src={logo} 
+              alt="MyCampusKart" 
+              className="h-10"
+            />
             <div className="flex items-center space-x-2">
               <Button variant="ghost" size="sm" onClick={handleShare}>
                 <Share2 className="h-4 w-4" />

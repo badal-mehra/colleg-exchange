@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ShoppingBag, Users, Shield, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import logo from '@/assets/mycampuskart-logo.png';
 
 const Auth = () => {
   const { user, signIn, signUp } = useAuth();
@@ -84,9 +85,11 @@ const Auth = () => {
         {/* Left side - Hero content */}
         <div className="space-y-8 text-center lg:text-left">
           <div className="space-y-4">
-            <h1 className="text-4xl lg:text-5xl font-bold text-primary">
-              MyCampusKart
-            </h1>
+            <img 
+              src={logo} 
+              alt="MyCampusKart" 
+              className="h-16 mx-auto lg:mx-0"
+            />
             <p className="text-xl text-muted-foreground">
               Your Campus Marketplace - Buy, Sell, Connect
             </p>
@@ -127,6 +130,13 @@ const Auth = () => {
         {/* Right side - Auth forms */}
         <Card className="w-full max-w-md mx-auto">
           <CardHeader className="text-center">
+            <div className="flex justify-center mb-4 lg:hidden">
+              <img 
+                src={logo} 
+                alt="MyCampusKart" 
+                className="h-14"
+              />
+            </div>
             <CardTitle>Welcome to MyCampusKart</CardTitle>
             <CardDescription>
               Join your campus marketplace

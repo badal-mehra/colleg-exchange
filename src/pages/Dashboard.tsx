@@ -10,6 +10,7 @@ import { Search, Plus, User, LogOut, Filter, Heart, MessageCircle, Eye, Shopping
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ImageCarousel from '@/components/ImageCarousel';
+import logo from '@/assets/mycampuskart-logo.png';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 interface Profile {
@@ -309,10 +310,12 @@ const Dashboard = () => {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 sm:gap-3">
-                <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-primary to-primary/60 rounded-xl flex items-center justify-center shrink-0">
-                  <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-                </div>
-                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold gradient-text">MyCampusKart</h1>
+                <img 
+                  src={logo} 
+                  alt="MyCampusKart" 
+                  className="h-10 sm:h-12 cursor-pointer"
+                  onClick={() => navigate('/dashboard')}
+                />
               </div>
               <Button size="sm" onClick={() => navigate('/sell')} className="lg:hidden bg-gradient-to-r from-primary to-primary/80 hover-scale">
                 <Plus className="h-4 w-4" />
