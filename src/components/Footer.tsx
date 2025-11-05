@@ -92,16 +92,40 @@ export const Footer = () => {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Quick Links</h3>
             <ul className="space-y-2">
-              {footerData.quickLinks.map((item) => (
-                <li key={item.id}>
-                  <Link
-                    to={item.link_url || '#'}
-                    className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    {item.value}
-                  </Link>
-                </li>
-              ))}
+              {footerData.quickLinks.length > 0 ? (
+                footerData.quickLinks.map((item) => (
+                  <li key={item.id}>
+                    {item.link_url ? (
+                      <Link
+                        to={item.link_url}
+                        className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        {item.value}
+                      </Link>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">{item.value}</span>
+                    )}
+                  </li>
+                ))
+              ) : (
+                <>
+                  <li>
+                    <Link to="/about" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                      About Us
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/terms" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                      Terms & Conditions
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/privacy" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                      Privacy Policy
+                    </Link>
+                  </li>
+                </>
+              )}
             </ul>
           </div>
 

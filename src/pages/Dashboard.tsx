@@ -446,7 +446,9 @@ const Dashboard = () => {
             const adBenefits = getAdTypeBenefits(item.ad_type);
             return <Card key={item.id} className="group hover:shadow-xl hover:shadow-primary/10 transition-all duration-500 cursor-pointer border border-border hover:border-primary/30 overflow-hidden bg-card animate-fade-in hover-scale" onClick={() => navigate(`/item/${item.id}`)}>
                     <div className="relative">
-                      <ImageCarousel images={item.images} alt={item.title} className="h-56" />
+                      <div className="aspect-square w-full">
+                        <ImageCarousel images={item.images} alt={item.title} className="h-full w-full" />
+                      </div>
                       {adBenefits && <Tooltip>
                           <TooltipTrigger asChild>
                             <Badge className={`absolute top-2 left-2 text-xs flex items-center gap-1 ${adBenefits.color} cursor-help`}>
