@@ -555,13 +555,13 @@ const ItemDetail = () => {
                     <Button 
                       className="w-full relative group overflow-hidden" 
                       size="lg"
-                      onClick={handleBuyNow}
+                      onClick={handleChatClick}
                       disabled={!user || (!isVerified && !isOwner) || item.is_sold}
                     >
                       <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <ShoppingCart className="h-5 w-5 mr-2 relative z-10" />
+                      <MessageCircle className="h-5 w-5 mr-2 relative z-10" />
                       <span className="relative z-10 font-semibold">
-                        {item.is_sold ? 'Sold Out' : 'Buy Now'}
+                        {item.is_sold ? 'Sold Out' : 'Start Bargaining'}
                       </span>
                     </Button>
                     

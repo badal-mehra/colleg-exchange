@@ -117,9 +117,14 @@ All colors MUST be HSL.
   * {
     @apply border-border;
   }
-
+  
   body {
     @apply bg-background text-foreground;
+  }
+  
+  /* Hide Lovable badge globally */
+  #lovable-badge {
+    display: none !important;
   }
 }
 
