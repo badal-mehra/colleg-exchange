@@ -237,3 +237,45 @@ All colors MUST be HSL.
     transform: translateY(-20px);
   }
 }
+
+/* Responsive carousel and image containers */
+.carousel-container {
+  height: 250px;
+  position: relative;
+}
+
+@media (min-width: 768px) {
+  .carousel-container {
+    height: 350px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .carousel-container {
+    height: 450px;
+  }
+}
+
+.carousel-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Listing image containers */
+.listing-image-container {
+  height: 200px;
+  position: relative;
+}
+
+@media (min-width: 640px) {
+  .listing-image-container {
+    height: 220px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .listing-image-container {
+    height: 240px;
+  }
+}

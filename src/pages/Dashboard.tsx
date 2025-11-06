@@ -427,7 +427,7 @@ const Dashboard = () => {
         {/* Items Grid */}
         {loading ? <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[...Array(8)].map((_, i) => <Card key={i} className="animate-pulse overflow-hidden">
-                <div className="h-48 bg-muted"></div>
+                <div className="listing-image-container bg-muted"></div>
                 <CardContent className="p-3">
                   <div className="h-4 bg-muted rounded mb-2"></div>
                   <div className="h-6 bg-muted rounded mb-2"></div>
@@ -446,7 +446,7 @@ const Dashboard = () => {
             const adBenefits = getAdTypeBenefits(item.ad_type);
             return <Card key={item.id} className="group hover:shadow-xl hover:shadow-primary/10 transition-all duration-500 cursor-pointer border border-border hover:border-primary/30 overflow-hidden bg-card animate-fade-in hover-scale" onClick={() => navigate(`/item/${item.id}`)}>
                     <div className="relative">
-                      <div className="aspect-square w-full">
+                      <div className="aspect-square w-full rounded-t-lg overflow-hidden">
                         <ImageCarousel images={item.images} alt={item.title} className="h-full w-full" />
                       </div>
                       {adBenefits && <Tooltip>

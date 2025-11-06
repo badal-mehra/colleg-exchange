@@ -22,11 +22,11 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, alt, className = 
 
   if (images.length === 1) {
     return (
-      <div className={`relative overflow-hidden bg-muted ${className}`}>
+      <div className={`relative overflow-hidden bg-background ${className}`}>
         <img 
           src={images[0]} 
           alt={alt}
-          className="w-full h-full object-contain"
+          className="w-full h-full object-cover"
           onError={(e) => {
             e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik03NSA3NUgxMjVWMTI1SDc1Vjc1WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
           }}
@@ -36,16 +36,16 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, alt, className = 
   }
 
   return (
-    <div className={`relative bg-muted ${className}`}>
+    <div className={`relative bg-background ${className}`}>
       <Carousel className="w-full h-full">
         <CarouselContent>
           {images.map((image, index) => (
             <CarouselItem key={index}>
-              <div className="w-full h-full bg-muted flex items-center justify-center">
+              <div className="w-full h-full bg-background flex items-center justify-center">
                 <img 
                   src={image} 
                   alt={`${alt} - Image ${index + 1}`}
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-cover"
                   onError={(e) => {
                     e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik03NSA3NUgxMjVWMTI1SDc1Vjc1WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
                   }}

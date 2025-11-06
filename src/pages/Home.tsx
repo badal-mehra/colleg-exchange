@@ -205,7 +205,7 @@ const Home = () => {
     return (
       <section className="py-12 bg-card/50">
         <div className="container mx-auto px-4">
-          <div className="relative h-64 lg:h-80 rounded-xl overflow-hidden bg-gradient-to-r from-primary/10 to-accent/10">
+          <div className="relative carousel-container rounded-2xl overflow-hidden shadow-lg">
             {sliderImages.map((image, index) => (
               <div
                 key={image.id}
@@ -217,13 +217,13 @@ const Home = () => {
                 <img
                   src={image.image_url}
                   alt={image.title}
-                  className="w-full h-full object-contain bg-gradient-to-br from-muted/50 to-muted"
+                  className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <div className="text-center text-white space-y-4 max-w-2xl px-4">
-                    {image.title && <h2 className="text-2xl lg:text-4xl font-bold">{image.title}</h2>}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-12">
+                  <div className="text-center text-white space-y-3 max-w-2xl px-4">
+                    {image.title && <h2 className="text-2xl lg:text-4xl font-bold drop-shadow-lg">{image.title}</h2>}
                     {image.description && (
-                      <p className="text-lg lg:text-xl opacity-90">{image.description}</p>
+                      <p className="text-base lg:text-xl opacity-95 drop-shadow-md">{image.description}</p>
                     )}
                   </div>
                 </div>
@@ -364,7 +364,7 @@ const Home = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {[...Array(8)].map((_, i) => (
                 <Card key={i} className="animate-pulse overflow-hidden">
-                  <div className="h-48 bg-muted"></div>
+                  <div className="listing-image-container bg-muted"></div>
                   <CardContent className="p-3">
                     <div className="h-4 bg-muted rounded mb-2"></div>
                     <div className="h-6 bg-muted rounded mb-2"></div>
@@ -393,8 +393,8 @@ const Home = () => {
                       style={{ animationDelay: `${index * 0.05}s` }}
                       onClick={() => handleItemClick(item.id)}
                     >
-                      <div className="relative">
-                        <div className="h-48 bg-muted flex items-center justify-center overflow-hidden">
+                       <div className="relative">
+                        <div className="listing-image-container bg-muted flex items-center justify-center overflow-hidden">
                           {item.images.length > 0 ? (
                             <img 
                               src={item.images[0]} 
