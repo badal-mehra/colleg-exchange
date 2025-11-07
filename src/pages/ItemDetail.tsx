@@ -20,11 +20,13 @@ import {
   Shield,
   ShoppingCart,
   Star,
-  AlertTriangle
+  AlertTriangle,
+  DollarSign
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
 import { ReportModal } from '@/components/ReportModal';
+import { BargainingDialog } from '@/components/BargainingDialog';
 
 interface Profile {
   id: string;
@@ -75,6 +77,7 @@ const ItemDetail = () => {
   const [isFavorited, setIsFavorited] = useState(false);
   const [checkingFavorite, setCheckingFavorite] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [bargainingDialogOpen, setBargainingDialogOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -205,7 +208,7 @@ const ItemDetail = () => {
     }
   };
 
-  const handleChatClick = async () => {
+  const handleChatClick = async (offerPrice?: number) => {
     if (!user) {
       toast({
         title: "Login Required",
@@ -237,6 +240,16 @@ const ItemDetail = () => {
         .single();
 
       if (existingConversation) {
+        // If offer price provided, send it as first message
+        if (offerPrice) {
+          await supabase
+            .from('messages')
+            .insert({
+              conversation_id: existingConversation.id,
+              sender_id: user.id,
+              content: `Hi! I'm interested in "${item!.title}". I'd like to offer ₹${offerPrice.toLocaleString()} for this item. Can we negotiate?`
+            });
+        }
         navigate(`/chat/${existingConversation.id}`);
         return;
       }
@@ -253,6 +266,17 @@ const ItemDetail = () => {
         .single();
 
       if (error) throw error;
+
+      // If offer price provided, send it as first message
+      if (offerPrice) {
+        await supabase
+          .from('messages')
+          .insert({
+            conversation_id: newConversation.id,
+            sender_id: user.id,
+            content: `Hi! I'm interested in "${item!.title}". I'd like to offer ₹${offerPrice.toLocaleString()} for this item. Can we negotiate?`
+          });
+      }
 
       navigate(`/chat/${newConversation.id}`);
     } catch (error) {
@@ -555,13 +579,13 @@ const ItemDetail = () => {
                     <Button 
                       className="w-full relative group overflow-hidden" 
                       size="lg"
-                      onClick={handleChatClick}
+                      onClick={() => setBargainingDialogOpen(true)}
                       disabled={!user || (!isVerified && !isOwner) || item.is_sold}
                     >
                       <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <MessageCircle className="h-5 w-5 mr-2 relative z-10" />
+                      <DollarSign className="h-5 w-5 mr-2 relative z-10" />
                       <span className="relative z-10 font-semibold">
-                        {item.is_sold ? 'Sold Out' : 'Start Bargaining'}
+                        {item.is_sold ? 'Sold Out' : 'Make an Offer'}
                       </span>
                     </Button>
                     
@@ -570,7 +594,7 @@ const ItemDetail = () => {
                         variant="outline"
                         className="flex-1" 
                         size="lg"
-                        onClick={handleChatClick}
+                        onClick={() => handleChatClick()}
                         disabled={!user || (!isVerified && !isOwner)}
                       >
                         <MessageCircle className="h-5 w-5 mr-2" />
@@ -619,6 +643,15 @@ const ItemDetail = () => {
         reportType="listing"
         targetId={item?.id}
         targetName={item?.title}
+      />
+
+      {/* Bargaining Dialog */}
+      <BargainingDialog
+        isOpen={bargainingDialogOpen}
+        onClose={() => setBargainingDialogOpen(false)}
+        originalPrice={item?.price || 0}
+        onSubmit={(offerPrice) => handleChatClick(offerPrice)}
+        itemTitle={item?.title || ''}
       />
     </div>
   );

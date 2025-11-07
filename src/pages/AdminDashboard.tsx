@@ -184,7 +184,11 @@ const AdminDashboard = () => {
   const fetchReports = async () => {
     const { data, error } = await supabase
       .from('reports')
-      .select('*')
+      .select(`
+        *,
+        reporter:profiles!reports_reported_by_fkey(full_name, email, avatar_url, mck_id),
+        reported_user:profiles!reports_target_id_fkey(full_name, email, avatar_url, mck_id)
+      `)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -461,8 +465,8 @@ const AdminDashboard = () => {
                         <CardContent className="pt-6">
                           <div className="space-y-4">
                             <div className="flex items-start justify-between">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
+                              <div className="space-y-1 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <Badge variant={
                                     report.status === 'pending' ? 'default' :
                                     report.status === 'reviewed' ? 'secondary' : 'outline'
@@ -473,57 +477,89 @@ const AdminDashboard = () => {
                                     {report.report_type}
                                   </Badge>
                                 </div>
-                                <p className="text-sm text-muted-foreground">
-                                  Reported by: {report.reported_user?.full_name} ({report.reporter_email})
-                                </p>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 p-3 bg-muted/30 rounded-lg">
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Reporter:</p>
+                                    <div className="flex items-center gap-2">
+                                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
+                                        {report.reporter?.full_name?.charAt(0) || 'U'}
+                                      </div>
+                                      <div>
+                                        <p className="text-sm font-medium">{report.reporter?.full_name || 'Unknown'}</p>
+                                        <p className="text-xs text-muted-foreground">{report.reporter_email}</p>
+                                        {report.reporter?.mck_id && (
+                                          <p className="text-xs font-mono text-primary">{report.reporter.mck_id}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {report.report_type === 'seller' && report.reported_user && (
+                                    <div>
+                                      <p className="text-xs font-medium text-muted-foreground mb-1">Reported User:</p>
+                                      <div className="flex items-center gap-2">
+                                        <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center text-xs font-semibold text-destructive">
+                                          {report.reported_user.full_name?.charAt(0) || 'U'}
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-medium">{report.reported_user.full_name || 'Unknown'}</p>
+                                          <p className="text-xs text-muted-foreground">{report.reported_user.email}</p>
+                                          {report.reported_user.mck_id && (
+                                            <p className="text-xs font-mono text-primary">{report.reported_user.mck_id}</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
                                 <p className="text-xs text-muted-foreground">
-                                  {new Date(report.created_at).toLocaleString()}
+                                  Reported on: {new Date(report.created_at).toLocaleString()}
                                 </p>
                               </div>
                             </div>
 
                             <div>
                               <p className="text-sm font-medium mb-1">Reason:</p>
-                              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
                                 {report.reason}
                               </p>
                             </div>
 
-                            {report.admin_notes && (
-                              <div>
-                                <p className="text-sm font-medium mb-1">Admin Notes:</p>
-                                <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
-                                  {report.admin_notes}
-                                </p>
-                              </div>
-                            )}
+                            <div>
+                              <Label htmlFor={`admin-notes-${report.id}`} className="text-sm font-medium mb-2 block">
+                                Admin Notes (visible to reported user):
+                              </Label>
+                              <Textarea
+                                id={`admin-notes-${report.id}`}
+                                placeholder="Add notes for this report (e.g., actions taken, warnings issued)..."
+                                defaultValue={report.admin_notes || ''}
+                                onBlur={(e) => {
+                                  if (e.target.value !== report.admin_notes) {
+                                    handleReportStatusUpdate(report.id, report.status, e.target.value);
+                                  }
+                                }}
+                                rows={3}
+                                className="resize-none"
+                              />
+                            </div>
 
-                            <div className="flex gap-2 pt-2">
-                              {report.status === 'pending' && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleReportStatusUpdate(report.id, 'reviewed')}
-                                  >
-                                    Mark as Reviewed
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleReportStatusUpdate(report.id, 'resolved', 'Issue resolved by admin')}
-                                  >
-                                    Resolve
-                                  </Button>
-                                </>
-                              )}
-                              {report.status === 'reviewed' && (
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleReportStatusUpdate(report.id, 'resolved', 'Issue resolved after review')}
-                                >
-                                  Mark as Resolved
-                                </Button>
-                              )}
+                            <div className="flex gap-2 pt-2 flex-wrap">
+                              <Select
+                                value={report.status}
+                                onValueChange={(value) => handleReportStatusUpdate(report.id, value, report.admin_notes)}
+                              >
+                                <SelectTrigger className="w-[180px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending">Pending</SelectItem>
+                                  <SelectItem value="reviewed">Reviewed</SelectItem>
+                                  <SelectItem value="resolved">Resolved</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              
                               {report.target_id && report.report_type === 'listing' && (
                                 <Button
                                   size="sm"
@@ -532,6 +568,20 @@ const AdminDashboard = () => {
                                 >
                                   <Eye className="h-4 w-4 mr-2" />
                                   View Listing
+                                </Button>
+                              )}
+                              
+                              {report.report_type === 'seller' && report.target_id && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    // Navigate to seller profile using target_id
+                                    navigate(`/profile/${report.reported_user?.mck_id}`);
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Seller
                                 </Button>
                               )}
                             </div>
