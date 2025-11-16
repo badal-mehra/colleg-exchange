@@ -1,0 +1,39 @@
+name: Build Vite Site with Sitemap
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate sitemap
+        run: |
+          echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+          <urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">
+            <url>
+              <loc>https://mycampuskart.com/</loc>
+            </url>
+          </urlset>" > public/sitemap.xml
+
+      - name: Build site
+        run: npm run build
+
+      - name: Upload dist folder
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: dist
