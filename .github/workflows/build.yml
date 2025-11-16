@@ -1,8 +1,11 @@
-name: Build Vite Site with Sitemap
+name: Build and Export Vite Site
 
 on:
   push:
     branches: [ "main" ]
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -10,30 +13,40 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
 
       - name: Install dependencies
         run: npm install
 
-      - name: Generate sitemap
+      - name: Add sitemap manually
         run: |
+          mkdir -p public
           echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
           <urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">
             <url>
               <loc>https://mycampuskart.com/</loc>
+              <priority>1.0</priority>
             </url>
           </urlset>" > public/sitemap.xml
 
       - name: Build site
         run: npm run build
 
-      - name: Upload dist folder
-        uses: actions/upload-artifact@v3
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist
+
+      - name: Commit dist to repo
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add dist -f
+          git commit -m "Add dist build" || echo "No changes"
+          git push || echo "No changes to push"
