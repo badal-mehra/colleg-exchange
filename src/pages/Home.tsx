@@ -7,25 +7,19 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import logo from '@/assets/mycampuskart-logo.png';
 import {
-  Search, 
-  User, 
+  Search,
+  User,
   LogIn,
   Filter,
   ShoppingBag,
   Eye,
   MapPin,
-  Users,
-  Shield,
-  BookOpen,
-  ArrowRight,
-  TrendingUp,
   ChevronLeft,
   ChevronRight,
   Star,
   Crown,
   Zap,
   Clock,
-  Tag
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -205,56 +199,91 @@ const Home = () => {
     return (
       <section className="py-12 bg-card/50">
         <div className="container mx-auto px-4">
-          <div className="relative carousel-container rounded-2xl overflow-hidden shadow-lg">
-            {sliderImages.map((image, index) => (
-              <div
-                key={image.id}
-                className={`absolute inset-0 transition-opacity duration-500 ${
-                  index === currentSlide ? 'opacity-100' : 'opacity-0'
-                } ${image.link_url ? 'cursor-pointer' : ''}`}
-                onClick={() => handleSlideClick(image)}
-              >
-                <img
-                  src={image.image_url}
-                  alt={image.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-12">
-                  <div className="text-center text-white space-y-3 max-w-2xl px-4">
-                    {image.title && <h2 className="text-2xl lg:text-4xl font-bold drop-shadow-lg">{image.title}</h2>}
-                    {image.description && (
-                      <p className="text-base lg:text-xl opacity-95 drop-shadow-md">{image.description}</p>
-                    )}
+          <div className="space-y-6">
+            <div className="relative carousel-container rounded-2xl overflow-hidden shadow-lg">
+              {sliderImages.map((image, index) => (
+                <div
+                  key={image.id}
+                  className={`absolute inset-0 transition-opacity duration-500 ${
+                    index === currentSlide ? 'opacity-100' : 'opacity-0'
+                  } ${image.link_url ? 'cursor-pointer' : ''}`}
+                  onClick={() => handleSlideClick(image)}
+                >
+                  <img
+                    src={image.image_url}
+                    alt={image.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-12">
+                    <div className="text-center text-white space-y-3 max-w-2xl px-4">
+                      {image.title && <h2 className="text-2xl lg:text-4xl font-bold drop-shadow-lg">{image.title}</h2>}
+                      {image.description && (
+                        <p className="text-base lg:text-xl opacity-95 drop-shadow-md">{image.description}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-            
-            {/* Navigation buttons */}
-            <button
-              onClick={prevSlide}
-              className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <button
-              onClick={nextSlide}
-              className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-
-            {/* Dots indicator */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
-              {sliderImages.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentSlide(index)}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    index === currentSlide ? 'bg-white' : 'bg-white/50'
-                  }`}
-                />
               ))}
+
+              {/* Navigation buttons */}
+              <button
+                onClick={prevSlide}
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                onClick={nextSlide}
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+
+              {/* Dots indicator */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
+                {sliderImages.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentSlide(index)}
+                    className={`w-2 h-2 rounded-full transition-colors ${
+                      index === currentSlide ? 'bg-white' : 'bg-white/50'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Search Bar */}
+            <div className="max-w-2xl mx-auto w-full animate-scale-in">
+              <div className="flex flex-col md:flex-row gap-3 p-3 bg-card/50 rounded-xl border">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search for books, electronics, furniture..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 border-0 bg-background/50"
+                  />
+                </div>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="w-full md:w-48 border-0 bg-background/50">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.icon} {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button className="md:px-8">
+                  <Search className="h-4 w-4 mr-2" />
+                  Search
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -293,55 +322,6 @@ const Home = () => {
           </div>
         </div>
       </header>
-
-      {/* Hero Section */}
-      <section className="relative py-16 lg:py-24 bg-gradient-to-br from-primary/5 via-background to-accent/5">
-        <div className="container mx-auto px-4">
-          <div className="text-center space-y-8 max-w-4xl mx-auto">
-            <div className="space-y-4">
-              <h1 className="text-4xl lg:text-6xl font-bold tracking-tight animate-fade-in">
-                Buy & Sell on Your <span className="text-primary">Campus</span>
-              </h1>
-              <p className="text-xl lg:text-2xl text-muted-foreground animate-fade-in">
-                Join thousands of verified students trading safely on MyCampusKart
-              </p>
-            </div>
-
-            {/* Search Bar */}
-            <div className="max-w-2xl mx-auto animate-scale-in">
-              <div className="flex flex-col md:flex-row gap-3 p-3 bg-card/50 rounded-xl border">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search for books, electronics, furniture..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 border-0 bg-background/50"
-                  />
-                </div>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-full md:w-48 border-0 bg-background/50">
-                    <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.icon} {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button className="md:px-8">
-                  <Search className="h-4 w-4 mr-2" />
-                  Search
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Image Slidebar Section */}
       <ImageSlidebarSection />
@@ -510,82 +490,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-16 bg-card/30">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Why Choose MyCampusKart?</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Built specifically for students, by students. Safe, verified, and convenient.
-            </p>
-          </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="text-center space-y-4 p-6 rounded-xl bg-background border hover:shadow-lg transition-shadow">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                <Shield className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold">Verified Students</h3>
-              <p className="text-muted-foreground">
-                Only verified students can join. Safe transactions guaranteed with ID verification.
-              </p>
-            </div>
-
-            <div className="text-center space-y-4 p-6 rounded-xl bg-background border hover:shadow-lg transition-shadow">
-              <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto">
-                <ShoppingBag className="h-8 w-8 text-accent" />
-              </div>
-              <h3 className="text-xl font-semibold">Easy Trading</h3>
-              <p className="text-muted-foreground">
-                List items in seconds, browse by category, and find exactly what you need.
-              </p>
-            </div>
-
-            <div className="text-center space-y-4 p-6 rounded-xl bg-background border hover:shadow-lg transition-shadow">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                <Users className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold">Campus Community</h3>
-              <p className="text-muted-foreground">
-                Connect with students from your college. Built-in chat for easy communication.
-              </p>
-            </div>
-
-            <div className="text-center space-y-4 p-6 rounded-xl bg-background border hover:shadow-lg transition-shadow">
-              <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto">
-                <BookOpen className="h-8 w-8 text-accent" />
-              </div>
-              <h3 className="text-xl font-semibold">Student Focused</h3>
-              <p className="text-muted-foreground">
-                From textbooks to furniture, find everything you need for college life.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-16">
-        <div className="container mx-auto px-4 text-center">
-          <div className="max-w-2xl mx-auto space-y-8 p-8 rounded-2xl bg-gradient-to-br from-primary/5 to-accent/5 border">
-            <h2 className="text-3xl lg:text-4xl font-bold">
-              Ready to Start Trading?
-            </h2>
-            <p className="text-xl text-muted-foreground">
-              Join thousands of students already using MyCampusKart to buy and sell safely on campus.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="text-lg px-8" onClick={() => navigate('/auth')}>
-                Join MyCampusKart
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              <Button size="lg" variant="outline" className="text-lg px-8">
-                Learn More
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Footer */}
       <Footer />
