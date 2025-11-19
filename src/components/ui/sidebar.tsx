@@ -51,10 +51,34 @@ const SidebarProvider = React.forwardRef<
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
 
+  // FIX 1: Function to read the initial state from the cookie synchronously
+  const getInitialState = React.useCallback(() => {
+    if (openProp !== undefined) return openProp;
+    if (typeof document !== 'undefined') {
+      const cookieMatch = document.cookie.match(new RegExp(`(^| )${SIDEBAR_COOKIE_NAME}=([^;]+)`));
+      // Read the state from the cookie, defaultOpen par fallback karte hue
+      return cookieMatch ? cookieMatch[2] === "true" : defaultOpen;
+    }
+    return defaultOpen;
+  }, [defaultOpen, openProp]);
+
+  // Use the custom function to set the initial state
+  const [_open, _setOpen] = React.useState(getInitialState());
+  const open = openProp ?? _open;
+  
+  // FIX 2: State for FOUC/FOUState prevention
+  const [hasMounted, setHasMounted] = React.useState(false);
+  
+  React.useEffect(() => {
+    // Component mount hone ke baad setHasMounted ko true karein
+    setHasMounted(true);
+  }, []);
+
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(defaultOpen);
-  const open = openProp ?? _open;
+  // const [_open, _setOpen] = React.useState(defaultOpen); // Original line removed
+  // const open = openProp ?? _open; // Original line removed
+  
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === "function" ? value(open) : value;
@@ -109,6 +133,7 @@ const SidebarProvider = React.forwardRef<
     <SidebarContext.Provider value={contextValue}>
       <TooltipProvider delayDuration={0}>
         <div
+          data-fouc-mounted={hasMounted ? "true" : "false"} // <-- FIX: FOUC attribute added
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH,
@@ -127,6 +152,10 @@ const SidebarProvider = React.forwardRef<
   );
 });
 SidebarProvider.displayName = "SidebarProvider";
+
+// ... (Rest of Sidebar, SidebarTrigger, SidebarRail, etc. components are unchanged)
+
+// Unchanged components start here:
 
 const Sidebar = React.forwardRef<
   HTMLDivElement,
