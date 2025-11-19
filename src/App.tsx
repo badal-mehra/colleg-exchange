@@ -1,3 +1,4 @@
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -32,53 +33,127 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/item/:id" element={<ItemDetail />} />
-            <Route path="/kyc" element={
-              <ProtectedRoute>
-                <KYC />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            } />
-            <Route path="/profile/:mckId" element={<PublicProfile />} />
-            <Route path="/sell" element={
-              <ProtectedRoute>
-                <SellItem />
-              </ProtectedRoute>
-            } />
-            <Route path="/chat/:conversationId?" element={
-              <ProtectedRoute>
-                <Chat />
-              </ProtectedRoute>
-            } />
-            <Route path="/my-chats" element={<ProtectedRoute><MyChats /></ProtectedRoute>} />
-            <Route path="/my-cart" element={<ProtectedRoute><MyCart /></ProtectedRoute>} />
-            <Route path="/my-reports" element={<ProtectedRoute><MyReports /></ProtectedRoute>} />
-            <Route path="/my-listings" element={<ProtectedRoute><MyListings /></ProtectedRoute>} />
-            <Route path="/my-orders" element={<ProtectedRoute><MyOrders /></ProtectedRoute>} />
-            <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
-            <Route path="/scan-qr" element={<ProtectedRoute><ScanQR /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <SidebarProvider>   {/* IMPORTANT — ye missing tha */}
+          <Toaster />
+          <Sonner />
+
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/home" element={<Home />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/item/:id" element={<ItemDetail />} />
+              <Route
+                path="/kyc"
+                element={
+                  <ProtectedRoute>
+                    <KYC />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/profile/:mckId" element={<PublicProfile />} />
+              <Route
+                path="/sell"
+                element={
+                  <ProtectedRoute>
+                    <SellItem />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/chat/:conversationId?"
+                element={
+                  <ProtectedRoute>
+                    <Chat />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/my-chats"
+                element={
+                  <ProtectedRoute>
+                    <MyChats />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/my-cart"
+                element={
+                  <ProtectedRoute>
+                    <MyCart />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/my-reports"
+                element={
+                  <ProtectedRoute>
+                    <MyReports />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/my-listings"
+                element={
+                  <ProtectedRoute>
+                    <MyListings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/my-orders"
+                element={
+                  <ProtectedRoute>
+                    <MyOrders />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/leaderboard"
+                element={
+                  <ProtectedRoute>
+                    <Leaderboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/scan-qr"
+                element={
+                  <ProtectedRoute>
+                    <ScanQR />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </SidebarProvider>   {/* <- Ye close hona chahiye */}
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
