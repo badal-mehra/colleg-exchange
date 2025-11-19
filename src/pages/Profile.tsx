@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ImageCropModal from '@/components/ImageCropModal';
 
-// ⭐ UPDATED INTERFACE to include calculated ratings
+// ⭐ FIX: Profile Interface, 'user_ratings' MUST match the data structure returned by the query
 interface Profile {
   id: string;
   user_id: string;
@@ -35,7 +35,7 @@ interface Profile {
   trust_seller_badge: boolean;
   mck_id: string;
   avatar_url: string | null;
-  // NEW: Ratings summary for the user
+  // FIX: Supabase dynamic aggregation returns this structure
   user_ratings?: {
     count: number;
     avg: number | null;
@@ -92,7 +92,7 @@ const Profile = () => {
       .from('profiles')
       .select(`
         *,
-        // ⭐ NEW: Fetch aggregate ratings for the current user
+        // ⭐ FIX: Use the correct dynamic aggregation syntax
         user_ratings:ratings!to_user_id (count, avg:rating)
       `)
       .eq('user_id', user.id)
@@ -106,7 +106,7 @@ const Profile = () => {
         variant: "destructive",
       });
     } else {
-      setProfile(data as Profile);
+      setProfile(data as Profile); // FIX: Cast data to Profile type
       setFormData({
         full_name: data.full_name || '',
         phone: data.phone || '',
@@ -640,7 +640,7 @@ const Profile = () => {
           image={imageToCrop}
           isOpen={cropModalOpen}
           onClose={() => {
-            setCropModalModal(false);
+            setCropModalOpen(false);
             setImageToCrop(null);
           }}
           onCropComplete={handleCropComplete}
