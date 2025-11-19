@@ -80,13 +80,21 @@ const App = () => (
             <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
             
             {/* FIX 2: Static Page Dynamic Routing. Only include slugs that should be fetched from CMS */}
-            <Route path="/:slug(terms|privacy|about|shipping)" element={<StaticPage />} />
+            
             
             {/* Separate routes for Help and Report (assuming they need different logic or will be built later) */}
             {/* Since they are currently being routed to StaticPage which fails without CMS data, we can point them to NotFound temporarily, or better, to StaticPage as defined initially (and you ensure CMS data is there) */}
             
             {/* Reverting to the original definition since it was technically correct for routing: */}
-            <Route path="/:slug(terms|privacy|about|shipping|help|report)" element={<StaticPage />} />
+            <Route path="/terms" element={<StaticPage />} />
+            <Route path="/privacy" element={<StaticPage />} />
+            <Route path="/about" element={<StaticPage />} />
+            <Route path="/shipping" element={<StaticPage />} />
+
+{/* Help & Report ko abhi StaticPage pe mat bhejo */}
+            <Route path="/help" element={<NotFound />} />
+            <Route path="/report" element={<NotFound />} />
+
 
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
