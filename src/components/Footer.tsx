@@ -13,6 +13,13 @@ interface FooterSetting {
   sort_order: number;
 }
 
+// FIX 1: Helper function to check if a URL is external (needs <a> tag)
+const isExternal = (url: string | null): boolean => {
+    if (!url) return false;
+    // Checks for full URLs starting with http(s):// or mailto:
+    return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('mailto:');
+};
+
 export const Footer = () => {
   const [footerData, setFooterData] = useState<{
     about: FooterSetting[];
@@ -88,27 +95,42 @@ export const Footer = () => {
             ))}
           </div>
 
-          {/* Quick Links Column */}
+          {/* Quick Links Column - FIX 2: Dynamic link handling */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Quick Links</h3>
             <ul className="space-y-2">
               {footerData.quickLinks.length > 0 ? (
-                footerData.quickLinks.map((item) => (
-                  <li key={item.id}>
-                    {item.link_url ? (
-                      <Link
-                        to={item.link_url}
-                        className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                      >
-                        {item.value}
-                      </Link>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">{item.value}</span>
-                    )}
-                  </li>
-                ))
+                footerData.quickLinks.map((item) => {
+                  const external = isExternal(item.link_url); // Check external status
+                  return (
+                    <li key={item.id}>
+                      {item.link_url ? (
+                        external ? ( // Use <a> for external links
+                          <a
+                            href={item.link_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            {item.value}
+                          </a>
+                        ) : ( // Use <Link> for internal routes
+                          <Link
+                            to={item.link_url}
+                            className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            {item.value}
+                          </Link>
+                        )
+                      ) : (
+                        <span className="text-sm text-muted-foreground">{item.value}</span>
+                      )}
+                    </li>
+                  );
+                })
               ) : (
                 <>
+                  {/* Default links fallback */}
                   <li>
                     <Link to="/about" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                       About Us
@@ -129,28 +151,42 @@ export const Footer = () => {
             </ul>
           </div>
 
-          {/* Support & Feedback Column */}
+          {/* Support & Feedback Column - FIX 3: Dynamic link handling */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Support & Feedback</h3>
             <ul className="space-y-3">
-              {footerData.support.map((item) => (
-                <li key={item.id}>
-                  {item.link_url ? (
-                    <Link
-                      to={item.link_url}
-                      className="text-sm text-muted-foreground hover:text-primary transition-colors block"
-                    >
-                      {item.value}
-                    </Link>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">{item.value}</p>
-                  )}
-                </li>
-              ))}
+              {footerData.support.map((item) => {
+                const external = isExternal(item.link_url); // Check external status
+                return (
+                  <li key={item.id}>
+                    {item.link_url ? (
+                      external ? ( // Use <a> for external links
+                        <a
+                          href={item.link_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-muted-foreground hover:text-primary transition-colors block"
+                        >
+                          {item.value}
+                        </a>
+                      ) : ( // Use <Link> for internal routes
+                        <Link
+                          to={item.link_url}
+                          className="text-sm text-muted-foreground hover:text-primary transition-colors block"
+                        >
+                          {item.value}
+                        </Link>
+                      )
+                    ) : (
+                      <p className="text-sm text-muted-foreground">{item.value}</p>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
-          {/* Connect With Us Column */}
+          {/* Connect With Us Column (Already uses <a> tag, good) */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Connect With Us</h3>
             <ul className="space-y-3">
