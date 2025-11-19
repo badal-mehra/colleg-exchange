@@ -43,6 +43,12 @@ export const Footer = () => {
     copyright: []
   });
 
+  // FIX: Using a helper function for setting data to avoid repetition
+  const setFooterData = (data: typeof staticData) => {
+      setStaticData(data);
+  };
+
+
   useEffect(() => {
     fetchFooterSettings();
   }, []);
@@ -58,7 +64,7 @@ export const Footer = () => {
 
     if (pageError) {
         console.error("Error fetching static pages:", pageError);
-        // Fallback to empty state
+        // FIX: Error case mein bhi setFooterData ko use karna
         setFooterData({
             aboutContent: [],
             quickLinks: [],
