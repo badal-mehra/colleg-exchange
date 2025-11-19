@@ -154,15 +154,6 @@ const Auth = () => {
   };
 
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center p-4 bg-cover bg-center"
-      style={{ 
-        backgroundImage: `url(https://image.pollinations.ai/prompt/a%20vibrant%20university%20campus%20with%20students%20casually%20interacting,%20slightly%20blurred,%20muted%20colors,%20with%20a%20subtle%20overlay%20texture)`,
-        // Added a subtle dark overlay to ensure text readability on the card
-        backgroundBlendMode: 'overlay',
-        backgroundColor: 'rgba(0, 0, 0, 0.3)', // Adjust opacity as needed (0.3 = 30% black overlay)
-      }}
-    >
       {/* Container for the Auth Card with Fade-In Animation */}
       <div 
         className="
