@@ -27,6 +27,9 @@ interface Profile {
   avatar_url: string | null;
   mck_id: string;
   trust_seller_badge: boolean;
+  // ⭐ FIX: Added existing DB columns for rating
+  average_rating: number | null; 
+  total_ratings: number | null;
 }
 
 interface Category {
@@ -36,7 +39,7 @@ interface Category {
   icon: string;
 }
 
-// ⭐ FIX: Item Interface, 'seller_ratings' MUST match the data structure returned by the query
+// ⭐ FIX: Item Interface, removed complex aggregation field
 interface Item {
   id: string;
   title: string;
@@ -55,11 +58,6 @@ interface Item {
   expires_at: string;
   categories: Category;
   profiles: Profile;
-  // FIX: Supabase dynamic aggregation returns this structure
-  seller_ratings: {
-    count: number;
-    avg: number | null;
-  }[];
 }
 
 const getAdTypeBenefits = (adType: string) => {
@@ -162,9 +160,12 @@ const Dashboard = () => {
     let query = supabase.from('items').select(`
         *,
         categories (*),
-        profiles (*),
-        // ⭐ FIX: Use the correct dynamic aggregation syntax
-        seller_ratings:ratings!to_user_id (count, avg:rating) 
+        // ⭐ FIX: Fetch profiles and the rating columns directly
+        profiles (
+          *, 
+          average_rating, 
+          total_ratings
+        )
       `).eq('is_sold', false).order('created_at', {
       ascending: false
     });
@@ -197,7 +198,6 @@ const Dashboard = () => {
         variant: "destructive"
       });
     } else {
-      // FIX: Ensure data is cast correctly before setting state
       setItems(data as Item[] || []);
     }
     setLoading(false);
@@ -505,11 +505,9 @@ const Dashboard = () => {
               {items.map(item => {
             const adBenefits = getAdTypeBenefits(item.ad_type);
 
-            // ⭐ RATING CALCULATION LOGIC
-            // The structure is seller_ratings: [{ count: X, avg: Y }]
-            const ratingData = item.seller_ratings?.[0]; 
-            const averageRating = ratingData?.avg ? parseFloat(ratingData.avg.toFixed(1)) : null;
-            const totalCount = ratingData?.count || 0;
+            // ⭐ RATING CALCULATION LOGIC (Simplified: direct access)
+            const averageRating = item.profiles.average_rating ? parseFloat(item.profiles.average_rating.toFixed(1)) : null;
+            const totalCount = item.profiles.total_ratings || 0;
 
             return <Card key={item.id} className="group hover:shadow-xl hover:shadow-primary/10 transition-all duration-500 cursor-pointer border border-border hover:border-primary/30 overflow-hidden bg-card animate-fade-in hover-scale" onClick={() => navigate(`/item/${item.id}`)}>
                     <div className="relative">
@@ -560,7 +558,7 @@ const Dashboard = () => {
                       ) : (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Star className="h-3 w-3" />
-                            <span>({totalCount})</span>
+                            <span>(0)</span>
                           </div>
                       )}
                       {/* ---------------------------------- */}
