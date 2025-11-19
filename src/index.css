@@ -279,3 +279,13 @@ All colors MUST be HSL.
     height: 240px;
   }
 }
+
+
+
+/* Sidebar Flicker Fix (FOUC/FOUState) */
+.group\/sidebar-wrapper[data-fouc-mounted="false"] [data-sidebar="sidebar"] {
+  /* Hides the sidebar completely before React can read the cookie/set the correct state */
+  visibility: hidden;
+  opacity: 0;
+  transition: none !important; 
+}
