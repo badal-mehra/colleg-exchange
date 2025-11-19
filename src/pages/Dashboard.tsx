@@ -1,8 +1,10 @@
+// file: Dashboard.tsx
+
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card'; // CardHeader aur CardTitle removed if not used, but kept for consistency
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,7 +15,7 @@ import ImageCarousel from '@/components/ImageCarousel';
 import logo from '@/assets/mycampuskart-logo.png';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Footer } from '@/components/Footer'; // <-- FIX: Footer Imported
+import { Footer } from '@/components/Footer'; 
 
 interface Profile {
   id: string;
@@ -26,12 +28,15 @@ interface Profile {
   mck_id: string;
   trust_seller_badge: boolean;
 }
+
 interface Category {
   id: string;
   name: string;
   slug: string;
   icon: string;
 }
+
+// ⭐ UPDATED INTERFACE to include calculated ratings
 interface Item {
   id: string;
   title: string;
@@ -50,7 +55,13 @@ interface Item {
   expires_at: string;
   categories: Category;
   profiles: Profile;
+  // NEW: Ratings summary for the seller
+  seller_ratings: {
+    count: number;
+    avg: number | null;
+  }[];
 }
+
 const getAdTypeBenefits = (adType: string) => {
   switch (adType) {
     case 'featured':
@@ -78,6 +89,7 @@ const getAdTypeBenefits = (adType: string) => {
       return null;
   }
 };
+
 const Dashboard = () => {
   const {
     user,
@@ -95,13 +107,15 @@ const Dashboard = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isAdmin, setIsAdmin] = useState(false);
   const [priceRange, setPriceRange] = useState<string>('all');
-  useEffect(() => {
+  
+  useEffect(() => {
     fetchProfile();
     fetchCategories();
     fetchItems();
     checkAdminStatus();
   }, [user]);
-  const checkAdminStatus = async () => {
+  
+  const checkAdminStatus = async () => {
     if (!user) return;
     try {
       const {
@@ -117,6 +131,7 @@ const Dashboard = () => {
       console.error('Error checking admin status:', error);
     }
   };
+  
   const fetchProfile = async () => {
     if (!user) return;
     const {
@@ -129,6 +144,7 @@ const Dashboard = () => {
       setProfile(data);
     }
   };
+
   const fetchCategories = async () => {
     const {
       data,
@@ -140,15 +156,19 @@ const Dashboard = () => {
       setCategories(data || []);
     }
   };
+
   const fetchItems = async () => {
     setLoading(true);
     let query = supabase.from('items').select(`
         *,
         categories (*),
-        profiles (*)
+        profiles (*),
+        // ⭐ NEW: Fetch aggregate ratings for the seller (profiles)
+        seller_ratings:ratings!to_user_id (count, avg:rating)
       `).eq('is_sold', false).order('created_at', {
       ascending: false
     });
+
     if (selectedCategory && selectedCategory !== 'all') {
       query = query.eq('category_id', selectedCategory);
     }
@@ -181,15 +201,18 @@ const Dashboard = () => {
     }
     setLoading(false);
   };
+
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       fetchItems();
     }, 500);
     return () => clearTimeout(debounceTimer);
   }, [searchTerm, selectedCategory, priceRange]);
+  
   const handleLogout = async () => {
     await signOut();
   };
+  
   const handleStartConversation = async (item: Item) => {
     if (!user || item.seller_id === user.id) return;
 
@@ -233,6 +256,7 @@ const Dashboard = () => {
       navigate(`/chat/${newConversation.id}`);
     }
   };
+  
   const isVerified = profile?.is_verified && profile?.verification_status === 'approved';
 
   // Image Slider Component (UPDATED FOR CONSISTENCY AND FLICKER FIX)
@@ -479,6 +503,12 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {items.map(item => {
             const adBenefits = getAdTypeBenefits(item.ad_type);
+
+            // ⭐ RATING CALCULATION LOGIC
+            const ratingData = item.seller_ratings?.[0]; 
+            const averageRating = ratingData?.avg ? parseFloat(ratingData.avg.toFixed(1)) : null;
+            const totalCount = ratingData?.count || 0;
+
             return <Card key={item.id} className="group hover:shadow-xl hover:shadow-primary/10 transition-all duration-500 cursor-pointer border border-border hover:border-primary/30 overflow-hidden bg-card animate-fade-in hover-scale" onClick={() => navigate(`/item/${item.id}`)}>
                     <div className="relative">
                       <div className="aspect-square w-full rounded-t-lg overflow-hidden">
@@ -517,7 +547,26 @@ const Dashboard = () => {
                           {item.profiles?.full_name || 'Anonymous'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      
+                      {/* ⭐ RATING DISPLAY IN LISTING CARD */}
+                      {averageRating !== null && totalCount > 0 ? (
+                          <div className="flex items-center gap-1 text-xs text-yellow-500">
+                              <Star className="h-3 w-3 fill-yellow-500" />
+                              <span className="font-semibold">{averageRating}</span>
+                              <span className="text-muted-foreground">({totalCount})</span>
+                          </div>
+                      ) : (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Star className="h-3 w-3" />
+                            <span>({totalCount})</span>
+                          </div>
+                      )}
+                      {/* ---------------------------------- */}
+                      
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1">
                           <Eye className="h-3 w-3" />
                           <span>{item.views}</span>
@@ -526,6 +575,7 @@ const Dashboard = () => {
                         <span>{new Date(item.created_at).toLocaleDateString()}</span>
                       </div>
                     </div>
+
                     {item.location && <div className="flex items-center gap-1 pt-1">
                         <MapPin className="h-3 w-3 text-muted-foreground" />
                         <span className="text-xs text-muted-foreground truncate">
@@ -610,7 +660,6 @@ const Dashboard = () => {
           </TooltipProvider>}
       </div>
       
-      {/* FIX: Footer component yahan add kiya gaya hai */}
       <Footer /> 
     </div>
   );
