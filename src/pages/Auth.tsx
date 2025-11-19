@@ -8,15 +8,23 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ShoppingBag, Users, Shield, BookOpen } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle, Gift, MessageSquare } from 'lucide-react'; // New icons for features and password toggle
 import { useToast } from '@/hooks/use-toast';
 import logo from '@/assets/mycampuskart-logo.png';
+
+const UNIVERSITY_OPTIONS = [
+  { value: 'Lovely Professional University', label: 'Lovely Professional University' },
+  // Add other universities here if they become available
+];
 
 const Auth = () => {
   const { user, signIn, signUp } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [selectedUniversity, setSelectedUniversity] = useState(UNIVERSITY_OPTIONS[0].value);
+
   // Redirect if already authenticated
   if (user) {
     return <Navigate to="/dashboard" replace />;
@@ -28,7 +36,7 @@ const Auth = () => {
     const formData = new FormData(e.currentTarget);
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
-    
+
     await signIn(email, password);
     setIsLoading(false);
   };
@@ -39,9 +47,20 @@ const Auth = () => {
     const formData = new FormData(e.currentTarget);
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
+    const confirmPassword = formData.get('confirmPassword') as string;
     const fullName = formData.get('fullName') as string;
-    const university = formData.get('university') as string;
+    const university = selectedUniversity; // Use state for select
     const termsAccepted = formData.get('terms') as string;
+
+    if (password !== confirmPassword) {
+      toast({
+        title: "Password Error",
+        description: "Passwords do not match.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
     
     if (!termsAccepted) {
       toast({
@@ -55,7 +74,7 @@ const Auth = () => {
 
     // Sign up the user
     const result = await signUp(email, password, fullName, university);
-    
+
     // If signup successful, record terms acceptance
     if (result?.data?.user) {
       const { data: activeTerms } = await supabase
@@ -65,7 +84,7 @@ const Auth = () => {
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
-      
+
       if (activeTerms) {
         await supabase
           .from('user_terms_acceptance')
@@ -75,14 +94,27 @@ const Auth = () => {
           });
       }
     }
-    
+
     setIsLoading(false);
   };
+
+  const PasswordToggle = ({ isVisible, toggleVisibility }: { isVisible: boolean, toggleVisibility: () => void }) => (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="absolute right-0 top-1/2 -translate-y-1/2 p-2 hover:bg-transparent"
+      onClick={toggleVisibility}
+      aria-label={isVisible ? "Hide password" : "Show password"}
+    >
+      {isVisible ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+    </Button>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl grid lg:grid-cols-2 gap-8 items-center">
-        {/* Left side - Hero content */}
+        {/* Left side - Hero content (Refreshed) */}
         <div className="space-y-8 text-center lg:text-left">
           <div className="space-y-4">
             <img 
@@ -90,45 +122,42 @@ const Auth = () => {
               alt="MyCampusKart" 
               className="h-16 mx-auto lg:mx-0"
             />
+            {/* New Tagline */}
+            <h1 className="text-4xl font-bold text-primary">
+              The Exclusive LPU Campus Exchange
+            </h1>
             <p className="text-xl text-muted-foreground">
-              Your Campus Marketplace - Buy, Sell, Connect
+              Trade books, gadgets, and services securely with your verified peers.
             </p>
           </div>
 
+          {/* New Feature Blocks */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center space-x-3 p-4 rounded-lg bg-card border">
-              <ShoppingBag className="h-8 w-8 text-primary" />
-              <div>
-                <h3 className="font-semibold">Buy & Sell</h3>
-                <p className="text-sm text-muted-foreground">Easy trading</p>
-              </div>
+            <div className="flex flex-col items-center space-y-2 p-6 rounded-xl bg-primary/10 border-2 border-primary/50 transition-all hover:shadow-lg">
+              <CheckCircle className="h-8 w-8 text-primary" />
+              <h3 className="font-semibold text-lg">Verified Access</h3>
+              <p className="text-sm text-center text-muted-foreground">LPU Student Email Required for Entry.</p>
             </div>
-            <div className="flex items-center space-x-3 p-4 rounded-lg bg-card border">
-              <Users className="h-8 w-8 text-accent" />
-              <div>
-                <h3 className="font-semibold">Connect</h3>
-                <p className="text-sm text-muted-foreground">Chat with peers</p>
-              </div>
+            <div className="flex flex-col items-center space-y-2 p-6 rounded-xl bg-primary/10 border-2 border-primary/50 transition-all hover:shadow-lg">
+              <Gift className="h-8 w-8 text-primary" />
+              <h3 className="font-semibold text-lg">Hassle-Free Trading</h3>
+              <p className="text-sm text-center text-muted-foreground">Sell fast, buy cheap—right on campus.</p>
             </div>
-            <div className="flex items-center space-x-3 p-4 rounded-lg bg-card border">
-              <Shield className="h-8 w-8 text-primary" />
-              <div>
-                <h3 className="font-semibold">Verified</h3>
-                <p className="text-sm text-muted-foreground">Student-only</p>
-              </div>
+            <div className="flex flex-col items-center space-y-2 p-6 rounded-xl bg-primary/10 border-2 border-primary/50 transition-all hover:shadow-lg">
+              <MessageSquare className="h-8 w-8 text-primary" />
+              <h3 className="font-semibold text-lg">Direct Connect</h3>
+              <p className="text-sm text-center text-muted-foreground">Private chat for safe local meetups.</p>
             </div>
-            <div className="flex items-center space-x-3 p-4 rounded-lg bg-card border">
-              <BookOpen className="h-8 w-8 text-accent" />
-              <div>
-                <h3 className="font-semibold">Campus</h3>
-                <p className="text-sm text-muted-foreground">Your college</p>
-              </div>
+            <div className="flex flex-col items-center space-y-2 p-6 rounded-xl bg-primary/10 border-2 border-primary/50 transition-all hover:shadow-lg">
+              <span className="text-3xl">📚</span>
+              <h3 className="font-semibold text-lg">Academic Focus</h3>
+              <p className="text-sm text-center text-muted-foreground">Find used books and study aids easily.</p>
             </div>
           </div>
         </div>
 
         {/* Right side - Auth forms */}
-        <Card className="w-full max-w-md mx-auto">
+        <Card className="w-full max-w-md mx-auto shadow-2xl">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4 lg:hidden">
               <img 
@@ -139,7 +168,7 @@ const Auth = () => {
             </div>
             <CardTitle>Welcome to MyCampusKart</CardTitle>
             <CardDescription>
-              Join your campus marketplace
+              Join the Lovely Professional University marketplace
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -152,9 +181,9 @@ const Auth = () => {
               <TabsContent value="signin" className="space-y-4">
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="signin-email">Email</Label>
                     <Input
-                      id="email"
+                      id="signin-email"
                       name="email"
                       type="email"
                       placeholder="your.email@college.edu"
@@ -163,13 +192,14 @@ const Auth = () => {
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="password">Password</Label>
+                      <Label htmlFor="signin-password">Password</Label>
                       <Button 
                         type="button" 
                         variant="link" 
                         className="text-xs p-0 h-auto"
                         onClick={async () => {
-                          const email = (document.getElementById('email') as HTMLInputElement)?.value;
+                          // NOTE: Using a different ID for the sign-in email input
+                          const email = (document.getElementById('signin-email') as HTMLInputElement)?.value;
                           if (!email) {
                             toast({
                               title: "Error",
@@ -198,12 +228,20 @@ const Auth = () => {
                         Forgot Password?
                       </Button>
                     </div>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      required
-                    />
+                    {/* Password Input with Toggle */}
+                    <div className="relative">
+                      <Input
+                        id="signin-password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        required
+                        className="pr-10" // Make room for the button
+                      />
+                      <PasswordToggle 
+                        isVisible={showPassword} 
+                        toggleVisibility={() => setShowPassword(!showPassword)} 
+                      />
+                    </div>
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Signing in..." : "Sign In"}
@@ -223,9 +261,29 @@ const Auth = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">LPU Email</Label>
+                    <Label htmlFor="university">University</Label>
+                    <Select
+                      name="university"
+                      value={selectedUniversity}
+                      onValueChange={setSelectedUniversity}
+                      required
+                    >
+                      <SelectTrigger id="university">
+                        <SelectValue placeholder="Select your university" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {UNIVERSITY_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">LPU Email</Label>
                     <Input
-                      id="email"
+                      id="signup-email"
                       name="email"
                       type="email"
                       placeholder="yourname@lpu.in"
@@ -233,19 +291,48 @@ const Auth = () => {
                       pattern=".*@lpu\.in$"
                       title="Please use your LPU email address (@lpu.in)"
                     />
-                    <p className="text-xs text-muted-foreground">Use your @lpu.in email only</p>
+                    <p className="text-xs text-muted-foreground">Student verification is done via your @lpu.in email.</p>
                   </div>
-                  <input type="hidden" name="university" value="Lovely Professional University" />
+                  
+                  {/* Password Input with Toggle */}
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      placeholder="Create a strong password"
-                      required
-                    />
+                    <Label htmlFor="signup-password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="signup-password"
+                        name="password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Create a strong password"
+                        required
+                        className="pr-10"
+                      />
+                      <PasswordToggle 
+                        isVisible={showConfirmPassword} 
+                        toggleVisibility={() => setShowConfirmPassword(!showConfirmPassword)} 
+                      />
+                    </div>
                   </div>
+                  
+                  {/* Confirm Password Input */}
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Re-enter password"
+                        required
+                        className="pr-10"
+                      />
+                      {/* Using the same toggle for simplicity on both fields */}
+                      <PasswordToggle 
+                        isVisible={showConfirmPassword} 
+                        toggleVisibility={() => setShowConfirmPassword(!showConfirmPassword)} 
+                      />
+                    </div>
+                  </div>
+
                   <div className="flex items-start space-x-2">
                     <input
                       type="checkbox"
