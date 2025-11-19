@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, EyeOff, CornerDownLeft } from 'lucide-react'; // Updated icons for a cleaner look
+import { Eye, EyeOff } from 'lucide-react'; 
 import { useToast } from '@/hooks/use-toast';
 import logo from '@/assets/mycampuskart-logo.png';
 
@@ -111,277 +111,249 @@ const Auth = () => {
   );
 
   return (
+    // Centering the Card in the viewport
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl grid lg:grid-cols-2 gap-8 items-center">
-        
-        {/* Left side - Simple Banner (Refreshed again) */}
-        <div className="space-y-8 text-center lg:text-left p-6">
-          <div className="space-y-4">
+      {/* The main container now only holds the Card, centered */}
+      <Card className="w-full max-w-sm mx-auto shadow-2xl">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
             <img 
               src={logo} 
               alt="MyCampusKart" 
-              className="h-20 mx-auto lg:mx-0"
+              className="h-14"
             />
-            <h1 className="text-5xl font-extrabold text-primary leading-tight">
-              LPU's <span className='text-accent'>Exclusive</span> Marketplace
-            </h1>
-            <p className="text-lg text-muted-foreground mt-4">
-              Sign in with your verified **@lpu.in** email to begin trading safely.
-            </p>
           </div>
+          <CardTitle>Welcome to MyCampusKart</CardTitle>
+          <CardDescription>
+            Sign in or create your LPU student account
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="signin" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="signin">Sign In</TabsTrigger>
+              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            </TabsList>
 
-          <div className="relative w-full h-48 bg-card border-2 border-primary/50 rounded-xl flex items-center justify-center overflow-hidden shadow-lg">
-            <div className='absolute top-0 left-0 p-4 font-semibold text-sm text-primary/70'>Campus View</div>
-            <div className='text-5xl opacity-30'>🛒</div>
-            <div className='absolute bottom-0 right-0 p-3'>
-                <CornerDownLeft className='h-8 w-8 text-primary/80'/>
-            </div>
-          </div>
-        </div>
-
-        {/* Right side - Auth forms */}
-        <Card className="w-full max-w-md mx-auto shadow-2xl">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-4 lg:hidden">
-              <img 
-                src={logo} 
-                alt="MyCampusKart" 
-                className="h-14"
-              />
-            </div>
-            <CardTitle>Welcome Back!</CardTitle>
-            <CardDescription>
-              Access the Lovely Professional University marketplace
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="signin" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="signin" className="space-y-4">
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <Input
-                      id="signin-email"
-                      name="email"
-                      type="email"
-                      placeholder="your.email@college.edu"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="signin-password">Password</Label>
-                      <Button 
-                        type="button" 
-                        variant="link" 
-                        className="text-xs p-0 h-auto"
-                        onClick={async () => {
-                          const email = (document.getElementById('signin-email') as HTMLInputElement)?.value;
-                          if (!email) {
-                            toast({
-                              title: "Error",
-                              description: "Please enter your email first",
-                              variant: "destructive",
-                            });
-                            return;
-                          }
-                          const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                            redirectTo: `${window.location.origin}/reset-password`,
+            <TabsContent value="signin" className="space-y-4">
+              <form onSubmit={handleSignIn} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signin-email">Email</Label>
+                  <Input
+                    id="signin-email"
+                    name="email"
+                    type="email"
+                    placeholder="your.email@college.edu"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="signin-password">Password</Label>
+                    <Button 
+                      type="button" 
+                      variant="link" 
+                      className="text-xs p-0 h-auto"
+                      onClick={async () => {
+                        const email = (document.getElementById('signin-email') as HTMLInputElement)?.value;
+                        if (!email) {
+                          toast({
+                            title: "Error",
+                            description: "Please enter your email first",
+                            variant: "destructive",
                           });
-                          if (error) {
-                            toast({
-                              title: "Error",
-                              description: error.message,
-                              variant: "destructive",
-                            });
-                          } else {
-                            toast({
-                              title: "Success",
-                              description: "Password reset email sent! Check your inbox.",
-                            });
-                          }
-                        }}
-                      >
-                        Forgot Password?
-                      </Button>
-                    </div>
-                    {/* Password Input with Toggle */}
-                    <div className="relative">
-                      <Input
-                        id="signin-password"
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        required
-                        className="pr-10" // Make room for the button
-                      />
-                      <PasswordToggle 
-                        isVisible={showPassword} 
-                        toggleVisibility={() => setShowPassword(!showPassword)} 
-                      />
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Signing in..." : "Sign In"}
-                  </Button>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="signup" className="space-y-4">
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name</Label>
-                    <Input
-                      id="fullName"
-                      name="fullName"
-                      placeholder="Your full name"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="university">University</Label>
-                    <Select
-                      name="university"
-                      value={selectedUniversity}
-                      onValueChange={setSelectedUniversity}
-                      required
+                          return;
+                        }
+                        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                          redirectTo: `${window.location.origin}/reset-password`,
+                        });
+                        if (error) {
+                          toast({
+                            title: "Error",
+                            description: error.message,
+                            variant: "destructive",
+                          });
+                        } else {
+                          toast({
+                            title: "Success",
+                            description: "Password reset email sent! Check your inbox.",
+                          });
+                        }
+                      }}
                     >
-                      <SelectTrigger id="university">
-                        <SelectValue placeholder="Select your university" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {UNIVERSITY_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      Forgot Password?
+                    </Button>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">LPU Email</Label>
-                    <Input
-                      id="signup-email"
-                      name="email"
-                      type="email"
-                      placeholder="yourname@lpu.in"
-                      required
-                      pattern=".*@lpu\.in$"
-                      title="Please use your LPU email address (@lpu.in)"
-                    />
-                    <p className="text-xs text-muted-foreground">Student verification is done via your @lpu.in email.</p>
-                  </div>
-                  
                   {/* Password Input with Toggle */}
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="signup-password"
-                        name="password"
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="Create a strong password"
-                        required
-                        className="pr-10"
-                      />
-                      <PasswordToggle 
-                        isVisible={showConfirmPassword} 
-                        toggleVisibility={() => setShowConfirmPassword(!showConfirmPassword)} 
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Confirm Password Input */}
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="Re-enter password"
-                        required
-                        className="pr-10"
-                      />
-                      {/* Using the same toggle for simplicity on both fields */}
-                      <PasswordToggle 
-                        isVisible={showConfirmPassword} 
-                        toggleVisibility={() => setShowConfirmPassword(!showConfirmPassword)} 
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-2">
-                    <input
-                      type="checkbox"
-                      id="terms"
-                      name="terms"
+                  <div className="relative">
+                    <Input
+                      id="signin-password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
                       required
-                      className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                      className="pr-10" // Make room for the button
                     />
-                    <Label htmlFor="terms" className="text-sm leading-tight cursor-pointer">
-                      I agree to the{' '}
-                      <Button
-                        type="button"
-                        variant="link"
-                        className="h-auto p-0 text-sm text-primary hover:underline"
-                        onClick={async () => {
-                          const { data: terms } = await supabase
-                            .from('terms_and_conditions')
-                            .select('*')
-                            .eq('is_active', true)
-                            .order('created_at', { ascending: false })
-                            .limit(1)
-                            .single();
-                          
-                          if (terms) {
-                            const newWindow = window.open('', '_blank');
-                            if (newWindow) {
-                              newWindow.document.write(`
-                                <html>
-                                  <head>
-                                    <title>Terms and Conditions - MyCampusKart</title>
-                                    <style>
-                                      body { font-family: system-ui; padding: 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; }
-                                      h1 { color: #333; }
-                                      .version { color: #666; font-size: 0.9rem; }
-                                    </style>
-                                  </head>
-                                  <body>
-                                    <h1>Terms and Conditions</h1>
-                                    <p class="version">Version: ${terms.version}</p>
-                                    <div>${terms.content.replace(/\n/g, '<br>')}</div>
-                                  </body>
-                                </html>
-                              `);
-                              newWindow.document.close();
-                            }
-                          } else {
-                            toast({
-                              title: "Terms not available",
-                              description: "Terms and conditions are not currently available. Please contact support.",
-                              variant: "destructive",
-                            });
-                          }
-                        }}
-                      >
-                        Terms and Conditions
-                      </Button>
-                    </Label>
+                    <PasswordToggle 
+                      isVisible={showPassword} 
+                      toggleVisibility={() => setShowPassword(!showPassword)} 
+                    />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Creating account..." : "Create Account"}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-      </div>
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Signing in..." : "Sign In"}
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="signup" className="space-y-4">
+              <form onSubmit={handleSignUp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <Input
+                    id="fullName"
+                    name="fullName"
+                    placeholder="Your full name"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="university">University</Label>
+                  <Select
+                    name="university"
+                    value={selectedUniversity}
+                    onValueChange={setSelectedUniversity}
+                    required
+                  >
+                    <SelectTrigger id="university">
+                      <SelectValue placeholder="Select your university" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UNIVERSITY_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email">LPU Email</Label>
+                  <Input
+                    id="signup-email"
+                    name="email"
+                    type="email"
+                    placeholder="yourname@lpu.in"
+                    required
+                    pattern=".*@lpu\.in$"
+                    title="Please use your LPU email address (@lpu.in)"
+                  />
+                  <p className="text-xs text-muted-foreground">Student verification is done via your @lpu.in email.</p>
+                </div>
+                
+                {/* Password Input with Toggle */}
+                <div className="space-y-2">
+                  <Label htmlFor="signup-password">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="signup-password"
+                      name="password"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Create a strong password"
+                      required
+                      className="pr-10"
+                    />
+                    <PasswordToggle 
+                      isVisible={showConfirmPassword} 
+                      toggleVisibility={() => setShowConfirmPassword(!showConfirmPassword)} 
+                    />
+                  </div>
+                </div>
+                
+                {/* Confirm Password Input */}
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Re-enter password"
+                      required
+                      className="pr-10"
+                    />
+                    <PasswordToggle 
+                      isVisible={showConfirmPassword} 
+                      toggleVisibility={() => setShowConfirmPassword(!showConfirmPassword)} 
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-2">
+                  <input
+                    type="checkbox"
+                    id="terms"
+                    name="terms"
+                    required
+                    className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                  />
+                  <Label htmlFor="terms" className="text-sm leading-tight cursor-pointer">
+                    I agree to the{' '}
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="h-auto p-0 text-sm text-primary hover:underline"
+                      onClick={async () => {
+                        const { data: terms } = await supabase
+                          .from('terms_and_conditions')
+                          .select('*')
+                          .eq('is_active', true)
+                          .order('created_at', { ascending: false })
+                          .limit(1)
+                          .single();
+                        
+                        if (terms) {
+                          const newWindow = window.open('', '_blank');
+                          if (newWindow) {
+                            newWindow.document.write(`
+                              <html>
+                                <head>
+                                  <title>Terms and Conditions - MyCampusKart</title>
+                                  <style>
+                                    body { font-family: system-ui; padding: 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+                                    h1 { color: #333; }
+                                    .version { color: #666; font-size: 0.9rem; }
+                                  </style>
+                                </head>
+                                <body>
+                                  <h1>Terms and Conditions</h1>
+                                  <p class="version">Version: ${terms.version}</p>
+                                  <div>${terms.content.replace(/\n/g, '<br>')}</div>
+                                </body>
+                              </html>
+                            `);
+                            newWindow.document.close();
+                          }
+                        } else {
+                          toast({
+                            title: "Terms not available",
+                            description: "Terms and conditions are not currently available. Please contact support.",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      Terms and Conditions
+                    </Button>
+                  </Label>
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Creating account..." : "Create Account"}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 };
