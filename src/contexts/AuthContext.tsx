@@ -1,7 +1,9 @@
+// file: AuthContext.tsx
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast"; //
 
 interface AuthContextType {
   user: User | null;
@@ -20,47 +22,39 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined); //
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
+  const context = useContext(AuthContext); //
   if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const [user, setUser] = useState<User | null>(null); //
+  const [session, setSession] = useState<Session | null>(null); //
+  const [loading, setLoading] = useState(true); // FIX: Start loading as true
+  const { toast } = useToast(); //
 
   useEffect(() => {
-    let mounted = true;
-
-    // FIRST LINE: Get existing session once (prevents flicker)
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      setLoading(false);
-    });
-
-    // AUTH CHANGE LISTENER (does NOT toggle loading)
+    // FIX: Use onAuthStateChange for initial check AND listening.
+    // The first event fires immediately with the current session state.
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (_event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
+        setSession(newSession); //
+        setUser(newSession?.user ?? null); //
+        setLoading(false); // FIX: Set loading to false only after the initial state is resolved
       }
     );
 
     return () => {
-      mounted = false;
+      // Cleanup the listener on unmount
       authListener.subscription.unsubscribe();
     };
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, university?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+    const redirectUrl = `${window.location.origin}/`; //
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -91,27 +85,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password
-    });
+    }); //
 
     if (error) {
       toast({
         title: "Sign In Error",
         description: error.message,
         variant: "destructive"
-      });
+      }); //
     }
 
     return { error };
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut(); //
     if (error) {
       toast({
         title: "Sign Out Error",
         description: error.message,
         variant: "destructive"
-      });
+      }); //
     }
   };
 
