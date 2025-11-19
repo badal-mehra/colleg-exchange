@@ -13,108 +13,110 @@ import ImageCarousel from '@/components/ImageCarousel';
 import logo from '@/assets/mycampuskart-logo.png';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Footer } from '@/components/Footer'; // <-- FIX: Footer Imported
+
 interface Profile {
-  id: string;
-  user_id: string;
-  full_name: string;
-  email: string;
-  is_verified: boolean;
-  verification_status: string;
-  avatar_url: string | null;
-  mck_id: string;
-  trust_seller_badge: boolean;
+  id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  is_verified: boolean;
+  verification_status: string;
+  avatar_url: string | null;
+  mck_id: string;
+  trust_seller_badge: boolean;
 }
 interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  icon: string;
+  id: string;
+  name: string;
+  slug: string;
+  icon: string;
 }
 interface Item {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  condition: string;
-  images: string[];
-  location: string;
-  is_sold: boolean;
-  views: number;
-  created_at: string;
-  seller_id: string;
-  ad_type: string;
-  is_negotiable: boolean;
-  tags: string[];
-  expires_at: string;
-  categories: Category;
-  profiles: Profile;
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  condition: string;
+  images: string[];
+  location: string;
+  is_sold: boolean;
+  views: number;
+  created_at: string;
+  seller_id: string;
+  ad_type: string;
+  is_negotiable: boolean;
+  tags: string[];
+  expires_at: string;
+  categories: Category;
+  profiles: Profile;
 }
 const getAdTypeBenefits = (adType: string) => {
-  switch (adType) {
-    case 'featured':
-      return {
-        icon: <Star className="h-3 w-3" />,
-        label: 'Featured',
-        color: 'bg-gradient-to-r from-primary to-primary/80',
-        benefits: 'Top placement • 3x visibility • Highlighted border'
-      };
-    case 'premium':
-      return {
-        icon: <Crown className="h-3 w-3" />,
-        label: 'Premium',
-        color: 'bg-gradient-to-r from-warning to-warning/80',
-        benefits: 'Priority listing • Boost button • Extended duration'
-      };
-    case 'urgent':
-      return {
-        icon: <Zap className="h-3 w-3" />,
-        label: 'Urgent',
-        color: 'bg-gradient-to-r from-destructive to-destructive/80',
-        benefits: 'Flash indicator • Quick sell price • 48hr highlight'
-      };
-    default:
-      return null;
-  }
+  switch (adType) {
+    case 'featured':
+      return {
+        icon: <Star className="h-3 w-3" />,
+        label: 'Featured',
+        color: 'bg-gradient-to-r from-primary to-primary/80',
+        benefits: 'Top placement • 3x visibility • Highlighted border'
+      };
+    case 'premium':
+      return {
+        icon: <Crown className="h-3 w-3" />,
+        label: 'Premium',
+        color: 'bg-gradient-to-r from-warning to-warning/80',
+        benefits: 'Priority listing • Boost button • Extended duration'
+      };
+    case 'urgent':
+      return {
+        icon: <Zap className="h-3 w-3" />,
+        label: 'Urgent',
+        color: 'bg-gradient-to-r from-destructive to-destructive/80',
+        benefits: 'Flash indicator • Quick sell price • 48hr highlight'
+      };
+    default:
+      return null;
+  }
 };
 const Dashboard = () => {
-  const {
-    user,
-    signOut
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
-  const navigate = useNavigate();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [items, setItems] = useState<Item[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [priceRange, setPriceRange] = useState<string>('all');
-  useEffect(() => {
-    fetchProfile();
-    fetchCategories();
-    fetchItems();
-    checkAdminStatus();
-  }, [user]);
-  const checkAdminStatus = async () => {
-    if (!user) return;
-    try {
-      const {
-        data,
-        error
-      } = await supabase.rpc('is_admin', {
-        user_id: user.id
-      });
-      if (!error && data) {
-        setIsAdmin(true);
-      }
-    } catch (error) {
-      console.error('Error checking admin status:', error);
-    }
-  };
+  const {
+    user,
+    signOut
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [items, setItems] = useState<Item[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [priceRange, setPriceRange] = useState<string>('all');
+  useEffect(() => {
+    fetchProfile();
+    fetchCategories();
+    fetchItems();
+    checkAdminStatus();
+  }, [user]);
+  const checkAdminStatus = async () => {
+    if (!user) return;
+    try {
+      const {
+        data,
+        error
+      } = await supabase.rpc('is_admin', {
+        user_id: user.id
+      });
+      if (!error && data) {
+        setIsAdmin(true);
+      }
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+    }
+  };
   const fetchProfile = async () => {
     if (!user) return;
     const {
@@ -335,7 +337,8 @@ const Dashboard = () => {
     );
   };
   
-  return <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Header */}
       <header className="border-b glass-effect sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-3">
@@ -606,6 +609,11 @@ const Dashboard = () => {
             </div>
           </TooltipProvider>}
       </div>
-    </div>;
+      
+      {/* FIX: Footer component yahan add kiya gaya hai */}
+      <Footer /> 
+    </div>
+  );
 };
+
 export default Dashboard;
