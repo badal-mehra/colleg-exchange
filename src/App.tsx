@@ -92,8 +92,8 @@ const App = () => (
             <Route path="/shipping" element={<StaticPage />} />
 
 {/* Help & Report ko abhi StaticPage pe mat bhejo */}
-            <Route path="/help" element={<NotFound />} />
-            <Route path="/report" element={<NotFound />} />
+            <Route path="/help" element={<StaticPage />} />
+            <Route path="/report" element={<StaticPage />} />
 
 
 
