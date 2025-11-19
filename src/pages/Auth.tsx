@@ -95,7 +95,12 @@ const Auth = () => {
       return;
     }
 
-    await signUp(formData.get('email') as string, password, formData.get('fullName') as string, currentUniversity?.label || 'Unknown University');
+    await signUp(
+      formData.get('email') as string, 
+      password, 
+      formData.get('fullName') as string, 
+      currentUniversity?.label || 'Unknown University' // Safe access
+    );
     
     setIsLoading(false);
   };
@@ -117,14 +122,53 @@ const Auth = () => {
       });
       setIsLoading(false);
     }
+    // If no error, Supabase redirects the user, so no need to set isLoading(false) on success.
   }, [toast]);
 
 
   const handleViewTerms = async () => {
-    // Re-use your robust T&C fetch/display logic here
-    toast({ title: "Opening Terms", description: "Fetching and opening Terms of Service...", });
-    // This is where your Supabase call and window.open logic goes.
+    const { data: terms, error } = await supabase
+      .from('terms_and_conditions')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (error || !terms || !terms.content) {
+      toast({
+        title: "Terms Not Found",
+        description: "Could not load the latest Terms of Service. Check console for details.",
+        variant: "destructive",
+      });
+      console.error("Error fetching terms:", error);
+      return;
+    }
+
+    // If successful, open in new window
+    const newWindow = window.open('', '_blank');
+    if (newWindow) {
+      newWindow.document.write(`
+        <html>
+          <head>
+            <title>Terms of Service - MyCampusKart</title>
+            <style>
+              body { font-family: system-ui; padding: 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; color: #1f2937; }
+              h1 { color: #4f46e5; }
+              .version { color: #6b7280; font-size: 0.9rem; margin-bottom: 1.5rem; }
+            </style>
+          </head>
+          <body>
+            <h1>Terms and Conditions</h1>
+            <p class="version">Version: ${terms.version}</p>
+            <div>${terms.content.replace(/\n/g, '<br>')}</div>
+          </body>
+        </html>
+      `);
+      newWindow.document.close();
+    }
   };
+
 
   // --- Password Strength Bar Component ---
   const StrengthBar = () => {
@@ -162,7 +206,6 @@ const Auth = () => {
 
   // --- Render ---
   return (
-    // Reverted to a less intrusive background, matching the first component's feel
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl grid lg:grid-cols-2 gap-10 items-center">
         
