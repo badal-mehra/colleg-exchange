@@ -8,8 +8,9 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, session, loading } = useAuth();
 
+  // Loading state: show loader only while session is being resolved
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -18,7 +19,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  if (!user) {
+  // FIX: Prevent flicker — require BOTH user & session
+  if (!session || !user) {
     return <Navigate to="/auth" replace />;
   }
 
