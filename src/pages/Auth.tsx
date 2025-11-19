@@ -15,9 +15,7 @@ import logo from '@/assets/mycampuskart-logo.png'; // Assuming this path is corr
 
 // --- Placeholder Data for Universities ---
 const SUPPORTED_UNIVERSITIES = [
-  { value: 'lovely-professional-university', label: 'Lovely Professional University (@lpu.in)', domain: '@lpu.in' },
-  { value: 'delhi-university', label: 'Delhi University (@du.ac.in)', domain: '@du.ac.in' },
-  { value: 'stanford-university', label: 'Stanford University (@stanford.edu)', domain: '@stanford.edu' },
+  { value: 'lovely-professional-university', label: 'Lovely Professional University', domain: '@lpu.in' },
 ];
 
 // --- Component Definition ---
@@ -266,7 +264,7 @@ const Auth = () => {
                                     <Input
                                         id="signup-fullName"
                                         name="fullName"
-                                        placeholder="Your official name"
+                                        placeholder="Your Full Name"
                                         required
                                         className="pl-10 focus:ring-indigo-500"
                                         disabled={isLoading}
