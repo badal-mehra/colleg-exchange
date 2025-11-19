@@ -39,7 +39,7 @@ interface Item {
 interface StaticPage {
   id: string;
   title: string;
-  slug: 'terms' | 'privacy' | 'about' | 'shipping' | string;
+  slug: 'terms' | 'privacy' | 'about' | 'shipping' | 'help' | 'report' | string; // ADDED help and report
   content: string;
   version: string;
   is_active: boolean;
@@ -969,12 +969,12 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* FIX: NEW Content Management System (CMS) Tab */}
+          {/* FIX: Content Management System (CMS) Tab */}
           <TabsContent value="content">
             <Card>
               <CardHeader>
                 <CardTitle>Static Content Management (CMS)</CardTitle>
-                <p className="text-sm text-muted-foreground">Manage Terms, Privacy Policy, About Us, etc. (uses `static_pages` table).</p>
+                <p className="text-sm text-muted-foreground">Manage Terms, Privacy Policy, About Us, Shipping, Help, and Reports (uses `static_pages` table).</p>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
@@ -995,7 +995,7 @@ const AdminDashboard = () => {
                           <Label htmlFor="page-slug">Page Identifier (Slug)</Label>
                           <Select
                             value={newStaticPage.slug}
-                            onValueChange={(value) => setNewStaticPage({ ...newStaticPage, slug: value as 'terms' | 'privacy' | 'about' })}
+                            onValueChange={(value) => setNewStaticPage({ ...newStaticPage, slug: value as StaticPage['slug'] })}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select page type" />
@@ -1005,6 +1005,9 @@ const AdminDashboard = () => {
                               <SelectItem value="privacy">Privacy Policy (privacy)</SelectItem>
                               <SelectItem value="about">About Us (about)</SelectItem>
                               <SelectItem value="shipping">Shipping Info (shipping)</SelectItem>
+                              {/* FIX 1: Added Help and Report slugs to the selection dropdown */}
+                              <SelectItem value="help">Help Center (help)</SelectItem> 
+                              <SelectItem value="report">Report Issue (report)</SelectItem>
                             </SelectContent>
                           </Select>
                           <p className="text-xs text-muted-foreground">URL/Identifier. E.g., for Footer Links.</p>
@@ -1037,7 +1040,8 @@ const AdminDashboard = () => {
                   {/* Existing Pages */}
                   <div className="space-y-4">
                     <h3 className="font-medium">Existing Static Pages</h3>
-                    {['terms', 'privacy', 'about', 'shipping'].map(slug => {
+                    {/* FIX 2: Added Help and Report slugs to the display list */}
+                    {['terms', 'privacy', 'about', 'shipping', 'help', 'report'].map(slug => {
                         const pages = staticPages.filter(p => p.slug === slug);
                         if (pages.length === 0) return null;
                         
