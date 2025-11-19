@@ -1,5 +1,3 @@
-// file: ItemDetail.tsx
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,6 +18,7 @@ import {
   User,
   AlertCircle,
   Shield,
+  ShoppingCart,
   Star,
   AlertTriangle,
   DollarSign
@@ -41,9 +40,6 @@ interface Profile {
   trust_seller_badge: boolean;
   campus_points: number;
   deals_completed: number;
-  // ⭐ FIX: Added existing DB columns for rating
-  average_rating: number | null; 
-  total_ratings: number | null;
 }
 
 interface Category {
@@ -53,7 +49,6 @@ interface Category {
   icon: string;
 }
 
-// ⭐ FIX: Item Interface, removed complex aggregation field
 interface Item {
   id: string;
   title: string;
@@ -176,12 +171,7 @@ const ItemDetail = () => {
       .select(`
         *,
         categories (*),
-        // ⭐ FIX: Fetch profiles and the rating columns directly
-        profiles (
-          *, 
-          average_rating, 
-          total_ratings
-        )
+        profiles (*)
       `)
       .eq('id', id)
       .single();
@@ -194,7 +184,7 @@ const ItemDetail = () => {
       });
       navigate('/');
     } else {
-      setItem(data as Item); // FIX: Cast data to Item type
+      setItem(data);
       // Increment view count
       await supabase
         .from('items')
@@ -402,10 +392,6 @@ const ItemDetail = () => {
 
   const isOwner = user?.id === item.seller_id;
   const isVerified = userProfile?.is_verified && userProfile?.verification_status === 'approved';
-  
-  // ⭐ RATING CALCULATION LOGIC (Simplified: direct access)
-  const averageRating = item.profiles.average_rating ? parseFloat(item.profiles.average_rating.toFixed(1)) : null;
-  const totalCount = item.profiles.total_ratings || 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -549,19 +535,6 @@ const ItemDetail = () => {
                         </Badge>
                       )}
                     </div>
-                    
-                    {/* ⭐ NEW: RATING DISPLAY BLOCK */}
-                    {averageRating !== null && totalCount > 0 ? (
-                        <div className="flex items-center gap-1 text-base text-yellow-500 mb-1">
-                            <Star className="h-4 w-4 fill-yellow-500" />
-                            <span className="font-bold">{averageRating}</span>
-                            <span className="text-muted-foreground text-sm">({totalCount} ratings)</span>
-                        </div>
-                    ) : (
-                        <p className="text-sm text-muted-foreground mb-1">No ratings yet.</p>
-                    )}
-                    {/* ------------------------------- */}
-                    
                     {item.profiles?.mck_id && (
                       <p className="text-sm font-mono text-primary mb-1">{item.profiles.mck_id}</p>
                     )}
