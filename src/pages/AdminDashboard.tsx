@@ -7,12 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, Users, ShoppingBag, CheckCircle, XCircle, UserPlus, Trash2, Eye, AlertTriangle, Filter } from 'lucide-react';
+import { Shield, Users, ShoppingBag, CheckCircle, XCircle, UserPlus, Trash2, Eye, AlertTriangle, Filter, BookOpen, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Footer } from '@/components/Footer'; // Import Footer for consistent styling (optional)
 
+// ------------------- Interfaces (Unchanged) -------------------
 interface Profile {
   id: string;
   user_id: string;
@@ -33,6 +35,18 @@ interface Item {
   created_at: string;
 }
 
+// NEW INTERFACE for consolidated static pages
+interface StaticPage {
+  id: string;
+  title: string;
+  slug: 'terms' | 'privacy' | 'about' | 'shipping' | string;
+  content: string;
+  version: string;
+  is_active: boolean;
+  created_at: string;
+}
+// -------------------------------------------------------------
+
 const AdminDashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -48,13 +62,22 @@ const AdminDashboard = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [universities, setUniversities] = useState<any[]>([]);
   const [newUniversity, setNewUniversity] = useState({ name: '', code: '', location: '' });
-  const [termsConditions, setTermsConditions] = useState<any[]>([]);
-  const [newTerms, setNewTerms] = useState({ content: '', version: '' });
+  
+  // OLD: Removed termsConditions and related state
+  // NEW: Consolidated Static Pages state
+  const [staticPages, setStaticPages] = useState<StaticPage[]>([]);
+  const [newStaticPage, setNewStaticPage] = useState<Omit<StaticPage, 'id' | 'is_active' | 'created_at'>>({ 
+      title: '', 
+      slug: 'terms', // Default to terms
+      content: '', 
+      version: '' 
+  });
+
   const [reports, setReports] = useState<any[]>([]);
   const [reportFilter, setReportFilter] = useState<string>('all');
-  const [footerSettings, setFooterSettings] = useState<any[]>([]);
-  const [newFooterSetting, setNewFooterSetting] = useState({ section: 'quick_links', key: '', value: '', link_url: '' });
-  const [editingFooter, setEditingFooter] = useState<any>(null);
+  
+  // OLD: Removed footerSettings and related state
+  // const [footerSettings, setFooterSettings] = useState<any[]>([]); 
 
   useEffect(() => {
     checkAdminStatus();
@@ -83,7 +106,16 @@ const AdminDashboard = () => {
       }
 
       setIsAdmin(true);
-      await Promise.all([fetchProfiles(), fetchItems(), fetchSliderImages(), fetchUniversities(), fetchTermsConditions(), fetchReports(), fetchFooterSettings()]);
+      await Promise.all([
+          fetchProfiles(), 
+          fetchItems(), 
+          fetchSliderImages(), 
+          fetchUniversities(), 
+          // OLD: Removed fetchTermsConditions()
+          // OLD: Removed fetchFooterSettings()
+          fetchReports(), 
+          fetchStaticPages() // NEW: Fetch all static pages
+        ]);
     } catch (error) {
       console.error('Error checking admin status:', error);
       navigate('/dashboard');
@@ -91,6 +123,29 @@ const AdminDashboard = () => {
       setLoading(false);
     }
   };
+  
+  // ------------------- NEW STATIC CONTENT FETCH FUNCTION -------------------
+  const fetchStaticPages = async () => {
+      const { data, error } = await supabase
+        .from('static_pages')
+        .select('*')
+        .order('slug')
+        .order('version', { ascending: false });
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch static content",
+          variant: "destructive",
+        });
+      } else {
+        setStaticPages(data || []);
+      }
+    };
+  // --------------------------------------------------------------------------
+
+  // OLD: Removed fetchTermsConditions implementation
+  // OLD: Removed fetchFooterSettings implementation
 
   const fetchProfiles = async () => {
     const { data, error } = await supabase
@@ -164,22 +219,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchTermsConditions = async () => {
-    const { data, error } = await supabase
-      .from('terms_and_conditions')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch terms and conditions",
-        variant: "destructive",
-      });
-    } else {
-      setTermsConditions(data || []);
-    }
-  };
+  // OLD: Removed fetchTermsConditions function (Logic moved to fetchStaticPages)
 
   const fetchReports = async () => {
     const { data, error } = await supabase
@@ -200,24 +240,6 @@ const AdminDashboard = () => {
       });
     } else {
       setReports(data || []);
-    }
-  };
-
-  const fetchFooterSettings = async () => {
-    const { data, error } = await supabase
-      .from('footer_settings')
-      .select('*')
-      .order('section')
-      .order('sort_order');
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch footer settings",
-        variant: "destructive",
-      });
-    } else {
-      setFooterSettings(data || []);
     }
   };
 
@@ -264,6 +286,83 @@ const AdminDashboard = () => {
     }
   };
 
+  // ------------------- NEW STATIC PAGE HANDLERS -------------------
+  const handleStaticPageActivate = async (id: string, slug: string) => {
+      try {
+          // 1. Deactivate all existing pages with the same slug
+          await supabase
+              .from('static_pages')
+              .update({ is_active: false })
+              .eq('slug', slug)
+              .eq('is_active', true);
+
+          // 2. Activate the selected page
+          const { error } = await supabase
+              .from('static_pages')
+              .update({ is_active: true })
+              .eq('id', id);
+
+          if (error) throw error;
+
+          toast({
+              title: "Success",
+              description: `${slug.toUpperCase()} page activated successfully.`,
+          });
+          fetchStaticPages();
+      } catch (error: any) {
+          toast({
+              title: "Error",
+              description: error?.message || "Failed to activate page.",
+              variant: "destructive",
+          });
+      }
+  };
+
+  const handleAddStaticPage = async () => {
+      if (!newStaticPage.content || !newStaticPage.version || !newStaticPage.title || !newStaticPage.slug) {
+          toast({
+              title: "Error",
+              description: "Please fill in all fields (Title, Slug, Content, Version)",
+              variant: "destructive",
+          });
+          return;
+      }
+
+      try {
+          // Deactivate all existing pages with the same slug before inserting the new one
+          await supabase
+              .from('static_pages')
+              .update({ is_active: false })
+              .eq('slug', newStaticPage.slug)
+              .eq('is_active', true);
+
+          // Insert new page as active
+          const { error } = await supabase
+              .from('static_pages')
+              .insert({
+                  ...newStaticPage,
+                  is_active: true,
+                  created_by: user?.id, // assuming you have a created_by column
+              });
+
+          if (error) throw error;
+
+          toast({
+              title: "Success",
+              description: `${newStaticPage.title} added and activated.`,
+          });
+          setNewStaticPage({ title: '', slug: 'terms', content: '', version: '' });
+          fetchStaticPages();
+      } catch (error: any) {
+          toast({
+              title: "Error",
+              description: error?.message || "Failed to add static page.",
+              variant: "destructive",
+          });
+      }
+  };
+  // --------------------------------------------------------------------------
+
   const filteredReports = reports.filter(report => {
     if (reportFilter === 'all') return true;
     return report.status === reportFilter;
@@ -305,7 +404,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-7"> {/* FIX: Grid reduced from 8 to 7 columns */}
             <TabsTrigger value="users">
               <Users className="h-4 w-4 mr-2" />
               Users & KYC
@@ -320,15 +419,20 @@ const AdminDashboard = () => {
             </TabsTrigger>
             <TabsTrigger value="slider">Images</TabsTrigger>
             <TabsTrigger value="universities">Universities</TabsTrigger>
-            <TabsTrigger value="terms">Terms</TabsTrigger>
+            {/* FIX: Combined Terms and Footer Management into Content */}
+            <TabsTrigger value="content">
+                <BookOpen className="h-4 w-4 mr-2" /> 
+                Content (CMS)
+            </TabsTrigger>
             <TabsTrigger value="admins">
               <Shield className="h-4 w-4 mr-2" />
               Admins
             </TabsTrigger>
-            <TabsTrigger value="footer">Footer</TabsTrigger>
+            {/* OLD: TabsTrigger value="footer" REMOVED */}
           </TabsList>
 
           <TabsContent value="users">
+            {/* ... User Management Code (Unchanged) ... */}
             <Card>
               <CardHeader>
                 <CardTitle>User Management & KYC Verification</CardTitle>
@@ -406,7 +510,8 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="listings">
-            <Card>
+            {/* ... Listing Management Code (Unchanged) ... */}
+             <Card>
               <CardHeader>
                 <CardTitle>Listing Management</CardTitle>
               </CardHeader>
@@ -435,6 +540,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="reports">
+            {/* ... Reports Management Code (Unchanged) ... */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -596,6 +702,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="slider">
+            {/* ... Slider Image Management Code (Unchanged) ... */}
             <Card>
               <CardHeader>
                 <CardTitle>Slider Image Management</CardTitle>
@@ -840,6 +947,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="universities">
+            {/* ... University Management Code (Unchanged) ... */}
             <Card>
               <CardHeader>
                 <CardTitle>University Management</CardTitle>
@@ -861,170 +969,145 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="terms">
+          {/* FIX: NEW Content Management System (CMS) Tab */}
+          <TabsContent value="content">
             <Card>
               <CardHeader>
-                <CardTitle>Terms & Conditions Management</CardTitle>
+                <CardTitle>Static Content Management (CMS)</CardTitle>
+                <p className="text-sm text-muted-foreground">Manage Terms, Privacy Policy, About Us, etc. (uses `static_pages` table).</p>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {/* Add New Terms Form */}
+                  {/* Add New Page Form */}
                   <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-                    <h3 className="font-medium">Add New Terms & Conditions</h3>
+                    <h3 className="font-medium">Add/Update Static Page</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="page-title">Display Title</Label>
+                          <Input
+                            id="page-title"
+                            placeholder="e.g., Privacy Policy"
+                            value={newStaticPage.title}
+                            onChange={(e) => setNewStaticPage({ ...newStaticPage, title: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="page-slug">Page Identifier (Slug)</Label>
+                          <Select
+                            value={newStaticPage.slug}
+                            onValueChange={(value) => setNewStaticPage({ ...newStaticPage, slug: value as 'terms' | 'privacy' | 'about' })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select page type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="terms">Terms & Conditions (terms)</SelectItem>
+                              <SelectItem value="privacy">Privacy Policy (privacy)</SelectItem>
+                              <SelectItem value="about">About Us (about)</SelectItem>
+                              <SelectItem value="shipping">Shipping Info (shipping)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">URL/Identifier. E.g., for Footer Links.</p>
+                        </div>
+                    </div>
                     <div className="space-y-2">
-                      <Label htmlFor="terms-version">Version</Label>
+                      <Label htmlFor="page-version">Version</Label>
                       <Input
-                        id="terms-version"
+                        id="page-version"
                         placeholder="e.g., 1.0, 2.1"
-                        value={newTerms.version}
-                        onChange={(e) => setNewTerms({ ...newTerms, version: e.target.value })}
+                        value={newStaticPage.version}
+                        onChange={(e) => setNewStaticPage({ ...newStaticPage, version: e.target.value })}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="terms-content">Content</Label>
+                      <Label htmlFor="page-content">Content</Label>
                       <Textarea
-                        id="terms-content"
+                        id="page-content"
                         className="w-full min-h-[200px] p-3 rounded-md border border-input bg-background"
-                        placeholder="Enter terms and conditions content..."
-                        value={newTerms.content}
-                        onChange={(e) => setNewTerms({ ...newTerms, content: e.target.value })}
+                        placeholder="Enter the page content (e.g., terms, policy, etc.)..."
+                        value={newStaticPage.content}
+                        onChange={(e) => setNewStaticPage({ ...newStaticPage, content: e.target.value })}
                       />
                     </div>
-                    <Button
-                      onClick={async () => {
-                        if (!newTerms.content || !newTerms.version) {
-                          toast({
-                            title: "Error",
-                            description: "Please provide both version and content",
-                            variant: "destructive",
-                          });
-                          return;
-                        }
-
-                        try {
-                          // Deactivate all existing terms
-                          await supabase
-                            .from('terms_and_conditions')
-                            .update({ is_active: false })
-                            .eq('is_active', true);
-
-                          // Insert new terms as active
-                          const { error } = await supabase
-                            .from('terms_and_conditions')
-                            .insert({
-                              content: newTerms.content,
-                              version: newTerms.version,
-                              is_active: true,
-                              created_by: user?.id
-                            });
-
-                          if (error) throw error;
-
-                          toast({
-                            title: "Success",
-                            description: "Terms & Conditions added successfully",
-                          });
-                          setNewTerms({ content: '', version: '' });
-                          fetchTermsConditions();
-                        } catch (error: any) {
-                          toast({
-                            title: "Error",
-                            description: error?.message || "Failed to add terms",
-                            variant: "destructive",
-                          });
-                        }
-                      }}
-                    >
-                      Add Terms & Conditions
+                    <Button onClick={handleAddStaticPage}>
+                      Add & Activate New Page Version
                     </Button>
                   </div>
 
-                  {/* Existing Terms */}
+                  {/* Existing Pages */}
                   <div className="space-y-4">
-                    <h3 className="font-medium">Existing Terms & Conditions</h3>
-                    {termsConditions.map((terms) => (
-                      <div key={terms.id} className="p-4 border rounded-lg">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h4 className="font-medium">Version {terms.version}</h4>
-                            <p className="text-xs text-muted-foreground">
-                              Created: {new Date(terms.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <Badge variant={terms.is_active ? 'success' : 'secondary'}>
-                            {terms.is_active ? 'Active' : 'Inactive'}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-3">
-                          {terms.content}
-                        </p>
-                        <div className="mt-4 flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              const newWindow = window.open('', '_blank');
-                              if (newWindow) {
-                                newWindow.document.write(`
-                                  <html>
-                                    <head>
-                                      <title>Terms and Conditions v${terms.version}</title>
-                                      <style>
-                                        body { font-family: system-ui; padding: 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; }
-                                        h1 { color: #333; }
-                                        .version { color: #666; font-size: 0.9rem; }
-                                      </style>
-                                    </head>
-                                    <body>
-                                      <h1>Terms and Conditions</h1>
-                                      <p class="version">Version: ${terms.version}</p>
-                                      <div>${terms.content.replace(/\n/g, '<br>')}</div>
-                                    </body>
-                                  </html>
-                                `);
-                                newWindow.document.close();
-                              }
-                            }}
-                          >
-                            View Full
-                          </Button>
-                          {!terms.is_active && (
-                            <Button
-                              size="sm"
-                              onClick={async () => {
-                                // Deactivate all terms
-                                await supabase
-                                  .from('terms_and_conditions')
-                                  .update({ is_active: false })
-                                  .eq('is_active', true);
-
-                                // Activate this one
-                                const { error } = await supabase
-                                  .from('terms_and_conditions')
-                                  .update({ is_active: true })
-                                  .eq('id', terms.id);
-
-                                if (error) {
-                                  toast({
-                                    title: "Error",
-                                    description: "Failed to activate terms",
-                                    variant: "destructive",
-                                  });
-                                } else {
-                                  toast({
-                                    title: "Success",
-                                    description: "Terms activated",
-                                  });
-                                  fetchTermsConditions();
-                                }
-                              }}
-                            >
-                              Activate
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                    <h3 className="font-medium">Existing Static Pages</h3>
+                    {['terms', 'privacy', 'about', 'shipping'].map(slug => {
+                        const pages = staticPages.filter(p => p.slug === slug);
+                        if (pages.length === 0) return null;
+                        
+                        return (
+                            <div key={slug} className="space-y-3 p-4 border rounded-lg">
+                                <h4 className="font-semibold text-lg capitalize flex items-center gap-2">
+                                    <BookOpen className='h-4 w-4' />
+                                    {slug.replace('-', ' ')}
+                                </h4>
+                                {pages.map((page) => (
+                                    <div key={page.id} className="p-3 border rounded-md">
+                                        <div className="flex items-start justify-between mb-2">
+                                            <div>
+                                                <h5 className="font-medium text-sm">Title: {page.title} (v{page.version})</h5>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Created: {new Date(page.created_at).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                            <Badge variant={page.is_active ? 'success' : 'secondary'}>
+                                                {page.is_active ? 'Active' : 'Inactive'}
+                                            </Badge>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-3">
+                                            {page.content}
+                                        </p>
+                                        <div className="mt-4 flex gap-2">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    // Logic to view full content in new window (same as before)
+                                                    const newWindow = window.open('', '_blank');
+                                                    if (newWindow) {
+                                                      newWindow.document.write(`
+                                                        <html>
+                                                          <head>
+                                                            <title>${page.title} v${page.version}</title>
+                                                            <style>
+                                                              body { font-family: system-ui; padding: 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+                                                              h1 { color: #333; }
+                                                              .version { color: #666; font-size: 0.9rem; }
+                                                            </style>
+                                                          </head>
+                                                          <body>
+                                                            <h1>${page.title}</h1>
+                                                            <p class="version">Version: ${page.version}</p>
+                                                            <div>${page.content.replace(/\n/g, '<br>')}</div>
+                                                          </body>
+                                                        </html>
+                                                      `);
+                                                      newWindow.document.close();
+                                                    }
+                                                }}
+                                            >
+                                                View Full
+                                            </Button>
+                                            {!page.is_active && (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => handleStaticPageActivate(page.id, page.slug)}
+                                                >
+                                                    Activate
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    })}
                   </div>
                 </div>
               </CardContent>
@@ -1054,245 +1137,9 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </TabsContent>
-
-          <TabsContent value="footer">
-            <Card>
-              <CardHeader>
-                <CardTitle>Footer Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {/* Add/Edit Footer Setting Form */}
-                  <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-                    <h3 className="font-medium">{editingFooter ? 'Edit' : 'Add'} Footer Setting</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="section">Section</Label>
-                        <Select 
-                          value={editingFooter ? editingFooter.section : newFooterSetting.section}
-                          onValueChange={(value) => {
-                            if (editingFooter) {
-                              setEditingFooter({ ...editingFooter, section: value });
-                            } else {
-                              setNewFooterSetting({ ...newFooterSetting, section: value });
-                            }
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select section" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="about">About</SelectItem>
-                            <SelectItem value="quick_links">Quick Links</SelectItem>
-                            <SelectItem value="support">Support & Feedback</SelectItem>
-                            <SelectItem value="contact">Connect With Us</SelectItem>
-                            <SelectItem value="copyright">Copyright</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="key">Key</Label>
-                        <Input
-                          id="key"
-                          placeholder="unique-key"
-                          value={editingFooter ? editingFooter.key : newFooterSetting.key}
-                          onChange={(e) => {
-                            if (editingFooter) {
-                              setEditingFooter({ ...editingFooter, key: e.target.value });
-                            } else {
-                              setNewFooterSetting({ ...newFooterSetting, key: e.target.value });
-                            }
-                          }}
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <Label htmlFor="value">Display Text</Label>
-                        <Textarea
-                          id="value"
-                          placeholder="Display text"
-                          value={editingFooter ? editingFooter.value : newFooterSetting.value}
-                          onChange={(e) => {
-                            if (editingFooter) {
-                              setEditingFooter({ ...editingFooter, value: e.target.value });
-                            } else {
-                              setNewFooterSetting({ ...newFooterSetting, value: e.target.value });
-                            }
-                          }}
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <Label htmlFor="link_url">Link URL (optional)</Label>
-                        <Input
-                          id="link_url"
-                          placeholder="https://example.com or /route"
-                          value={editingFooter ? editingFooter.link_url || '' : newFooterSetting.link_url}
-                          onChange={(e) => {
-                            if (editingFooter) {
-                              setEditingFooter({ ...editingFooter, link_url: e.target.value });
-                            } else {
-                              setNewFooterSetting({ ...newFooterSetting, link_url: e.target.value });
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={async () => {
-                          if (editingFooter) {
-                            const { error } = await supabase
-                              .from('footer_settings')
-                              .update({
-                                section: editingFooter.section,
-                                key: editingFooter.key,
-                                value: editingFooter.value,
-                                link_url: editingFooter.link_url || null,
-                              })
-                              .eq('id', editingFooter.id);
-
-                            if (error) {
-                              toast({
-                                title: "Error",
-                                description: "Failed to update footer setting",
-                                variant: "destructive",
-                              });
-                            } else {
-                              toast({
-                                title: "Success",
-                                description: "Footer setting updated",
-                              });
-                              setEditingFooter(null);
-                              fetchFooterSettings();
-                            }
-                          } else {
-                            const { error } = await supabase
-                              .from('footer_settings')
-                              .insert([newFooterSetting]);
-
-                            if (error) {
-                              toast({
-                                title: "Error",
-                                description: error.message || "Failed to add footer setting",
-                                variant: "destructive",
-                              });
-                            } else {
-                              toast({
-                                title: "Success",
-                                description: "Footer setting added",
-                              });
-                              setNewFooterSetting({ section: 'quick_links', key: '', value: '', link_url: '' });
-                              fetchFooterSettings();
-                            }
-                          }
-                        }}
-                      >
-                        {editingFooter ? 'Update' : 'Add'} Setting
-                      </Button>
-                      {editingFooter && (
-                        <Button variant="outline" onClick={() => setEditingFooter(null)}>
-                          Cancel
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Existing Footer Settings */}
-                  <div className="space-y-4">
-                    <h3 className="font-medium">Existing Footer Settings</h3>
-                    {['about', 'quick_links', 'support', 'contact', 'copyright'].map((section) => {
-                      const sectionItems = footerSettings.filter(item => item.section === section);
-                      if (sectionItems.length === 0) return null;
-                      
-                      return (
-                        <div key={section} className="space-y-2">
-                          <h4 className="text-sm font-medium text-muted-foreground capitalize">
-                            {section.replace('_', ' ')}
-                          </h4>
-                          {sectionItems.map((item) => (
-                            <div key={item.id} className="flex items-start justify-between p-4 border rounded-lg">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-medium">{item.key}</h4>
-                                  <Badge variant={item.is_active ? 'default' : 'secondary'}>
-                                    {item.is_active ? 'Active' : 'Inactive'}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground mt-1">{item.value}</p>
-                                {item.link_url && (
-                                  <p className="text-xs text-muted-foreground mt-1">Link: {item.link_url}</p>
-                                )}
-                              </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setEditingFooter(item)}
-                                >
-                                  Edit
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={async () => {
-                                    const { error } = await supabase
-                                      .from('footer_settings')
-                                      .update({ is_active: !item.is_active })
-                                      .eq('id', item.id);
-
-                                    if (error) {
-                                      toast({
-                                        title: "Error",
-                                        description: "Failed to toggle status",
-                                        variant: "destructive",
-                                      });
-                                    } else {
-                                      toast({
-                                        title: "Success",
-                                        description: `Setting ${item.is_active ? 'deactivated' : 'activated'}`,
-                                      });
-                                      fetchFooterSettings();
-                                    }
-                                  }}
-                                >
-                                  {item.is_active ? 'Deactivate' : 'Activate'}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={async () => {
-                                    const { error } = await supabase
-                                      .from('footer_settings')
-                                      .delete()
-                                      .eq('id', item.id);
-
-                                    if (error) {
-                                      toast({
-                                        title: "Error",
-                                        description: "Failed to delete setting",
-                                        variant: "destructive",
-                                      });
-                                    } else {
-                                      toast({
-                                        title: "Success",
-                                        description: "Setting deleted",
-                                      });
-                                      fetchFooterSettings();
-                                    }
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          
+          {/* OLD: TabsContent value="footer" REMOVED */}
+          
         </Tabs>
       </div>
     </div>
