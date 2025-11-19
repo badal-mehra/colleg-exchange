@@ -1,3 +1,5 @@
+// file: Profile.tsx
+
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ImageCropModal from '@/components/ImageCropModal';
 
+// ⭐ UPDATED INTERFACE to include calculated ratings
 interface Profile {
   id: string;
   user_id: string;
@@ -32,6 +35,11 @@ interface Profile {
   trust_seller_badge: boolean;
   mck_id: string;
   avatar_url: string | null;
+  // NEW: Ratings summary for the user
+  user_ratings?: {
+    count: number;
+    avg: number | null;
+  }[];
 }
 
 const Profile = () => {
@@ -82,7 +90,11 @@ const Profile = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select(`
+        *,
+        // ⭐ NEW: Fetch aggregate ratings for the current user
+        user_ratings:ratings!to_user_id (count, avg:rating)
+      `)
       .eq('user_id', user.id)
       .single();
 
@@ -94,7 +106,7 @@ const Profile = () => {
         variant: "destructive",
       });
     } else {
-      setProfile(data);
+      setProfile(data as Profile);
       setFormData({
         full_name: data.full_name || '',
         phone: data.phone || '',
@@ -272,7 +284,35 @@ const Profile = () => {
 
   const statusInfo = getVerificationStatusInfo(profile?.verification_status || '');
   const avatarUrl = getAvatarUrl(profile?.avatar_url);
-
+  
+  // ⭐ RATING CALCULATION LOGIC
+  const ratingData = profile?.user_ratings?.[0]; 
+  const averageRating = ratingData?.avg ? parseFloat(ratingData.avg.toFixed(1)) : null;
+  const totalCount = ratingData?.count || 0;
+  
+  // Helper to render stars
+  const renderStars = (avg: number | null) => {
+    if (avg === null) return null;
+    const fullStars = Math.floor(avg);
+    const hasHalfStar = avg - fullStars >= 0.5;
+    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+    
+    return (
+      <div className="flex items-center gap-0.5">
+        {[...Array(fullStars)].map((_, i) => (
+          <Star key={`full-${i}`} className="h-4 w-4 fill-warning text-warning" />
+        ))}
+        {hasHalfStar && (
+          // Represent half star if needed (using a full star as a placeholder for simplicity in this example)
+          <Star key="half" className="h-4 w-4 fill-warning/50 text-warning" /> 
+        )}
+        {[...Array(emptyStars)].map((_, i) => (
+          <Star key={`empty-${i}`} className="h-4 w-4 text-muted-foreground/30" />
+        ))}
+      </div>
+    );
+  };
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <div className="container mx-auto px-4 py-6 max-w-4xl">
@@ -343,6 +383,20 @@ const Profile = () => {
                         </div>
                       )}
                     </div>
+
+                    {/* ⭐ NEW: RATING DISPLAY BLOCK (Profile Header) */}
+                    {averageRating !== null && totalCount > 0 ? (
+                        <div className="flex flex-col gap-1 mb-3 justify-center md:justify-start">
+                            <div className="flex items-center gap-2">
+                                {renderStars(averageRating)}
+                                <span className="text-xl font-bold text-yellow-500">{averageRating}</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">Based on {totalCount} ratings</p>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground mb-3">No ratings yet.</p>
+                    )}
+                    {/* ------------------------------- */}
 
                     <div className="space-y-2 mb-4">
                       <p className="text-muted-foreground flex items-center gap-2 justify-center md:justify-start">
@@ -586,7 +640,7 @@ const Profile = () => {
           image={imageToCrop}
           isOpen={cropModalOpen}
           onClose={() => {
-            setCropModalOpen(false);
+            setCropModalModal(false);
             setImageToCrop(null);
           }}
           onCropComplete={handleCropComplete}
