@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ImageCropModal from '@/components/ImageCropModal';
 
-// ⭐ FIX: Profile Interface, 'user_ratings' MUST match the data structure returned by the query
+// ⭐ FIX: Profile Interface, added direct DB columns
 interface Profile {
   id: string;
   user_id: string;
@@ -35,11 +35,9 @@ interface Profile {
   trust_seller_badge: boolean;
   mck_id: string;
   avatar_url: string | null;
-  // FIX: Supabase dynamic aggregation returns this structure
-  user_ratings?: {
-    count: number;
-    avg: number | null;
-  }[];
+  // ⭐ FIX: Direct DB columns
+  average_rating: number | null;
+  total_ratings: number | null;
 }
 
 const Profile = () => {
@@ -90,11 +88,8 @@ const Profile = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('profiles')
-      .select(`
-        *,
-        // ⭐ FIX: Use the correct dynamic aggregation syntax
-        user_ratings:ratings!to_user_id (count, avg:rating)
-      `)
+      // ⭐ FIX: Select the required columns directly
+      .select(`*, average_rating, total_ratings`)
       .eq('user_id', user.id)
       .single();
 
@@ -285,10 +280,9 @@ const Profile = () => {
   const statusInfo = getVerificationStatusInfo(profile?.verification_status || '');
   const avatarUrl = getAvatarUrl(profile?.avatar_url);
   
-  // ⭐ RATING CALCULATION LOGIC
-  const ratingData = profile?.user_ratings?.[0]; 
-  const averageRating = ratingData?.avg ? parseFloat(ratingData.avg.toFixed(1)) : null;
-  const totalCount = ratingData?.count || 0;
+  // ⭐ RATING CALCULATION LOGIC (Simplified: direct access)
+  const averageRating = profile?.average_rating ? parseFloat(profile.average_rating.toFixed(1)) : null;
+  const totalCount = profile?.total_ratings || 0;
   
   // Helper to render stars
   const renderStars = (avg: number | null) => {
