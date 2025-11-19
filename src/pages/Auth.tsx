@@ -8,13 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, EyeOff, CheckCircle, Gift, MessageSquare } from 'lucide-react'; // New icons for features and password toggle
+import { Eye, EyeOff, CornerDownLeft } from 'lucide-react'; // Updated icons for a cleaner look
 import { useToast } from '@/hooks/use-toast';
 import logo from '@/assets/mycampuskart-logo.png';
 
 const UNIVERSITY_OPTIONS = [
   { value: 'Lovely Professional University', label: 'Lovely Professional University' },
-  // Add other universities here if they become available
 ];
 
 const Auth = () => {
@@ -114,44 +113,28 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl grid lg:grid-cols-2 gap-8 items-center">
-        {/* Left side - Hero content (Refreshed) */}
-        <div className="space-y-8 text-center lg:text-left">
+        
+        {/* Left side - Simple Banner (Refreshed again) */}
+        <div className="space-y-8 text-center lg:text-left p-6">
           <div className="space-y-4">
             <img 
               src={logo} 
               alt="MyCampusKart" 
-              className="h-16 mx-auto lg:mx-0"
+              className="h-20 mx-auto lg:mx-0"
             />
-            {/* New Tagline */}
-            <h1 className="text-4xl font-bold text-primary">
-              The Exclusive LPU Campus Exchange
+            <h1 className="text-5xl font-extrabold text-primary leading-tight">
+              LPU's <span className='text-accent'>Exclusive</span> Marketplace
             </h1>
-            <p className="text-xl text-muted-foreground">
-              Trade books, gadgets, and services securely with your verified peers.
+            <p className="text-lg text-muted-foreground mt-4">
+              Sign in with your verified **@lpu.in** email to begin trading safely.
             </p>
           </div>
 
-          {/* New Feature Blocks */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col items-center space-y-2 p-6 rounded-xl bg-primary/10 border-2 border-primary/50 transition-all hover:shadow-lg">
-              <CheckCircle className="h-8 w-8 text-primary" />
-              <h3 className="font-semibold text-lg">Verified Access</h3>
-              <p className="text-sm text-center text-muted-foreground">LPU Student Email Required for Entry.</p>
-            </div>
-            <div className="flex flex-col items-center space-y-2 p-6 rounded-xl bg-primary/10 border-2 border-primary/50 transition-all hover:shadow-lg">
-              <Gift className="h-8 w-8 text-primary" />
-              <h3 className="font-semibold text-lg">Hassle-Free Trading</h3>
-              <p className="text-sm text-center text-muted-foreground">Sell fast, buy cheap—right on campus.</p>
-            </div>
-            <div className="flex flex-col items-center space-y-2 p-6 rounded-xl bg-primary/10 border-2 border-primary/50 transition-all hover:shadow-lg">
-              <MessageSquare className="h-8 w-8 text-primary" />
-              <h3 className="font-semibold text-lg">Direct Connect</h3>
-              <p className="text-sm text-center text-muted-foreground">Private chat for safe local meetups.</p>
-            </div>
-            <div className="flex flex-col items-center space-y-2 p-6 rounded-xl bg-primary/10 border-2 border-primary/50 transition-all hover:shadow-lg">
-              <span className="text-3xl">📚</span>
-              <h3 className="font-semibold text-lg">Academic Focus</h3>
-              <p className="text-sm text-center text-muted-foreground">Find used books and study aids easily.</p>
+          <div className="relative w-full h-48 bg-card border-2 border-primary/50 rounded-xl flex items-center justify-center overflow-hidden shadow-lg">
+            <div className='absolute top-0 left-0 p-4 font-semibold text-sm text-primary/70'>Campus View</div>
+            <div className='text-5xl opacity-30'>🛒</div>
+            <div className='absolute bottom-0 right-0 p-3'>
+                <CornerDownLeft className='h-8 w-8 text-primary/80'/>
             </div>
           </div>
         </div>
@@ -166,9 +149,9 @@ const Auth = () => {
                 className="h-14"
               />
             </div>
-            <CardTitle>Welcome to MyCampusKart</CardTitle>
+            <CardTitle>Welcome Back!</CardTitle>
             <CardDescription>
-              Join the Lovely Professional University marketplace
+              Access the Lovely Professional University marketplace
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -198,7 +181,6 @@ const Auth = () => {
                         variant="link" 
                         className="text-xs p-0 h-auto"
                         onClick={async () => {
-                          // NOTE: Using a different ID for the sign-in email input
                           const email = (document.getElementById('signin-email') as HTMLInputElement)?.value;
                           if (!email) {
                             toast({
