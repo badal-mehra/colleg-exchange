@@ -9,36 +9,36 @@ interface StaticPage {
   title: string;
   slug: string; // e.g., 'terms', 'privacy', 'about'
   content: string;
-  link_url: string | null; // Reusing this for custom links not in the main slug list
+  version: string;
+  link_url: string | null;
   is_active: boolean;
+  created_at: string;
 }
 
-// Custom link type for non-CMS links (like Social)
+// Custom link type for hardcoded or social links
 interface CustomLink {
     key: string;
     value: string;
     link_url: string | null;
 }
 
-// FIX 1: Helper function to check if a URL is external (needs <a> tag)
+// Helper function to check if a URL is external (needs <a> tag)
 const isExternal = (url: string | null): boolean => {
     if (!url) return false;
-    // Checks for full URLs starting with http(s):// or mailto:
     return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('mailto:');
 };
 
 export const Footer = () => {
-  // FIX 2: Consolidated state for Static Content and Custom Links
   const [staticData, setStaticData] = useState<{
     aboutContent: StaticPage[];
-    quickLinks: StaticPage[];
+    quickLinks: (StaticPage & { value: string })[];
     supportLinks: CustomLink[];
     contactLinks: CustomLink[];
     copyright: StaticPage[];
   }>({
     aboutContent: [],
-    quickLinks: [], // Will store links based on 'slug' like /terms, /privacy
-    supportLinks: [], // Custom links fetched for support/contact
+    quickLinks: [],
+    supportLinks: [],
     contactLinks: [],
     copyright: []
   });
@@ -47,71 +47,76 @@ export const Footer = () => {
     fetchFooterSettings();
   }, []);
 
-  // FIX 3: Fetching data from the new consolidated structure (Simulated)
   const fetchFooterSettings = async () => {
-    // 1. Fetch all active Static Pages (Terms, Privacy, About, etc.)
+    // 1. Fetch all active Static Pages (latest version first)
     const { data: pageData, error: pageError } = await supabase
         .from('static_pages')
         .select('*')
         .eq('is_active', true)
-        .order('slug');
-
-    // 2. Fetch custom links that don't fit into static pages (e.g., social/contact details)
-    // NOTE: If you are still using the footer_settings table for social/contact details, 
-    // we need to uncomment the old fetching logic for 'contact'. For now, we mock/assume custom data fetch.
+        .order('slug')
+        .order('version', { ascending: false });
 
     if (pageError) {
         console.error("Error fetching static pages:", pageError);
+        // Fallback to empty state
+        setFooterData({
+            aboutContent: [],
+            quickLinks: [],
+            supportLinks: [],
+            contactLinks: [],
+            copyright: [],
+        });
         return;
     }
 
     const pages = pageData || [];
     
-    // --- Manual grouping/creation of data for rendering ---
+    // --- Grouping and Link Creation Logic ---
+    
+    // Quick Links: Generate unique links for Terms, Privacy, About, Shipping
+    const quickLinks = pages
+        .filter(p => ['terms', 'privacy', 'about', 'shipping'].includes(p.slug))
+        .reduce((acc, current) => {
+            // Check for uniqueness by slug (to ensure only one version of 'terms' is used)
+            if (!acc.some((item: any) => item.slug === current.slug)) {
+                acc.push({
+                    ...current,
+                    // Internal URL path based on slug
+                    link_url: `/${current.slug}`, 
+                    // Display text (Footer uses 'title' from CMS)
+                    value: current.title || current.slug.replace('-', ' ') 
+                });
+            }
+            return acc;
+        }, [] as (StaticPage & { value: string })[]);
+
+
     const groupedData = {
-        // About Content: Find the active 'about' page
-        aboutContent: pages.filter(p => p.slug === 'about'),
+        // About Content: Only the first active 'about' page
+        aboutContent: pages.filter(p => p.slug === 'about').slice(0, 1) as StaticPage[],
 
-        // Quick Links: Generate list for Footer (Terms, Privacy, About)
-        quickLinks: [
-            // Create dynamic link objects based on slugs found in the database
-            // NOTE: URL is based on slug, title is based on page.title
-            ...pages
-                .filter(p => ['terms', 'privacy', 'about', 'shipping'].includes(p.slug))
-                .map(p => ({
-                    ...p, // includes id, slug, etc.
-                    link_url: `/${p.slug}`, // Internal URL path
-                    value: p.title || p.slug.replace('-', ' ') // Use title for display text
-                })) as StaticPage[], 
+        quickLinks: quickLinks,
 
-            // Add any custom link_url items saved in the static_pages table (though slug is preferred)
-            ...pages.filter(p => p.link_url && !['terms', 'privacy', 'about', 'shipping'].includes(p.slug))
-        ],
-
-        // Support Links (MOCK/TEMP: Needs custom table fetch if not pages)
-        // Since you removed the footer table, we can only rely on custom hardcoded or 'contact' page data
+        // Support Links (Hardcoded/Temporary - Can be fetched from a custom table later if needed)
         supportLinks: [
-            // If you have a dedicated support page slug:
-            // ...pages.filter(p => p.slug === 'support').map(p => ({ key: p.slug, value: p.title, link_url: `/${p.slug}`})),
             { key: 'help', value: 'Help Center', link_url: '/help' },
             { key: 'report', value: 'Report an Issue', link_url: '/report' },
         ] as CustomLink[],
 
 
-        // Contact Links (MOCK/TEMP: Needs custom table fetch if not pages)
+        // Contact Links (Hardcoded/Temporary - Social Media)
         contactLinks: [
             { key: 'linkedin', value: 'MyCampusKart', link_url: 'https://linkedin.com/campus' },
             { key: 'instagram', value: '@mycampuskart', link_url: 'https://instagram.com/campus' },
             { key: 'email', value: 'support@campus.com', link_url: 'mailto:support@campus.com' },
         ] as CustomLink[],
 
-        // Copyright Content
-        copyright: pages.filter(p => p.slug === 'copyright'),
+        // Copyright Content: Only the first active 'copyright' page
+        copyright: pages.filter(p => p.slug === 'copyright').slice(0, 1) as StaticPage[],
     };
     
     setFooterData(groupedData);
   };
-  // -------------------------------------------------------------
 
   const getSocialIcon = (key: string) => {
     switch (key.toLowerCase()) {
@@ -143,12 +148,17 @@ export const Footer = () => {
           {/* About Column */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">About MyCampusKart</h3>
-            {/* FIX: Display content instead of just link text */}
-            {staticData.aboutContent.map((item) => (
-              <p key={item.id} className="text-sm text-muted-foreground leading-relaxed">
-                {item.content || 'Content not set in CMS for About Us.'}
-              </p>
-            ))}
+            {staticData.aboutContent.length > 0 ? (
+                staticData.aboutContent.map((item) => (
+                  <p key={item.id} className="text-sm text-muted-foreground leading-relaxed">
+                    {item.content}
+                  </p>
+                ))
+            ) : (
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                    Content not set in CMS. Please set the 'About' page content in Admin Panel.
+                </p>
+            )}
           </div>
 
           {/* Quick Links Column (CMS pages) */}
@@ -168,32 +178,30 @@ export const Footer = () => {
                             rel="noopener noreferrer"
                             className="text-sm text-muted-foreground hover:text-primary transition-colors"
                           >
-                            {item.title}
+                            {item.value}
                           </a>
                         ) : ( // Use <Link> for internal routes (e.g., /terms)
                           <Link
                             to={item.link_url}
                             className="text-sm text-muted-foreground hover:text-primary transition-colors"
                           >
-                            {item.title}
+                            {item.value}
                           </Link>
                         )
                       ) : (
-                        <span className="text-sm text-muted-foreground">{item.title}</span>
+                        <span className="text-sm text-muted-foreground">{item.value}</span>
                       )}
                     </li>
                   );
                 })
               ) : (
-                // Fallback for when no CMS links are active
-                <>
-                  <li><span className="text-sm text-muted-foreground">No links available (CMS not configured)</span></li>
-                </>
+                // Fallback message now simplified
+                <li><span className="text-sm text-muted-foreground">No Quick Links configured in CMS.</span></li>
               )}
             </ul>
           </div>
 
-          {/* Support & Feedback Column (Custom links) */}
+          {/* Support & Feedback Column (Hardcoded/Custom links) */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Support & Feedback</h3>
             <ul className="space-y-3">
@@ -228,7 +236,7 @@ export const Footer = () => {
             </ul>
           </div>
 
-          {/* Connect With Us Column (Custom links, mostly social) */}
+          {/* Connect With Us Column (Hardcoded/Social links) */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Connect With Us</h3>
             <ul className="space-y-3">
@@ -262,9 +270,13 @@ export const Footer = () => {
         {/* Bottom Copyright */}
         <div className="border-t pt-6">
           <div className="text-center text-sm text-muted-foreground">
-            {staticData.copyright.map((item) => (
-              <p key={item.id}>{item.content || 'Copyright content not set.'}</p>
-            ))}
+            {staticData.copyright.length > 0 ? (
+                staticData.copyright.map((item) => (
+                    <p key={item.id}>{item.content}</p>
+                ))
+            ) : (
+                <p>Copyright © {new Date().getFullYear()} MyCampusKart. All rights reserved.</p>
+            )}
           </div>
         </div>
       </div>
