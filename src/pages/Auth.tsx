@@ -8,9 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, EyeOff, X, BookOpen, Smartphone, Shield, CornerDownLeft } from 'lucide-react'; // Added new icons
+import { Eye, EyeOff, X } from 'lucide-react'; 
 import { useToast } from '@/hooks/use-toast';
-import logo from '@/assets/mycampuskart-logo.png';
+import logo from '@/assets/mycampuskart-logo.png'; // Assuming your logo path is correct
 
 const UNIVERSITY_OPTIONS = [
   { value: 'Lovely Professional University', label: 'Lovely Professional University' },
@@ -154,15 +154,20 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center p-4">
-      {/* Outer Container for the Grid Layout and Animation */}
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 bg-cover bg-center"
+      style={{ 
+        backgroundImage: `url(https://image.pollinations.ai/prompt/a%20vibrant%20university%20campus%20with%20students%20casually%20interacting,%20slightly%20blurred,%20muted%20colors,%20with%20a%20subtle%20overlay%20texture)`,
+        // Added a subtle dark overlay to ensure text readability on the card
+        backgroundBlendMode: 'overlay',
+        backgroundColor: 'rgba(0, 0, 0, 0.3)', // Adjust opacity as needed (0.3 = 30% black overlay)
+      }}
+    >
+      {/* Container for the Auth Card with Fade-In Animation */}
       <div 
         className="
           w-full 
-          max-w-5xl 
-          grid lg:grid-cols-2 
-          gap-10 
-          items-center
+          max-w-md 
           transition-all 
           duration-500 
           ease-out 
@@ -172,57 +177,7 @@ const Auth = () => {
         "
         style={{ animation: 'fadeInUp 0.7s ease-out 0.1s forwards' }} 
       >
-        
-        {/* Left Side: Marketing and Visuals (New Content) */}
-        <div className="space-y-8 text-center lg:text-left p-6 lg:p-0">
-          <div className="space-y-4">
-            <img 
-              src={logo} 
-              alt="MyCampusKart" 
-              className="h-20 mx-auto lg:mx-0"
-            />
-            <h1 className="text-4xl font-extrabold text-gray-800 leading-tight">
-              Trade Smarter, Live Easier on Campus.
-            </h1>
-            <p className="text-lg text-muted-foreground mt-4">
-              The official, verified marketplace for LPU students.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            
-            {/* Value Prop 1: Academic Gear */}
-            <div className="flex items-start space-x-4 p-4 rounded-xl border-l-4 border-primary bg-card transition-shadow hover:shadow-md">
-              <BookOpen className="h-6 w-6 text-primary mt-1" />
-              <div>
-                <h3 className="font-semibold text-lg">Academic Essentials</h3>
-                <p className="text-sm text-muted-foreground">Find used textbooks, lab manuals, and notes at the best student prices.</p>
-              </div>
-            </div>
-
-            {/* Value Prop 2: Tech Exchange */}
-            <div className="flex items-start space-x-4 p-4 rounded-xl border-l-4 border-accent bg-card transition-shadow hover:shadow-md">
-              <Smartphone className="h-6 w-6 text-accent mt-1" />
-              <div>
-                <h3 className="font-semibold text-lg">Gadgets & Gear</h3>
-                <p className="text-sm text-muted-foreground">Buy or sell phones, laptops, and electronics safely within the university.</p>
-              </div>
-            </div>
-
-            {/* Value Prop 3: Verified Safety */}
-            <div className="flex items-start space-x-4 p-4 rounded-xl border-l-4 border-primary bg-card transition-shadow hover:shadow-md">
-              <Shield className="h-6 w-6 text-primary mt-1" />
-              <div>
-                <h3 className="font-semibold text-lg">Verified Safety</h3>
-                <p className="text-sm text-muted-foreground">Only verified LPU email users are allowed, ensuring trusted community trading.</p>
-              </div>
-            </div>
-
-          </div>
-        </div>
-        
-        {/* Right Side: Auth Card (Form) */}
-        <Card className="w-full mx-auto shadow-2xl">
+        <Card className="w-full shadow-2xl bg-white/90 backdrop-blur-sm"> {/* Added bg-white/90 and backdrop-blur-sm for style */}
           <CardHeader className="text-center relative">
             
             {/* Working Back Button */}
@@ -235,10 +190,14 @@ const Auth = () => {
                 <X className="h-5 w-5" />
             </Button>
 
-            <div className="flex justify-center mb-4 mt-2 lg:hidden">
-              <img src={logo} alt="MyCampusKart" className="h-16" />
+            <div className="flex justify-center mb-4 mt-2">
+              <img 
+                src={logo} 
+                alt="MyCampusKart" 
+                className="h-16"
+              />
             </div>
-            <CardTitle className="text-2xl">Welcome Back!</CardTitle>
+            <CardTitle className="text-2xl">Welcome to MyCampusKart</CardTitle>
             <CardDescription>
               Sign in or create your LPU student account
             </CardDescription>
@@ -262,7 +221,6 @@ const Auth = () => {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="signin-password">Password</Label>
-                      {/* Forgot Password Link */}
                       <Button 
                         type="button" 
                         variant="link" 
@@ -286,7 +244,6 @@ const Auth = () => {
                         Forgot Password?
                       </Button>
                     </div>
-                    {/* Password Input with Toggle */}
                     <div className="relative">
                       <Input id="signin-password" name="password" type={showPassword ? "text" : "password"} required className="pr-10" />
                       <PasswordToggle isVisible={showPassword} toggleVisibility={() => setShowPassword(!showPassword)} />
