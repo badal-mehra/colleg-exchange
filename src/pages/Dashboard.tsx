@@ -233,7 +233,7 @@ const Dashboard = () => {
   };
   const isVerified = profile?.is_verified && profile?.verification_status === 'approved';
 
-  // Image Slider Component
+  // Image Slider Component (UPDATED FOR CONSISTENCY AND FLICKER FIX)
   const ImageSliderSection = () => {
     const [sliderImages, setSliderImages] = useState<any[]>([]);
     const [currentSlide, setCurrentSlide] = useState(0);
@@ -267,42 +267,74 @@ const Dashboard = () => {
         window.open(image.link_url, '_blank');
       }
     };
-    return <section className="container mx-auto px-4 py-4 sm:py-6 lg:py-8">
-        <div className="relative h-48 sm:h-56 md:h-64 lg:h-80 rounded-xl overflow-hidden bg-gradient-to-r from-primary/10 to-accent/10 shadow-lg">
-          {sliderImages.map((image, index) => <div key={image.id} className={`absolute inset-0 transition-opacity duration-700 ease-in-out will-change-opacity ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'} ${image.link_url ? 'cursor-pointer' : ''}`} onClick={() => handleSlideClick(image)}>
-              <img src={image.image_url} alt={image.title} className="w-full h-full object-cover" loading="lazy" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent flex items-center justify-center">
-                <div className="text-center text-white space-y-2 sm:space-y-4 max-w-2xl px-4">
-                  {image.title && <h2 className="text-xl sm:text-2xl lg:text-4xl font-bold drop-shadow-lg">{image.title}</h2>}
-                  {image.description && <p className="text-sm sm:text-base lg:text-xl opacity-90 drop-shadow-md">{image.description}</p>}
+    
+    // FIX: Using Home.tsx's wrapper classes and index.css's 'carousel-container' for consistent, fixed height.
+    return (
+      <section className="py-12 bg-card/50"> 
+        <div className="container mx-auto px-4">
+          <div className="relative carousel-container rounded-2xl overflow-hidden shadow-lg">
+            {sliderImages.map((image, index) => (
+              <div
+                key={image.id}
+                className={`absolute inset-0 transition-opacity duration-500 ${
+                  index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                } ${image.link_url ? 'cursor-pointer' : ''}`}
+                onClick={() => handleSlideClick(image)}
+              >
+                <img src={image.image_url} alt={image.title} className="w-full h-full object-cover" loading="lazy" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent flex items-center justify-center">
+                  <div className="text-center text-white space-y-2 sm:space-y-4 max-w-2xl px-4">
+                    {image.title && <h2 className="text-xl sm:text-2xl lg:text-4xl font-bold drop-shadow-lg">{image.title}</h2>}
+                    {image.description && <p className="text-sm sm:text-base lg:text-xl opacity-90 drop-shadow-md">{image.description}</p>}
+                  </div>
                 </div>
               </div>
-            </div>)}
-          
-          {/* Navigation buttons */}
-          <button onClick={e => {
-          e.stopPropagation();
-          prevSlide();
-        }} className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 sm:p-2 rounded-full transition-all z-20 hover:scale-110" aria-label="Previous slide">
-            <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-          </button>
-          <button onClick={e => {
-          e.stopPropagation();
-          nextSlide();
-        }} className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 sm:p-2 rounded-full transition-all z-20 hover:scale-110" aria-label="Next slide">
-            <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
-          </button>
+            ))}
+            
+            {/* Navigation buttons */}
+            <button 
+              onClick={e => {
+                e.stopPropagation();
+                prevSlide();
+              }} 
+              className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 sm:p-2 rounded-full transition-all z-20 hover:scale-110" 
+              aria-label="Previous slide"
+            >
+              <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+            </button>
+            <button 
+              onClick={e => {
+                e.stopPropagation();
+                nextSlide();
+              }} 
+              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 sm:p-2 rounded-full transition-all z-20 hover:scale-110" 
+              aria-label="Next slide"
+            >
+              <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+            </button>
 
-          {/* Dots indicator */}
-          <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 flex space-x-1.5 sm:space-x-2 z-20">
-            {sliderImages.map((_, index) => <button key={index} onClick={e => {
-            e.stopPropagation();
-            setCurrentSlide(index);
-          }} className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all ${index === currentSlide ? 'bg-white w-4 sm:w-6' : 'bg-white/50'}`} aria-label={`Go to slide ${index + 1}`} />)}
+            {/* Dots indicator */}
+            <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 flex space-x-1.5 sm:space-x-2 z-20">
+              {sliderImages.map((_, index) => (
+                <button 
+                  key={index} 
+                  onClick={e => {
+                    e.stopPropagation();
+                    setCurrentSlide(index);
+                  }} 
+                  className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all ${
+                    index === currentSlide ? 'bg-white w-4 sm:w-6' : 'bg-white/50'
+                  }`} 
+                  aria-label={`Go to slide ${index + 1}`} 
+                />
+              ))}
+            </div>
           </div>
         </div>
-      </section>;
+      </section>
+    );
   };
+  
   return <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Header */}
       <header className="border-b glass-effect sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
