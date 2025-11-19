@@ -190,7 +190,7 @@ const Auth = () => {
             </div>
             <CardTitle className="text-2xl">Welcome to MyCampusKart</CardTitle>
             <CardDescription>
-              Sign in or create your LPU student account
+              Join Your Campus Marketplace
             </CardDescription>
           </CardHeader>
 
