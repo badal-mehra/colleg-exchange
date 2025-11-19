@@ -144,16 +144,11 @@ const Home = () => {
     navigate(`/item/${itemId}`);
   };
 
-  const getAdTypeIcon = (adType: string) => {
-    const benefits = getAdTypeBenefits(adType);
-    return benefits ? benefits.icon : null;
-  };
-
   const getAdTypeBadge = (adType: string) => {
     return getAdTypeBenefits(adType);
   };
 
-  // Image slidebar component
+  // Image slidebar component (UPDATED FOR CONSISTENCY)
   const ImageSlidebarSection = () => {
     const [sliderImages, setSliderImages] = useState<any[]>([]);
     const [currentSlide, setCurrentSlide] = useState(0);
@@ -200,91 +195,94 @@ const Home = () => {
     return (
       <section className="py-12 bg-card/50">
         <div className="container mx-auto px-4">
-          <div className="space-y-6">
-            <div className="relative carousel-container rounded-2xl overflow-hidden shadow-lg">
-              {sliderImages.map((image, index) => (
-                <div
-                  key={image.id}
-                  className={`absolute inset-0 transition-opacity duration-500 ${
-                    index === currentSlide ? 'opacity-100' : 'opacity-0'
-                  } ${image.link_url ? 'cursor-pointer' : ''}`}
-                  onClick={() => handleSlideClick(image)}
-                >
-                  <img
-                    src={image.image_url}
-                    alt={image.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-12">
-                    <div className="text-center text-white space-y-3 max-w-2xl px-4">
-                      {image.title && <h2 className="text-2xl lg:text-4xl font-bold drop-shadow-lg">{image.title}</h2>}
-                      {image.description && (
-                        <p className="text-base lg:text-xl opacity-95 drop-shadow-md">{image.description}</p>
-                      )}
-                    </div>
+          
+          {/* Slider Container: Uses 'carousel-container' for fixed height (Flicker Fix) */}
+          <div className="relative carousel-container rounded-2xl overflow-hidden shadow-lg">
+            {sliderImages.map((image, index) => (
+              <div
+                key={image.id}
+                className={`absolute inset-0 transition-opacity duration-500 ${
+                  index === currentSlide ? 'opacity-100' : 'opacity-0'
+                } ${image.link_url ? 'cursor-pointer' : ''}`}
+                onClick={() => handleSlideClick(image)}
+              >
+                <img
+                  src={image.image_url}
+                  alt={image.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-12">
+                  <div className="text-center text-white space-y-3 max-w-2xl px-4">
+                    {image.title && <h2 className="text-2xl lg:text-4xl font-bold drop-shadow-lg">{image.title}</h2>}
+                    {image.description && (
+                      <p className="text-base lg:text-xl opacity-95 drop-shadow-md">{image.description}</p>
+                    )}
                   </div>
                 </div>
+              </div>
+            ))}
+
+            {/* Navigation buttons */}
+            <button
+              onClick={prevSlide}
+              className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors z-20"
+              aria-label="Previous slide"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              onClick={nextSlide}
+              className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors z-20"
+              aria-label="Next slide"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+
+            {/* Dots indicator */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 z-20">
+              {sliderImages.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentSlide(index)}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    index === currentSlide ? 'bg-white' : 'bg-white/50'
+                  }`}
+                  aria-label={`Go to slide ${index + 1}`}
+                />
               ))}
-
-              {/* Navigation buttons */}
-              <button
-                onClick={prevSlide}
-                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <button
-                onClick={nextSlide}
-                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-
-              {/* Dots indicator */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
-                {sliderImages.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentSlide(index)}
-                    className={`w-2 h-2 rounded-full transition-colors ${
-                      index === currentSlide ? 'bg-white' : 'bg-white/50'
-                    }`}
-                  />
-                ))}
-              </div>
             </div>
+          </div>
 
-            {/* Search Bar */}
-            <div className="max-w-2xl mx-auto w-full animate-scale-in">
-              <div className="flex flex-col md:flex-row gap-3 p-3 bg-card/50 rounded-xl border">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search for books, electronics, furniture..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 border-0 bg-background/50"
-                  />
-                </div>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-full md:w-48 border-0 bg-background/50">
-                    <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.icon} {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button className="md:px-8">
-                  <Search className="h-4 w-4 mr-2" />
-                  Search
-                </Button>
+          {/* Search Bar (Moved out of the space-y-6 container for consistency) */}
+          <div className="mt-8 max-w-2xl mx-auto w-full animate-scale-in"> {/* Added mt-8 for spacing */}
+            <div className="flex flex-col md:flex-row gap-3 p-3 bg-card/50 rounded-xl border">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search for books, electronics, furniture..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 border-0 bg-background/50"
+                />
               </div>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-full md:w-48 border-0 bg-background/50">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.icon} {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button className="md:px-8">
+                <Search className="h-4 w-4 mr-2" />
+                Search
+              </Button>
             </div>
           </div>
         </div>
@@ -382,7 +380,7 @@ const Home = () => {
                               alt={item.title}
                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                               onError={(e) => {
-                                e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik03NSA3NUgxMjVWMTI1SDc1Vjc1WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
+                                e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik03NSA3NUgxMjVWMTI1SDc1Vjc1WiIgZmlsbD0iIzlDQTNBRiIvPgo8L2F2Zz4K';
                               }}
                             />
                           ) : (
@@ -490,7 +488,6 @@ const Home = () => {
           )}
         </div>
       </section>
-
 
 
       {/* Footer */}
