@@ -41,6 +41,9 @@ interface Profile {
   trust_seller_badge: boolean;
   campus_points: number;
   deals_completed: number;
+  // ⭐ FIX: Added existing DB columns for rating
+  average_rating: number | null; 
+  total_ratings: number | null;
 }
 
 interface Category {
@@ -50,7 +53,7 @@ interface Category {
   icon: string;
 }
 
-// ⭐ FIX: Item Interface, 'seller_ratings' MUST match the data structure returned by the query
+// ⭐ FIX: Item Interface, removed complex aggregation field
 interface Item {
   id: string;
   title: string;
@@ -65,11 +68,6 @@ interface Item {
   seller_id: string;
   categories: Category;
   profiles: Profile;
-  // FIX: Supabase dynamic aggregation returns this structure
-  seller_ratings: {
-    count: number;
-    avg: number | null;
-  }[];
 }
 
 const ItemDetail = () => {
@@ -178,9 +176,12 @@ const ItemDetail = () => {
       .select(`
         *,
         categories (*),
-        profiles (*),
-        // ⭐ FIX: Use the correct dynamic aggregation syntax
-        seller_ratings:ratings!to_user_id (count, avg:rating)
+        // ⭐ FIX: Fetch profiles and the rating columns directly
+        profiles (
+          *, 
+          average_rating, 
+          total_ratings
+        )
       `)
       .eq('id', id)
       .single();
@@ -402,10 +403,9 @@ const ItemDetail = () => {
   const isOwner = user?.id === item.seller_id;
   const isVerified = userProfile?.is_verified && userProfile?.verification_status === 'approved';
   
-  // ⭐ RATING CALCULATION LOGIC
-  const ratingData = item.seller_ratings?.[0]; 
-  const averageRating = ratingData?.avg ? parseFloat(ratingData.avg.toFixed(1)) : null;
-  const totalCount = ratingData?.count || 0;
+  // ⭐ RATING CALCULATION LOGIC (Simplified: direct access)
+  const averageRating = item.profiles.average_rating ? parseFloat(item.profiles.average_rating.toFixed(1)) : null;
+  const totalCount = item.profiles.total_ratings || 0;
 
   return (
     <div className="min-h-screen bg-background">
