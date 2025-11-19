@@ -2,9 +2,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+
 import Index from "./pages/Index";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
@@ -25,85 +26,158 @@ import ScanQR from "./pages/ScanQR";
 import MyOrders from "./pages/MyOrders";
 import MyCart from "./pages/MyCart";
 import MyReports from "./pages/MyReports";
-
-// FIX 1: New component import
-import StaticPage from "./pages/StaticPage"; 
+import StaticPage from "./pages/StaticPage";
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/item/:id" element={<ItemDetail />} />
-            <Route path="/kyc" element={
-              <ProtectedRoute>
-                <KYC />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            } />
-            <Route path="/profile/:mckId" element={<PublicProfile />} />
-            <Route path="/sell" element={
-              <ProtectedRoute>
-                <SellItem />
-              </ProtectedRoute>
-            } />
-            <Route path="/chat/:conversationId?" element={
-              <ProtectedRoute>
-                <Chat />
-              </ProtectedRoute>
-            } />
-            <Route path="/my-chats" element={<ProtectedRoute><MyChats /></ProtectedRoute>} />
-            <Route path="/my-cart" element={<ProtectedRoute><MyCart /></ProtectedRoute>} />
-            <Route path="/my-reports" element={<ProtectedRoute><MyReports /></ProtectedRoute>} />
-            <Route path="/my-listings" element={<ProtectedRoute><MyListings /></ProtectedRoute>} />
-            <Route path="/my-orders" element={<ProtectedRoute><MyOrders /></ProtectedRoute>} />
-            <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
-            <Route path="/scan-qr" element={<ProtectedRoute><ScanQR /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-            
-            {/* FIX 2: Static Page Dynamic Routing. Only include slugs that should be fetched from CMS */}
-            
-            
-            {/* Separate routes for Help and Report (assuming they need different logic or will be built later) */}
-            {/* Since they are currently being routed to StaticPage which fails without CMS data, we can point them to NotFound temporarily, or better, to StaticPage as defined initially (and you ensure CMS data is there) */}
-            
-            {/* Reverting to the original definition since it was technically correct for routing: */}
-            <Route path="/terms" element={<StaticPage />} />
-            <Route path="/privacy" element={<StaticPage />} />
-            <Route path="/about" element={<StaticPage />} />
-            <Route path="/shipping" element={<StaticPage />} />
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
 
-{/* Help & Report ko abhi StaticPage pe mat bhejo */}
-            <Route path="/help" element={<StaticPage />} />
-            <Route path="/report" element={<StaticPage />} />
+        {/* BrowserRouter is NOW in main.tsx → DO NOT wrap again */}
 
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/item/:id" element={<ItemDetail />} />
 
+          <Route
+            path="/kyc"
+            element={
+              <ProtectedRoute>
+                <KYC />
+              </ProtectedRoute>
+            }
+          />
 
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route path="/profile/:mckId" element={<PublicProfile />} />
+
+          <Route
+            path="/sell"
+            element={
+              <ProtectedRoute>
+                <SellItem />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/chat/:conversationId?"
+            element={
+              <ProtectedRoute>
+                <Chat />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/my-chats"
+            element={
+              <ProtectedRoute>
+                <MyChats />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/my-cart"
+            element={
+              <ProtectedRoute>
+                <MyCart />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/my-reports"
+            element={
+              <ProtectedRoute>
+                <MyReports />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/my-listings"
+            element={
+              <ProtectedRoute>
+                <MyListings />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/my-orders"
+            element={
+              <ProtectedRoute>
+                <MyOrders />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/leaderboard"
+            element={
+              <ProtectedRoute>
+                <Leaderboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/scan-qr"
+            element={
+              <ProtectedRoute>
+                <ScanQR />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Static CMS Pages */}
+          <Route path="/terms" element={<StaticPage />} />
+          <Route path="/privacy" element={<StaticPage />} />
+          <Route path="/about" element={<StaticPage />} />
+          <Route path="/shipping" element={<StaticPage />} />
+          <Route path="/help" element={<StaticPage />} />
+          <Route path="/report" element={<StaticPage />} />
+
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </TooltipProvider>
+    </AuthProvider>
+  </QueryClientProvider>
 );
 
 export default App;
