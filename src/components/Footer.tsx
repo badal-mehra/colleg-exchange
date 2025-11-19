@@ -4,13 +4,20 @@ import { Link } from 'react-router-dom';
 import { Linkedin, Instagram, Mail } from 'lucide-react';
 import logo from '@/assets/mycampuskart-logo.png';
 
-interface FooterSetting {
+interface StaticPage {
   id: string;
-  section: string;
-  key: string;
-  value: string;
-  link_url: string | null;
-  sort_order: number;
+  title: string;
+  slug: string; // e.g., 'terms', 'privacy', 'about'
+  content: string;
+  link_url: string | null; // Reusing this for custom links not in the main slug list
+  is_active: boolean;
+}
+
+// Custom link type for non-CMS links (like Social)
+interface CustomLink {
+    key: string;
+    value: string;
+    link_url: string | null;
 }
 
 // FIX 1: Helper function to check if a URL is external (needs <a> tag)
@@ -21,17 +28,18 @@ const isExternal = (url: string | null): boolean => {
 };
 
 export const Footer = () => {
-  const [footerData, setFooterData] = useState<{
-    about: FooterSetting[];
-    quickLinks: FooterSetting[];
-    support: FooterSetting[];
-    contact: FooterSetting[];
-    copyright: FooterSetting[];
+  // FIX 2: Consolidated state for Static Content and Custom Links
+  const [staticData, setStaticData] = useState<{
+    aboutContent: StaticPage[];
+    quickLinks: StaticPage[];
+    supportLinks: CustomLink[];
+    contactLinks: CustomLink[];
+    copyright: StaticPage[];
   }>({
-    about: [],
-    quickLinks: [],
-    support: [],
-    contact: [],
+    aboutContent: [],
+    quickLinks: [], // Will store links based on 'slug' like /terms, /privacy
+    supportLinks: [], // Custom links fetched for support/contact
+    contactLinks: [],
     copyright: []
   });
 
@@ -39,24 +47,71 @@ export const Footer = () => {
     fetchFooterSettings();
   }, []);
 
+  // FIX 3: Fetching data from the new consolidated structure (Simulated)
   const fetchFooterSettings = async () => {
-    const { data, error } = await supabase
-      .from('footer_settings')
-      .select('*')
-      .eq('is_active', true)
-      .order('sort_order');
+    // 1. Fetch all active Static Pages (Terms, Privacy, About, etc.)
+    const { data: pageData, error: pageError } = await supabase
+        .from('static_pages')
+        .select('*')
+        .eq('is_active', true)
+        .order('slug');
 
-    if (!error && data) {
-      const grouped = {
-        about: data.filter(item => item.section === 'about'),
-        quickLinks: data.filter(item => item.section === 'quick_links'),
-        support: data.filter(item => item.section === 'support'),
-        contact: data.filter(item => item.section === 'contact'),
-        copyright: data.filter(item => item.section === 'copyright')
-      };
-      setFooterData(grouped);
+    // 2. Fetch custom links that don't fit into static pages (e.g., social/contact details)
+    // NOTE: If you are still using the footer_settings table for social/contact details, 
+    // we need to uncomment the old fetching logic for 'contact'. For now, we mock/assume custom data fetch.
+
+    if (pageError) {
+        console.error("Error fetching static pages:", pageError);
+        return;
     }
+
+    const pages = pageData || [];
+    
+    // --- Manual grouping/creation of data for rendering ---
+    const groupedData = {
+        // About Content: Find the active 'about' page
+        aboutContent: pages.filter(p => p.slug === 'about'),
+
+        // Quick Links: Generate list for Footer (Terms, Privacy, About)
+        quickLinks: [
+            // Create dynamic link objects based on slugs found in the database
+            // NOTE: URL is based on slug, title is based on page.title
+            ...pages
+                .filter(p => ['terms', 'privacy', 'about', 'shipping'].includes(p.slug))
+                .map(p => ({
+                    ...p, // includes id, slug, etc.
+                    link_url: `/${p.slug}`, // Internal URL path
+                    value: p.title || p.slug.replace('-', ' ') // Use title for display text
+                })) as StaticPage[], 
+
+            // Add any custom link_url items saved in the static_pages table (though slug is preferred)
+            ...pages.filter(p => p.link_url && !['terms', 'privacy', 'about', 'shipping'].includes(p.slug))
+        ],
+
+        // Support Links (MOCK/TEMP: Needs custom table fetch if not pages)
+        // Since you removed the footer table, we can only rely on custom hardcoded or 'contact' page data
+        supportLinks: [
+            // If you have a dedicated support page slug:
+            // ...pages.filter(p => p.slug === 'support').map(p => ({ key: p.slug, value: p.title, link_url: `/${p.slug}`})),
+            { key: 'help', value: 'Help Center', link_url: '/help' },
+            { key: 'report', value: 'Report an Issue', link_url: '/report' },
+        ] as CustomLink[],
+
+
+        // Contact Links (MOCK/TEMP: Needs custom table fetch if not pages)
+        contactLinks: [
+            { key: 'linkedin', value: 'MyCampusKart', link_url: 'https://linkedin.com/campus' },
+            { key: 'instagram', value: '@mycampuskart', link_url: 'https://instagram.com/campus' },
+            { key: 'email', value: 'support@campus.com', link_url: 'mailto:support@campus.com' },
+        ] as CustomLink[],
+
+        // Copyright Content
+        copyright: pages.filter(p => p.slug === 'copyright'),
+    };
+    
+    setFooterData(groupedData);
   };
+  // -------------------------------------------------------------
 
   const getSocialIcon = (key: string) => {
     switch (key.toLowerCase()) {
@@ -88,20 +143,21 @@ export const Footer = () => {
           {/* About Column */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">About MyCampusKart</h3>
-            {footerData.about.map((item) => (
+            {/* FIX: Display content instead of just link text */}
+            {staticData.aboutContent.map((item) => (
               <p key={item.id} className="text-sm text-muted-foreground leading-relaxed">
-                {item.value}
+                {item.content || 'Content not set in CMS for About Us.'}
               </p>
             ))}
           </div>
 
-          {/* Quick Links Column - FIX 2: Dynamic link handling */}
+          {/* Quick Links Column (CMS pages) */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Quick Links</h3>
             <ul className="space-y-2">
-              {footerData.quickLinks.length > 0 ? (
-                footerData.quickLinks.map((item) => {
-                  const external = isExternal(item.link_url); // Check external status
+              {staticData.quickLinks.length > 0 ? (
+                staticData.quickLinks.map((item) => {
+                  const external = isExternal(item.link_url); 
                   return (
                     <li key={item.id}>
                       {item.link_url ? (
@@ -112,55 +168,41 @@ export const Footer = () => {
                             rel="noopener noreferrer"
                             className="text-sm text-muted-foreground hover:text-primary transition-colors"
                           >
-                            {item.value}
+                            {item.title}
                           </a>
-                        ) : ( // Use <Link> for internal routes
+                        ) : ( // Use <Link> for internal routes (e.g., /terms)
                           <Link
                             to={item.link_url}
                             className="text-sm text-muted-foreground hover:text-primary transition-colors"
                           >
-                            {item.value}
+                            {item.title}
                           </Link>
                         )
                       ) : (
-                        <span className="text-sm text-muted-foreground">{item.value}</span>
+                        <span className="text-sm text-muted-foreground">{item.title}</span>
                       )}
                     </li>
                   );
                 })
               ) : (
+                // Fallback for when no CMS links are active
                 <>
-                  {/* Default links fallback */}
-                  <li>
-                    <Link to="/about" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                      About Us
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/terms" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                      Terms & Conditions
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/privacy" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                      Privacy Policy
-                    </Link>
-                  </li>
+                  <li><span className="text-sm text-muted-foreground">No links available (CMS not configured)</span></li>
                 </>
               )}
             </ul>
           </div>
 
-          {/* Support & Feedback Column - FIX 3: Dynamic link handling */}
+          {/* Support & Feedback Column (Custom links) */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Support & Feedback</h3>
             <ul className="space-y-3">
-              {footerData.support.map((item) => {
-                const external = isExternal(item.link_url); // Check external status
+              {staticData.supportLinks.map((item) => {
+                const external = isExternal(item.link_url);
                 return (
-                  <li key={item.id}>
+                  <li key={item.key}>
                     {item.link_url ? (
-                      external ? ( // Use <a> for external links
+                      external ? (
                         <a
                           href={item.link_url}
                           target="_blank"
@@ -169,7 +211,7 @@ export const Footer = () => {
                         >
                           {item.value}
                         </a>
-                      ) : ( // Use <Link> for internal routes
+                      ) : (
                         <Link
                           to={item.link_url}
                           className="text-sm text-muted-foreground hover:text-primary transition-colors block"
@@ -186,14 +228,14 @@ export const Footer = () => {
             </ul>
           </div>
 
-          {/* Connect With Us Column (Already uses <a> tag, good) */}
+          {/* Connect With Us Column (Custom links, mostly social) */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Connect With Us</h3>
             <ul className="space-y-3">
-              {footerData.contact.map((item) => {
+              {staticData.contactLinks.map((item) => {
                 const icon = getSocialIcon(item.key);
                 return (
-                  <li key={item.id}>
+                  <li key={item.key}>
                     {item.link_url ? (
                       <a
                         href={item.link_url}
@@ -220,8 +262,8 @@ export const Footer = () => {
         {/* Bottom Copyright */}
         <div className="border-t pt-6">
           <div className="text-center text-sm text-muted-foreground">
-            {footerData.copyright.map((item) => (
-              <p key={item.id}>{item.value}</p>
+            {staticData.copyright.map((item) => (
+              <p key={item.id}>{item.content || 'Copyright content not set.'}</p>
             ))}
           </div>
         </div>
