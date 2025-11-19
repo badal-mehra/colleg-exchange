@@ -55,6 +55,7 @@ export const Footer = () => {
 
   const fetchFooterSettings = async () => {
     // 1. Fetch all active Static Pages (latest version first)
+    // NOTE: Order by version DESC is important to ensure the map below keeps the latest version.
     const { data: pageData, error: pageError } = await supabase
         .from('static_pages')
         .select('*')
@@ -79,27 +80,32 @@ export const Footer = () => {
     
     // --- Grouping and Link Creation Logic ---
     
-    // Quick Links: Generate unique links for Terms, Privacy, About, Shipping
-    const quickLinks = pages
+    // FIX 1: Ensure only unique (latest) active slugs are processed
+    const uniquePagesMap = new Map<string, StaticPage>();
+    for (const page of pages) {
+        // Because data is ordered by version descending, the first one encountered is the latest.
+        // We ensure only one unique entry per slug remains.
+        if (!uniquePagesMap.has(page.slug)) {
+            uniquePagesMap.set(page.slug, page);
+        }
+    }
+    const uniquePages = Array.from(uniquePagesMap.values());
+    
+    // Quick Links: Generate links for Terms, Privacy, About, Shipping from unique active pages
+    const quickLinks = uniquePages
         .filter(p => ['terms', 'privacy', 'about', 'shipping'].includes(p.slug))
-        .reduce((acc, current) => {
-            // Check for uniqueness by slug (to ensure only one version of 'terms' is used)
-            if (!acc.some((item: any) => item.slug === current.slug)) {
-                acc.push({
-                    ...current,
-                    // Internal URL path based on slug
-                    link_url: `/${current.slug}`, 
-                    // Display text (Footer uses 'title' from CMS)
-                    value: current.title || current.slug.replace('-', ' ') 
-                });
-            }
-            return acc;
-        }, [] as (StaticPage & { value: string })[]);
+        .map(current => ({
+            ...current,
+            // Internal URL path based on slug
+            link_url: `/${current.slug}`, 
+            // Display text (Footer uses 'title' from CMS)
+            value: current.title || current.slug.replace('-', ' ') 
+        }));
 
 
     const groupedData = {
-        // About Content: Only the first active 'about' page
-        aboutContent: pages.filter(p => p.slug === 'about').slice(0, 1) as StaticPage[],
+        // About Content: Find the unique 'about' page
+        aboutContent: uniquePages.filter(p => p.slug === 'about').slice(0, 1) as StaticPage[],
 
         quickLinks: quickLinks,
 
@@ -117,8 +123,8 @@ export const Footer = () => {
             { key: 'email', value: 'support@campus.com', link_url: 'mailto:support@campus.com' },
         ] as CustomLink[],
 
-        // Copyright Content: Only the first active 'copyright' page
-        copyright: pages.filter(p => p.slug === 'copyright').slice(0, 1) as StaticPage[],
+        // Copyright Content: Find the unique 'copyright' page
+        copyright: uniquePages.filter(p => p.slug === 'copyright').slice(0, 1) as StaticPage[],
     };
     
     setFooterData(groupedData);
