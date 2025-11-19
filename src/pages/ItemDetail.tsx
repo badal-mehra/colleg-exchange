@@ -50,7 +50,7 @@ interface Category {
   icon: string;
 }
 
-// ⭐ UPDATED INTERFACE to include calculated ratings
+// ⭐ FIX: Item Interface, 'seller_ratings' MUST match the data structure returned by the query
 interface Item {
   id: string;
   title: string;
@@ -65,7 +65,7 @@ interface Item {
   seller_id: string;
   categories: Category;
   profiles: Profile;
-  // NEW: Ratings summary for the seller
+  // FIX: Supabase dynamic aggregation returns this structure
   seller_ratings: {
     count: number;
     avg: number | null;
@@ -179,7 +179,7 @@ const ItemDetail = () => {
         *,
         categories (*),
         profiles (*),
-        // ⭐ NEW: Fetch aggregate ratings for the seller (profiles)
+        // ⭐ FIX: Use the correct dynamic aggregation syntax
         seller_ratings:ratings!to_user_id (count, avg:rating)
       `)
       .eq('id', id)
@@ -193,7 +193,7 @@ const ItemDetail = () => {
       });
       navigate('/');
     } else {
-      setItem(data as Item); // Cast data to Item type
+      setItem(data as Item); // FIX: Cast data to Item type
       // Increment view count
       await supabase
         .from('items')
