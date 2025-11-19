@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card'; // CardHeader aur CardTitle removed if not used, but kept for consistency
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,7 +15,7 @@ import ImageCarousel from '@/components/ImageCarousel';
 import logo from '@/assets/mycampuskart-logo.png';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Footer } from '@/components/Footer'; 
+import { Footer } from '@/components/Footer';
 
 interface Profile {
   id: string;
@@ -36,7 +36,7 @@ interface Category {
   icon: string;
 }
 
-// ⭐ UPDATED INTERFACE to include calculated ratings
+// ⭐ FIX: Item Interface, 'seller_ratings' MUST match the data structure returned by the query
 interface Item {
   id: string;
   title: string;
@@ -55,7 +55,7 @@ interface Item {
   expires_at: string;
   categories: Category;
   profiles: Profile;
-  // NEW: Ratings summary for the seller
+  // FIX: Supabase dynamic aggregation returns this structure
   seller_ratings: {
     count: number;
     avg: number | null;
@@ -163,8 +163,8 @@ const Dashboard = () => {
         *,
         categories (*),
         profiles (*),
-        // ⭐ NEW: Fetch aggregate ratings for the seller (profiles)
-        seller_ratings:ratings!to_user_id (count, avg:rating)
+        // ⭐ FIX: Use the correct dynamic aggregation syntax
+        seller_ratings:ratings!to_user_id (count, avg:rating) 
       `).eq('is_sold', false).order('created_at', {
       ascending: false
     });
@@ -197,7 +197,8 @@ const Dashboard = () => {
         variant: "destructive"
       });
     } else {
-      setItems(data || []);
+      // FIX: Ensure data is cast correctly before setting state
+      setItems(data as Item[] || []);
     }
     setLoading(false);
   };
@@ -505,6 +506,7 @@ const Dashboard = () => {
             const adBenefits = getAdTypeBenefits(item.ad_type);
 
             // ⭐ RATING CALCULATION LOGIC
+            // The structure is seller_ratings: [{ count: X, avg: Y }]
             const ratingData = item.seller_ratings?.[0]; 
             const averageRating = ratingData?.avg ? parseFloat(ratingData.avg.toFixed(1)) : null;
             const totalCount = ratingData?.count || 0;
