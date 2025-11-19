@@ -1,4 +1,6 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
+import AppLayout from "@/components/AppLayout";
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+
 import Index from "./pages/Index";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
@@ -33,119 +36,157 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
-        <SidebarProvider>   {/* IMPORTANT — ye missing tha */}
+        <SidebarProvider>
           <Toaster />
           <Sonner />
 
           <BrowserRouter>
             <Routes>
+              {/* NO SIDEBAR ROUTES */}
               <Route path="/" element={<Index />} />
-              <Route path="/home" element={<Home />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/item/:id" element={<ItemDetail />} />
+              <Route path="/profile/:mckId" element={<PublicProfile />} />
+
+              {/* PAGES WITH SIDEBAR */}
               <Route
-                path="/kyc"
+                path="/home"
                 element={
-                  <ProtectedRoute>
-                    <KYC />
-                  </ProtectedRoute>
+                  <AppLayout>
+                    <Home />
+                  </AppLayout>
                 }
               />
+
               <Route
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <AppLayout>
+                      <Dashboard />
+                    </AppLayout>
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/profile"
                 element={
                   <ProtectedRoute>
-                    <Profile />
+                    <AppLayout>
+                      <Profile />
+                    </AppLayout>
                   </ProtectedRoute>
                 }
               />
-              <Route path="/profile/:mckId" element={<PublicProfile />} />
+
               <Route
                 path="/sell"
                 element={
                   <ProtectedRoute>
-                    <SellItem />
+                    <AppLayout>
+                      <SellItem />
+                    </AppLayout>
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/chat/:conversationId?"
                 element={
                   <ProtectedRoute>
-                    <Chat />
+                    <AppLayout>
+                      <Chat />
+                    </AppLayout>
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/my-chats"
                 element={
                   <ProtectedRoute>
-                    <MyChats />
+                    <AppLayout>
+                      <MyChats />
+                    </AppLayout>
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/my-cart"
                 element={
                   <ProtectedRoute>
-                    <MyCart />
+                    <AppLayout>
+                      <MyCart />
+                    </AppLayout>
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/my-reports"
                 element={
                   <ProtectedRoute>
-                    <MyReports />
+                    <AppLayout>
+                      <MyReports />
+                    </AppLayout>
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/my-listings"
                 element={
                   <ProtectedRoute>
-                    <MyListings />
+                    <AppLayout>
+                      <MyListings />
+                    </AppLayout>
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/my-orders"
                 element={
                   <ProtectedRoute>
-                    <MyOrders />
+                    <AppLayout>
+                      <MyOrders />
+                    </AppLayout>
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/leaderboard"
                 element={
                   <ProtectedRoute>
-                    <Leaderboard />
+                    <AppLayout>
+                      <Leaderboard />
+                    </AppLayout>
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/scan-qr"
                 element={
                   <ProtectedRoute>
-                    <ScanQR />
+                    <AppLayout>
+                      <ScanQR />
+                    </AppLayout>
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/admin"
                 element={
                   <ProtectedRoute>
-                    <AdminDashboard />
+                    <AppLayout>
+                      <AdminDashboard />
+                    </AppLayout>
                   </ProtectedRoute>
                 }
               />
@@ -153,7 +194,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
-        </SidebarProvider>   {/* <- Ye close hona chahiye */}
+        </SidebarProvider>
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
