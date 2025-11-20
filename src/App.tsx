@@ -1,11 +1,11 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-import ProtectedRoute from "@/components/ProtectedRoute";
+// App.tsx
 
+// Remove all Provider Imports (Toaster, QueryClient, AuthProvider, TooltipProvider)
+// They have been moved to main.tsx
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { Routes, Route } from "react-router-dom";
+
+// Import all your Page Components
 import Index from "./pages/Index";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
@@ -28,156 +28,144 @@ import MyCart from "./pages/MyCart";
 import MyReports from "./pages/MyReports";
 import StaticPage from "./pages/StaticPage";
 
-const queryClient = new QueryClient();
-
+// 🔥 CRITICAL FIX: App component now renders ONLY the Routes tree.
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
+    <Routes>
+      <Route path="/" element={<Index />} />
+      <Route path="/home" element={<Home />} />
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/item/:id" element={<ItemDetail />} />
 
-        {/* BrowserRouter is NOW in main.tsx → DO NOT wrap again */}
+      <Route
+        path="/kyc"
+        element={
+          <ProtectedRoute>
+            <KYC />
+          </ProtectedRoute>
+        }
+      />
 
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/home" element={<Home />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/item/:id" element={<ItemDetail />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/kyc"
-            element={
-              <ProtectedRoute>
-                <KYC />
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
+      <Route path="/profile/:mckId" element={<PublicProfile />} />
 
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/sell"
+        element={
+          <ProtectedRoute>
+            <SellItem />
+          </ProtectedRoute>
+        }
+      />
 
-          <Route path="/profile/:mckId" element={<PublicProfile />} />
+      <Route
+        path="/chat/:conversationId?"
+        element={
+          <ProtectedRoute>
+            <Chat />
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/sell"
-            element={
-              <ProtectedRoute>
-                <SellItem />
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/my-chats"
+        element={
+          <ProtectedRoute>
+            <MyChats />
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/chat/:conversationId?"
-            element={
-              <ProtectedRoute>
-                <Chat />
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/my-cart"
+        element={
+          <ProtectedRoute>
+            <MyCart />
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/my-chats"
-            element={
-              <ProtectedRoute>
-                <MyChats />
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/my-reports"
+        element={
+          <ProtectedRoute>
+            <MyReports />
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/my-cart"
-            element={
-              <ProtectedRoute>
-                <MyCart />
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/my-listings"
+        element={
+          <ProtectedRoute>
+            <MyListings />
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/my-reports"
-            element={
-              <ProtectedRoute>
-                <MyReports />
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/my-orders"
+        element={
+          <ProtectedRoute>
+            <MyOrders />
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/my-listings"
-            element={
-              <ProtectedRoute>
-                <MyListings />
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/leaderboard"
+        element={
+          <ProtectedRoute>
+            <Leaderboard />
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/my-orders"
-            element={
-              <ProtectedRoute>
-                <MyOrders />
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/scan-qr"
+        element={
+          <ProtectedRoute>
+            <ScanQR />
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/leaderboard"
-            element={
-              <ProtectedRoute>
-                <Leaderboard />
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/scan-qr"
-            element={
-              <ProtectedRoute>
-                <ScanQR />
-              </ProtectedRoute>
-            }
-          />
+      {/* Static CMS Pages */}
+      <Route path="/terms" element={<StaticPage />} />
+      <Route path="/privacy" element={<StaticPage />} />
+      <Route path="/about" element={<StaticPage />} />
+      <Route path="/shipping" element={<StaticPage />} />
+      <Route path="/help" element={<StaticPage />} />
+      <Route path="/report" element={<StaticPage />} />
 
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute>
-                <AdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Static CMS Pages */}
-          <Route path="/terms" element={<StaticPage />} />
-          <Route path="/privacy" element={<StaticPage />} />
-          <Route path="/about" element={<StaticPage />} />
-          <Route path="/shipping" element={<StaticPage />} />
-          <Route path="/help" element={<StaticPage />} />
-          <Route path="/report" element={<StaticPage />} />
-
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+      <Route path="*" element={<NotFound />} />
+    </Routes>
 );
 
 export default App;
