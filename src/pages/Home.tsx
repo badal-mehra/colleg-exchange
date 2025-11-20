@@ -86,9 +86,9 @@ const Home = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
+  // 🔥 FIX 1: Initial fetch for Categories (runs once)
   useEffect(() => {
     fetchCategories();
-    fetchItems();
   }, []);
 
   const fetchCategories = async () => {
@@ -103,7 +103,7 @@ const Home = () => {
   };
 
   const fetchItems = async () => {
-    setLoading(true);
+    // setLoading(true); // setLoading is now in the useEffect hook
     let query = supabase
       .from('items')
       .select(`
@@ -132,7 +132,10 @@ const Home = () => {
     setLoading(false);
   };
 
+  // 🔥 FIX 2: Consolidate fetchItems logic into a single debounced effect 
+  // This runs on mount and whenever search/filter state changes.
   useEffect(() => {
+    setLoading(true); // Set loading state immediately upon change
     const debounceTimer = setTimeout(() => {
       fetchItems();
     }, 500);
@@ -196,8 +199,8 @@ const Home = () => {
       <section className="py-12 bg-card/50">
         <div className="container mx-auto px-4">
           
-          {/* Slider Container: Uses 'carousel-container' for fixed height (Flicker Fix) */}
-          <div className="relative carousel-container rounded-2xl overflow-hidden shadow-lg">
+          {/* 🔥 FIX 3: Added h-96 class for fixed height to prevent flicker on load/re-render */}
+          <div className="relative carousel-container rounded-2xl overflow-hidden shadow-lg h-96">
             {sliderImages.map((image, index) => (
               <div
                 key={image.id}
