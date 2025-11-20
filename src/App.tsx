@@ -64,6 +64,7 @@ const App = () => (
       <Route path="/shipping" element={<StaticPage />} />
       <Route path="/help" element={<StaticPage />} />
       <Route path="/report" element={<StaticPage />} />
+      <Route path="/home" element={<StaticPage />} />
 
     {/** PUBLIC NO-LAYOUT PAGES */}
     <Route path="/item/:id" element={<ItemDetail />} />
