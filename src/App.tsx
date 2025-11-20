@@ -36,13 +36,7 @@ const App = () => (
     <Route element={<MainLayout />}>
 
 
-      {/** STATIC PAGES */}
-      <Route path="/terms" element={<StaticPage />} />
-      <Route path="/privacy" element={<StaticPage />} />
-      <Route path="/about" element={<StaticPage />} />
-      <Route path="/shipping" element={<StaticPage />} />
-      <Route path="/help" element={<StaticPage />} />
-      <Route path="/report" element={<StaticPage />} />
+
 
       {/** DASHBOARD ONLY (Protected) */}
       <Route
@@ -62,6 +56,14 @@ const App = () => (
     <Route path="/home" element={<Home />} />
     <Route path="/auth" element={<Auth />} />
     <Route path="/reset-password" element={<ResetPassword />} />
+
+          {/** STATIC PAGES */}
+      <Route path="/terms" element={<StaticPage />} />
+      <Route path="/privacy" element={<StaticPage />} />
+      <Route path="/about" element={<StaticPage />} />
+      <Route path="/shipping" element={<StaticPage />} />
+      <Route path="/help" element={<StaticPage />} />
+      <Route path="/report" element={<StaticPage />} />
 
     {/** PUBLIC NO-LAYOUT PAGES */}
     <Route path="/item/:id" element={<ItemDetail />} />
