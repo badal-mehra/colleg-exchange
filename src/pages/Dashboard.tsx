@@ -1,6 +1,6 @@
 // Dashboard.tsx - Final Clean Version (No Header/Logout Logic)
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react'; // <-- Added useMemo/React.memo
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -91,14 +91,15 @@ const Dashboard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [priceRange, setPriceRange] = useState<string>('all');
   
-  // 🔥 FIX 1: Initial fetch for Profile/Categories (runs once when user is available)
+  // 🔥 CRITICAL FIX: useEffect loop killer (Runs once on mount)
   useEffect(() => {
     if (!user) return; 
     
     fetchProfile();
     fetchCategories();
+    fetchItems();
     checkAdminStatus();
-  }, [user]); 
+  }, []); 
   
   const checkAdminStatus = async () => {
     if (!user) return;
@@ -132,7 +133,7 @@ const Dashboard = () => {
   };
   
   const fetchItems = async () => {
-    // setLoading(true); // setLoading is now in the useEffect hook
+    setLoading(true);
     let query = supabase.from('items').select(`
         *,
         categories (*),
@@ -170,16 +171,12 @@ const Dashboard = () => {
     setLoading(false);
   };
   
-  // 🔥 FIX 2: Consolidate fetchItems logic into a single debounced effect 
-  // This runs on mount and whenever search/filter state changes.
   useEffect(() => {
-    if (!user) return; 
-    setLoading(true); // Set loading state immediately upon change
     const debounceTimer = setTimeout(() => {
       fetchItems();
     }, 500);
     return () => clearTimeout(debounceTimer);
-  }, [searchTerm, selectedCategory, priceRange, user]); // Added user to dependencies
+  }, [searchTerm, selectedCategory, priceRange]);
   
   const handleStartConversation = async (item: Item) => {
     if (!user || item.seller_id === user.id) return;
@@ -223,7 +220,7 @@ const Dashboard = () => {
   const isVerified = profile?.is_verified && profile?.verification_status === 'approved';
 
   // Image Slider Component (REMAINS here as it's content)
-  const ImageSliderSection = () => {
+  const ImageSliderSectionComponent = () => { // Renamed for clarity with memo
     const [sliderImages, setSliderImages] = useState<any[]>([]);
     const [currentSlide, setCurrentSlide] = useState(0);
     useEffect(() => {
@@ -257,8 +254,7 @@ const Dashboard = () => {
     return (
       <section className="py-12 bg-card/50"> 
         <div className="container mx-auto px-4">
-          {/* 🔥 FIX 3: Added h-96 class for fixed height to prevent flicker on load/re-render */}
-          <div className="relative carousel-container rounded-2xl overflow-hidden shadow-lg h-96"> 
+          <div className="relative carousel-container rounded-2xl overflow-hidden shadow-lg">
             {sliderImages.map((image, index) => (
               <div
                 key={image.id}
@@ -321,6 +317,9 @@ const Dashboard = () => {
     );
   };
   
+  // 💡 Memoize the component definition to prevent unnecessary re-renders
+  const ImageSliderSection = React.memo(ImageSliderSectionComponent);
+
   return (
     // min-h-screen is removed, replaced by flex-1 as Dashboard is now inside Layout.tsx
     <div className="flex-1"> 
