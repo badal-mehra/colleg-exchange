@@ -91,15 +91,14 @@ const Dashboard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [priceRange, setPriceRange] = useState<string>('all');
   
-  // 🔥 CRITICAL FIX: useEffect loop killer (Runs once on mount)
+  // 🔥 FIX 1: Initial fetch for Profile/Categories (runs once when user is available)
   useEffect(() => {
     if (!user) return; 
     
     fetchProfile();
     fetchCategories();
-    fetchItems();
     checkAdminStatus();
-  }, []); 
+  }, [user]); 
   
   const checkAdminStatus = async () => {
     if (!user) return;
@@ -133,7 +132,7 @@ const Dashboard = () => {
   };
   
   const fetchItems = async () => {
-    setLoading(true);
+    // setLoading(true); // setLoading is now in the useEffect hook
     let query = supabase.from('items').select(`
         *,
         categories (*),
@@ -171,12 +170,16 @@ const Dashboard = () => {
     setLoading(false);
   };
   
+  // 🔥 FIX 2: Consolidate fetchItems logic into a single debounced effect 
+  // This runs on mount and whenever search/filter state changes.
   useEffect(() => {
+    if (!user) return; 
+    setLoading(true); // Set loading state immediately upon change
     const debounceTimer = setTimeout(() => {
       fetchItems();
     }, 500);
     return () => clearTimeout(debounceTimer);
-  }, [searchTerm, selectedCategory, priceRange]);
+  }, [searchTerm, selectedCategory, priceRange, user]); // Added user to dependencies
   
   const handleStartConversation = async (item: Item) => {
     if (!user || item.seller_id === user.id) return;
@@ -254,7 +257,8 @@ const Dashboard = () => {
     return (
       <section className="py-12 bg-card/50"> 
         <div className="container mx-auto px-4">
-          <div className="relative carousel-container rounded-2xl overflow-hidden shadow-lg">
+          {/* 🔥 FIX 3: Added h-96 class for fixed height to prevent flicker on load/re-render */}
+          <div className="relative carousel-container rounded-2xl overflow-hidden shadow-lg h-96"> 
             {sliderImages.map((image, index) => (
               <div
                 key={image.id}
