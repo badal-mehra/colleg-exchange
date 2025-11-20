@@ -1,4 +1,4 @@
-// Chat.tsx - Final Optimized Version with Minimal Header
+// Chat.tsx - Final Optimized Version (Navigation and Root Fixes Applied)
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -512,15 +512,16 @@ const Chat = () => {
     : undefined;
 
   return (
-    // Root div should take up full screen height for full-screen pages
-    <div className="flex flex-col h-screen bg-muted/10">
+    // 🔥 FIX: h-screen removed. h-full w-full ensures it takes up the full space provided by the App router context.
+    <div className="h-full w-full flex flex-col bg-muted/10">
       
-      {/* 🔥 FIX: MINIMAL CHAT HEADER (No sticky/shadow/flex-shrink-0) */}
+      {/* 🔥 FIX: MINIMAL CHAT HEADER (No sticky/shadow/flex-shrink-0 for smooth transition) */}
       <div className="w-full flex items-center gap-3 px-3 py-3 border-b bg-background">
         <Button 
           variant="ghost" 
           size="icon"
-          onClick={() => navigate('/my-chats')}
+          // 🔥 FIX: navigate('/my-chats') replaced with navigate(-1) for smoother back navigation
+          onClick={() => navigate(-1)} 
           className="h-10 w-10 text-primary hover:bg-primary/10"
         >
           <ArrowLeft className="h-5 w-5" />
