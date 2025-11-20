@@ -34,8 +34,7 @@ const App = () => (
     {/** 🟢 ROUTES WITH HEADER + FOOTER (MainLayout)          */}
     {/** ----------------------------------------------------- */}
     <Route element={<MainLayout />}>
-      {<Route path="/" element={<Home />} />
-      <Route path="/home" element={<Home />} /> } 
+
 
       {/** STATIC PAGES */}
       <Route path="/terms" element={<StaticPage />} />
