@@ -61,6 +61,7 @@ const App = () => (
     {/** ----------------------------------------------------- */}
 
     <Route path="/auth" element={<Auth />} />
+    <Route path="/" element={<Home />}
     <Route path="/reset-password" element={<ResetPassword />} />
 
     {/** PUBLIC NO-LAYOUT PAGES */}
