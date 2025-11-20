@@ -1,5 +1,3 @@
-// Chat.tsx - Final Optimized Version (Navigation and Root Fixes Applied)
-
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -69,7 +67,6 @@ const MessageStatus: React.FC<{ isRead: boolean, isSending: boolean }> = ({ isRe
     if (isSending) {
         return <Loader2 className="h-3.5 w-3.5 text-primary-foreground/70 animate-spin flex-shrink-0" title="Sending" />;
     }
-    // Changed read check color to differentiate from sent check
     return isRead ? (
         <CheckCheck className="h-3.5 w-3.5 text-blue-300 flex-shrink-0" title="Read" />
     ) : (
@@ -109,6 +106,7 @@ const Chat = () => {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const previousScrollHeightRef = useRef(0); 
+  const channelsRef = useRef<any[]>([]);
   
   // Utility Functions ----------------------------------------------------------------
 
@@ -128,6 +126,7 @@ const Chat = () => {
 
   const markMessagesAsRead = useCallback(() => {
     if (!conversationId || !user) return;
+    // Debounce the RPC call
     setTimeout(async () => {
         try {
             await supabase.rpc('mark_messages_read', {
@@ -275,149 +274,183 @@ const Chat = () => {
     if (!conversationId || !user) return;
     setConversationLoading(true);
 
-    const { data: conversationData, error } = await supabase
-      .from('conversations')
-      .select(`
-        buyer_id, seller_id, item_id, created_at, id,
-        items (title, price, images)
-      `)
-      .eq('id', conversationId)
-      .single();
+    try {
+      const { data: conversationData, error } = await supabase
+        .from('conversations')
+        .select(`
+          buyer_id, seller_id, item_id, created_at, id,
+          items (title, price, images)
+        `)
+        .eq('id', conversationId)
+        .single();
 
-    if (error || !conversationData) {
-      console.error('Error fetching conversation:', error);
-      toast({ title: "Error", description: "Conversation not found", variant: "destructive" });
-      navigate('/my-chats'); 
-      return;
-    }
-    
-    const userIdsToFetch = [conversationData.buyer_id, conversationData.seller_id];
-
-    const { data: profilesData } = await supabase
-      .from('profiles')
-      .select('user_id, full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
-      .in('user_id', userIdsToFetch);
+      if (error || !conversationData) {
+        console.error('Error fetching conversation:', error);
+        toast({ title: "Error", description: "Conversation not found", variant: "destructive" });
+        navigate('/my-chats'); 
+        return;
+      }
       
-    const buyerProfile = profilesData?.find(p => p.user_id === conversationData.buyer_id) || { full_name: 'Unknown User' };
-    const sellerProfile = profilesData?.find(p => p.user_id === conversationData.seller_id) || { full_name: 'Unknown User' };
+      const userIdsToFetch = [conversationData.buyer_id, conversationData.seller_id];
 
-    setConversation({
-      ...conversationData,
-      buyer_profile: buyerProfile as Profile,
-      seller_profile: sellerProfile as Profile
-    });
-    setConversationLoading(false);
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
+        .in('user_id', userIdsToFetch);
+        
+      const buyerProfile = profilesData?.find(p => p.user_id === conversationData.buyer_id) || { full_name: 'Unknown User' };
+      const sellerProfile = profilesData?.find(p => p.user_id === conversationData.seller_id) || { full_name: 'Unknown User' };
+
+      setConversation({
+        ...conversationData,
+        buyer_profile: buyerProfile as Profile,
+        seller_profile: sellerProfile as Profile
+      });
+    } catch (error) {
+      console.error('Error in fetchConversation:', error);
+      toast({ title: "Error", description: "Failed to load conversation", variant: "destructive" });
+    } finally {
+      setConversationLoading(false);
+    }
   };
   
   const subscribeToMessages = () => {
     if (!conversationId || !user) return null;
 
-    const channel = supabase
-      .channel(`conversation-${conversationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`
-        },
-        (payload) => {
-          const newMessage = payload.new as Message;
-          setMessages(prev => {
-            if (prev.some(m => m.id === newMessage.id || m.id === `temp-${newMessage.id}`)) {
-              return prev;
+    try {
+      const channel = supabase
+        .channel(`conversation-${conversationId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `conversation_id=eq.${conversationId}`
+          },
+          (payload) => {
+            const newMessage = payload.new as Message;
+            setMessages(prev => {
+              if (prev.some(m => m.id === newMessage.id || m.id === `temp-${newMessage.id}`)) {
+                return prev;
+              }
+              return [...prev, newMessage];
+            });
+            
+            if (newMessage.sender_id !== user.id) {
+              markMessagesAsRead();
             }
-            return [...prev, newMessage];
-          });
-          
-          if (newMessage.sender_id !== user.id) {
-            markMessagesAsRead();
           }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`
-        },
-        (payload) => {
-          const updatedMessage = payload.new as Message;
-          setMessages(prev => prev.map(m => m.id === updatedMessage.id ? updatedMessage : m));
-        }
-      )
-      .subscribe();
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'messages',
+            filter: `conversation_id=eq.${conversationId}`
+          },
+          (payload) => {
+            const updatedMessage = payload.new as Message;
+            setMessages(prev => prev.map(m => m.id === updatedMessage.id ? updatedMessage : m));
+          }
+        )
+        .subscribe();
 
-    return channel;
+      channelsRef.current.push(channel);
+      return channel;
+    } catch (error) {
+      console.error('Error setting up messages channel:', error);
+      return null;
+    }
   };
   
   const subscribeToPresence = () => {
     if (!conversationId || !user || !conversation) return null;
 
-    const otherUserId = conversation.buyer_id === user.id 
-      ? conversation.seller_id 
-      : conversation.buyer_id;
+    try {
+      const otherUserId = conversation.buyer_id === user.id 
+        ? conversation.seller_id 
+        : conversation.buyer_id;
 
-    const channel = supabase.channel(`presence-${conversationId}`)
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        const isOnline = Object.values(state).flat().some((p: any) => p.user_id === otherUserId);
-        setIsOtherUserOnline(isOnline);
-        
-        if (!isOnline) {
-          const allPresences = Object.values(state).flat() as any[];
-          const otherUserPresence = allPresences.find((p: any) => p.user_id === otherUserId);
-          if (otherUserPresence?.last_seen) {
-            setLastSeen(otherUserPresence.last_seen);
+      const channel = supabase.channel(`presence-${conversationId}`)
+        .on('presence', { event: 'sync' }, () => {
+          const state = channel.presenceState();
+          const isOnline = Object.values(state).flat().some((p: any) => p.user_id === otherUserId);
+          setIsOtherUserOnline(isOnline);
+          
+          if (!isOnline) {
+            const allPresences = Object.values(state).flat() as any[];
+            const otherUserPresence = allPresences.find((p: any) => p.user_id === otherUserId);
+            if (otherUserPresence?.last_seen) {
+              setLastSeen(otherUserPresence.last_seen);
+            }
           }
-        }
-      })
-      .on('presence', { event: 'join' }, ({ newPresences }) => {
-        const isOtherUser = newPresences.some((p: any) => p.user_id === otherUserId);
-        if (isOtherUser) {
-          setIsOtherUserOnline(true);
-          setLastSeen(null);
-        }
-      })
-      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        const isOtherUser = leftPresences.some((p: any) => p.user_id === otherUserId);
-        if (isOtherUser) {
-          setIsOtherUserOnline(false);
-          setLastSeen(new Date().toISOString()); 
-        }
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({
-            user_id: user.id,
-            online_at: new Date().toISOString()
-          });
-        }
-      });
+        })
+        .on('presence', { event: 'join' }, ({ newPresences }) => {
+          const isOtherUser = newPresences.some((p: any) => p.user_id === otherUserId);
+          if (isOtherUser) {
+            setIsOtherUserOnline(true);
+            setLastSeen(null);
+          }
+        })
+        .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+          const isOtherUser = leftPresences.some((p: any) => p.user_id === otherUserId);
+          if (isOtherUser) {
+            setIsOtherUserOnline(false);
+            setLastSeen(new Date().toISOString()); 
+          }
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await channel.track({
+              user_id: user.id,
+              online_at: new Date().toISOString()
+            });
+          }
+        });
 
-    return channel;
+      channelsRef.current.push(channel);
+      return channel;
+    } catch (error) {
+      console.error('Error setting up presence channel:', error);
+      return null;
+    }
   };
 
   const subscribeToTyping = () => {
     if (!conversationId || !user || !conversation) return null;
 
-    const otherUserId = conversation.buyer_id === user.id 
-      ? conversation.seller_id 
-      : conversation.buyer_id;
+    try {
+      const otherUserId = conversation.buyer_id === user.id 
+        ? conversation.seller_id 
+        : conversation.buyer_id;
 
-    const channel = supabase.channel(`typing-${conversationId}`)
-      .on('broadcast', { event: 'typing' }, ({ payload }) => {
-        if (payload.user_id === otherUserId) {
-          setIsOtherUserTyping(payload.isTyping);
-        }
-      })
-      .subscribe();
+      const channel = supabase.channel(`typing-${conversationId}`)
+        .on('broadcast', { event: 'typing' }, ({ payload }) => {
+          if (payload.user_id === otherUserId) {
+            setIsOtherUserTyping(payload.isTyping);
+          }
+        })
+        .subscribe();
 
-    return channel;
+      channelsRef.current.push(channel);
+      return channel;
+    } catch (error) {
+      console.error('Error setting up typing channel:', error);
+      return null;
+    }
   };
+
+  // Cleanup all channels
+  const cleanupChannels = useCallback(() => {
+    channelsRef.current.forEach(channel => {
+      if (channel) {
+        supabase.removeChannel(channel).catch(console.error);
+      }
+    });
+    channelsRef.current = [];
+  }, []);
 
   // Effects and Handlers ----------------------------------------------------------------
 
@@ -426,7 +459,11 @@ const Chat = () => {
       fetchConversation();
       fetchMessages(1, true); 
     }
-  }, [conversationId, user, fetchMessages]); 
+
+    return () => {
+      cleanupChannels();
+    };
+  }, [conversationId, user, fetchMessages, cleanupChannels]); 
 
   // Effect to subscribe once conversation details are available
   useEffect(() => {
@@ -438,17 +475,16 @@ const Chat = () => {
         const typingChannel = subscribeToTyping();
 
         return () => {
-            if (messageChannel) supabase.removeChannel(messageChannel);
-            if (presenceChannel) supabase.removeChannel(presenceChannel);
-            if (typingChannel) supabase.removeChannel(typingChannel);
+            cleanupChannels();
         };
     }
-  }, [conversation, user, markMessagesAsRead]); 
+  }, [conversation, user, markMessagesAsRead, cleanupChannels]); 
 
   
   // Scroll Adjustments useEffect for New Messages
   useEffect(() => {
     if (initialLoadComplete && messages.length > 0) {
+      // Simple heuristic: if the user is not scrolled too far up, scroll to bottom
       const container = messagesContainerRef.current;
       const isNearBottom = container && (container.scrollHeight - container.scrollTop < container.clientHeight + 200);
 
@@ -512,31 +548,36 @@ const Chat = () => {
     : undefined;
 
   return (
-    // 🔥 FIX: h-screen removed. h-full w-full ensures it takes up the full space provided by the App router context.
-    <div className="h-full w-full flex flex-col bg-muted/10">
+    <div className="flex flex-col h-screen bg-muted/10">
       
-      {/* 🔥 FIX: MINIMAL CHAT HEADER (No sticky/shadow/flex-shrink-0 for smooth transition) */}
-      <div className="w-full flex items-center gap-3 px-3 py-3 border-b bg-background">
-        <Button 
-          variant="ghost" 
-          size="icon"
-          // 🔥 FIX: navigate('/my-chats') replaced with navigate(-1) for smoother back navigation
-          onClick={() => navigate(-1)} 
-          className="h-10 w-10 text-primary hover:bg-primary/10"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Avatar className="h-10 w-10 border shadow-sm flex-shrink-0">
-            <AvatarImage src={getOtherUserAvatarUrl} alt={otherUser.full_name} />
-            <AvatarFallback className="bg-muted/50 text-foreground text-base font-medium">
-              {otherUser.full_name?.charAt(0) ?? "U"}
-            </AvatarFallback>
-          </Avatar>
-
-          <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
+      {/* HEADER: Clean and Soft */}
+      <header className="sticky top-0 z-50 w-full border-b bg-background shadow-md flex-shrink-0">
+        <div className="px-3 sm:px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => navigate('/my-chats')}
+              className="h-10 w-10 text-primary hover:bg-primary/10 flex-shrink-0"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="relative flex-shrink-0">
+                <Avatar className="h-10 w-10 border border-border/70 shadow-sm">
+                  <AvatarImage src={getOtherUserAvatarUrl} alt={otherUser.full_name} />
+                  <AvatarFallback className="bg-muted/50 text-foreground text-base font-medium">
+                    {otherUser.full_name?.charAt(0) || <User className="h-5 w-5" />}
+                  </AvatarFallback>
+                </Avatar>
+                {isOtherUserOnline && (
+                  <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 bg-emerald-500 border-2 border-background rounded-full" />
+                )}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="font-semibold text-lg truncate text-foreground">{otherUser.full_name || 'User'}</h2>
                   {otherUser.verification_status === 'approved' && (
                     <Badge variant="outline" title="Verified User" className="h-5 px-2 text-green-700 border-green-700/50 bg-green-50/50 font-medium">
@@ -544,15 +585,21 @@ const Chat = () => {
                       Verified
                     </Badge>
                   )}
+                </div>
+                <p className={`text-sm truncate ${isOtherUserOnline ? 'text-emerald-500 font-medium' : 'text-muted-foreground'}`}>
+                  {isOtherUserOnline ? (
+                    'Online'
+                  ) : (
+                    formatLastSeen(lastSeen)
+                  )}
+                </p>
+              </div>
             </div>
-            <p className={`text-sm truncate ${isOtherUserOnline ? 'text-emerald-500 font-medium' : 'text-muted-foreground'}`}>
-              {isOtherUserOnline ? 'Online' : formatLastSeen(lastSeen)}
-            </p>
           </div>
         </div>
-      </div>
-      
-      {/* Item Info Banner (Remains minimal and functional) */}
+      </header>
+
+      {/* Item Info Banner */}
       {conversation.items && (
         <div className="border-b bg-card shadow-sm flex-shrink-0">
           <div 
@@ -640,7 +687,9 @@ const Chat = () => {
             {messages.map((message, index) => {
               const isOwnMessage = message.sender_id === user?.id;
               const isOptimistic = message.id.startsWith('temp-');
+              // Group messages: show avatar/gap only if sender is different from previous
               const showAvatar = index === 0 || messages[index - 1].sender_id !== message.sender_id;
+              // Determine if there should be extra space for grouping
               const isNextMessageSameSender = messages[index + 1]?.sender_id === message.sender_id;
               
               return (
