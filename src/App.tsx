@@ -34,8 +34,8 @@ const App = () => (
     {/** 🟢 ROUTES WITH HEADER + FOOTER (MainLayout)          */}
     {/** ----------------------------------------------------- */}
     <Route element={<MainLayout />}>
-      {/* <Route path="/" element={<Home />} />
-      <Route path="/home" element={<Home />} /> */}
+      {<Route path="/" element={<Home />} />
+      <Route path="/home" element={<Home />} /> } 
 
       {/** STATIC PAGES */}
       <Route path="/terms" element={<StaticPage />} />
@@ -59,9 +59,9 @@ const App = () => (
     {/** ----------------------------------------------------- */}
     {/** 🔴 FULLSCREEN ROUTES (NO HEADER / NO FOOTER)         */}
     {/** ----------------------------------------------------- */}
-
+    <Route path="/" element={<Index />} />
+    <Route path="/home" element={<Home />} />
     <Route path="/auth" element={<Auth />} />
-    <Route path="/" element={<Home />}
     <Route path="/reset-password" element={<ResetPassword />} />
 
     {/** PUBLIC NO-LAYOUT PAGES */}
