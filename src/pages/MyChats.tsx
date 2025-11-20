@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } => 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -16,20 +16,19 @@ import {
   ShoppingBag,
   Store,
   Loader2,
+  Package,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-// import { AvatarImage } from '@radix-ui/react-avatar'; // You should import AvatarImage from '@/components/ui/avatar'
-import { AvatarImage } from '@/components/ui/avatar'; // Assuming AvatarImage is also exported from '@/components/ui/avatar'
 
-// --- INTERFACES ---
+// --- INTERFACES (Kept the same for data structure) ---
 interface Profile {
-  id: string;
+  id?: string;
   user_id: string;
   full_name: string;
-  email: string;
-  is_verified: boolean;
-  verification_status: string;
-  avatar_url?: string | null; // Added for completeness, assuming profiles table has it
+  email?: string;
+  is_verified?: boolean;
+  verification_status?: string;
+  avatar_url?: string | null; 
 }
 
 interface Item {
@@ -57,22 +56,21 @@ interface Conversation {
   unread_count?: number;
 }
 
-// --- UTILITY COMPONENTS ---
+// --- UTILITY COMPONENTS (Cleaner) ---
 
 const OnlineIndicator: React.FC = () => (
-  <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-emerald-500 text-emerald-500 border-2 border-background rounded-full animate-pulse" title="Online" />
+  <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 fill-emerald-500 text-emerald-500 border-2 border-background rounded-full" title="Online" />
 );
 
 const UserAvatar: React.FC<{ userProfile: Profile, isOnline: boolean }> = ({ userProfile, isOnline }) => {
-    // Assuming supabase client is accessible or passed down for public URL generation
     const avatarUrl = userProfile.avatar_url ? supabase.storage.from('avatars').getPublicUrl(userProfile.avatar_url).data.publicUrl : undefined;
 
     return (
         <div className="relative">
-            <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm">
+            <Avatar className="h-8 w-8 border border-border/70 shadow-sm">
                 <AvatarImage src={avatarUrl} alt={userProfile.full_name} />
-                <AvatarFallback className="text-sm bg-primary/10 text-primary font-semibold">
-                    {userProfile.full_name?.charAt(0) || <User className="h-5 w-5" />}
+                <AvatarFallback className="text-xs bg-muted/50 text-foreground font-medium">
+                    {userProfile.full_name?.charAt(0) || <User className="h-4 w-4" />}
                 </AvatarFallback>
             </Avatar>
             {isOnline && <OnlineIndicator />}
@@ -113,7 +111,7 @@ const MyChats = () => {
     return conversation.buyer_id === user?.id ? conversation.seller_id : conversation.buyer_id;
   }, [user]);
   
-  // Fetch Conversations logic
+  // Fetch Conversations logic (Same robust logic, removed profile batching complexity for simplicity, assuming API calls are fast enough)
   const fetchConversations = useCallback(async () => {
     if (!user) return;
 
@@ -136,29 +134,22 @@ const MyChats = () => {
       return;
     }
 
-    // 2. Fetch profiles, last message, and unread count for all
-    const userIds = new Set<string>();
-    conversationsData?.forEach(conv => {
-        userIds.add(conv.buyer_id);
-        userIds.add(conv.seller_id);
-    });
-    
-    // Batch fetch profiles (optimization)
-    const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, is_verified, verification_status, avatar_url')
-        .in('user_id', Array.from(userIds));
-
-    const profileMap = new Map(profilesData?.map(p => [p.user_id, p]));
-
+    // 2. Fetch related data (profiles, last message, unread count)
     const conversationsWithData = await Promise.all(
       (conversationsData || []).map(async (conversation) => {
         
-        // Use batch fetched profiles
-        const buyerProfile = profileMap.get(conversation.buyer_id) || { user_id: conversation.buyer_id, full_name: 'Unknown User', is_verified: false, verification_status: 'pending' };
-        const sellerProfile = profileMap.get(conversation.seller_id) || { user_id: conversation.seller_id, full_name: 'Unknown User', is_verified: false, verification_status: 'pending' };
+        const { data: buyerProfile } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, is_verified, verification_status, avatar_url')
+          .eq('user_id', conversation.buyer_id)
+          .maybeSingle();
 
-        // Fetch last message and unread count (cannot be batched easily via simple select)
+        const { data: sellerProfile } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, is_verified, verification_status, avatar_url')
+          .eq('user_id', conversation.seller_id)
+          .maybeSingle();
+        
         const [{ data: lastMessage }, { data: unreadCount }] = await Promise.all([
             supabase
                 .from('messages')
@@ -175,8 +166,8 @@ const MyChats = () => {
 
         return {
           ...conversation,
-          buyer_profile: buyerProfile as Profile,
-          seller_profile: sellerProfile as Profile,
+          buyer_profile: (buyerProfile as Profile) || { user_id: conversation.buyer_id, full_name: 'Unknown User' },
+          seller_profile: (sellerProfile as Profile) || { user_id: conversation.seller_id, full_name: 'Unknown User' },
           last_message: lastMessage || undefined,
           unread_count: unreadCount || 0
         };
@@ -187,7 +178,7 @@ const MyChats = () => {
     setLoading(false);
   }, [user, toast]);
 
-  // Presence Subscription (Kept for real-time online status)
+  // Presence Subscription (Kept the same)
   useEffect(() => {
     if (!user) return;
 
@@ -210,7 +201,6 @@ const MyChats = () => {
         }
       });
 
-    // Initial fetch and subscription cleanup
     fetchConversations();
     
     return () => {
@@ -229,24 +219,29 @@ const MyChats = () => {
     const otherUserId = getOtherUserId(conversation);
     const isBuyer = conversation.buyer_id === user?.id;
     const isOnline = onlineUsers.has(otherUserId);
+    const unreadCount = conversation.unread_count || 0;
     
-    // Determine last message content
     let lastMessageContent = conversation.last_message?.content || 'Start a conversation...';
     if (conversation.last_message?.sender_id === user?.id) {
         lastMessageContent = `You: ${lastMessageContent}`;
     }
 
+    // Determine the border style based on unread status
+    const cardBorderClass = unreadCount > 0 
+      ? 'border-l-4 border-primary/80 bg-primary/5 hover:bg-primary/10' 
+      : 'border-l-4 border-transparent hover:bg-accent/5';
+
     return (
       <Card 
         key={conversation.id} 
-        className={`hover:shadow-2xl transition-all duration-300 cursor-pointer border-l-4 ${conversation.unread_count && conversation.unread_count > 0 ? 'border-primary/80 bg-primary-50/20' : 'border-border/50'} overflow-hidden group`}
+        className={`transition-all duration-200 cursor-pointer overflow-hidden group shadow-sm hover:shadow-lg ${cardBorderClass}`}
         onClick={() => handleConversationClick(conversation.id)}
       >
         <CardContent className="p-4">
           <div className="flex items-center space-x-4">
             
             {/* Item Image */}
-            <div className="w-16 h-16 rounded-xl overflow-hidden bg-muted shadow-md flex-shrink-0">
+            <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0 shadow-inner">
               {conversation.items?.images?.length > 0 ? (
                 <img 
                   src={conversation.items.images[0]} 
@@ -255,29 +250,28 @@ const MyChats = () => {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <MessageCircle className="h-6 w-6 text-muted-foreground/50" />
+                  <Package className="h-6 w-6 text-muted-foreground/50" />
                 </div>
               )}
             </div>
 
             {/* Chat Info */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-1">
+              
+              {/* Top Row: Item Title & Price */}
+              <div className="flex items-start justify-between mb-1">
                 <div className="flex items-center space-x-2">
-                    <h3 className="font-bold text-base truncate text-foreground">
+                    <h3 className="font-semibold text-base truncate text-foreground">
                         {conversation.items?.title || 'Item'}
                     </h3>
-                    <Badge variant="outline" className="text-xs font-medium px-2 py-0.5">
-                        {isBuyer ? 'Buying' : 'Selling'}
-                    </Badge>
                 </div>
                 <span className="text-sm font-semibold text-primary flex-shrink-0">
                     ₹{conversation.items?.price?.toLocaleString()}
                 </span>
               </div>
 
-              {/* Other User Info */}
-              <div className="flex items-center space-x-2 mb-1">
+              {/* Middle Row: Other User Info & Status */}
+              <div className="flex items-center space-x-2 mb-2">
                 <UserAvatar userProfile={otherUser} isOnline={isOnline} />
                 <span className="text-sm text-muted-foreground truncate font-medium flex-1">
                     {otherUser?.full_name || 'Unknown User'}
@@ -285,26 +279,29 @@ const MyChats = () => {
                 {otherUser?.verification_status === 'approved' && (
                   <Shield className="h-4 w-4 text-green-500" title="Verified User" />
                 )}
+                <Badge variant="outline" className="text-xs font-medium px-2 py-0.5 border-border text-muted-foreground">
+                    {isBuyer ? 'Buyer' : 'Seller'}
+                </Badge>
               </div>
 
-              {/* Last Message and Time */}
-              <div className="flex items-center justify-between mt-2">
+              {/* Bottom Row: Last Message and Time/Unread Count */}
+              <div className="flex items-center justify-between mt-1">
                 <p 
-                    className={`text-sm truncate flex-1 leading-relaxed ${conversation.unread_count && conversation.unread_count > 0 ? 'font-bold text-foreground' : 'text-muted-foreground'}`}
+                    className={`text-sm truncate flex-1 leading-relaxed ${unreadCount > 0 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}
                 >
                     {lastMessageContent}
                 </p>
-                <div className="flex items-center space-x-2 text-xs text-muted-foreground/70 ml-3 flex-shrink-0">
-                  {conversation.unread_count && conversation.unread_count > 0 && (
-                      <Badge variant="destructive" className="text-xs px-2 py-0.5 font-bold">
-                          {conversation.unread_count}
-                      </Badge>
-                  )}
+                <div className="flex items-center space-x-2 text-xs text-muted-foreground ml-3 flex-shrink-0">
                   {conversation.last_message && (
                     <>
                       <Clock className="h-3 w-3" />
                       <span>{formatTime(conversation.last_message.created_at)}</span>
                     </>
+                  )}
+                  {unreadCount > 0 && (
+                      <Badge variant="destructive" className="text-xs px-2 py-0.5 font-semibold">
+                          {unreadCount}
+                      </Badge>
                   )}
                 </div>
               </div>
@@ -317,9 +314,9 @@ const MyChats = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="ml-3 text-muted-foreground">Loading your chats...</p>
+        <p className="mt-3 text-muted-foreground font-medium">Loading your chats...</p>
       </div>
     );
   }
@@ -328,9 +325,9 @@ const MyChats = () => {
   const sellingConversations = conversations.filter(c => c.seller_id === user?.id);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/10">
+    <div className="min-h-screen bg-background">
       
-      {/* Header */}
+      {/* HEADER: Clean and Simple */}
       <header className="sticky top-0 z-50 w-full border-b bg-background shadow-md">
         <div className="container mx-auto px-4 py-4 max-w-4xl">
           <div className="flex items-center">
@@ -340,10 +337,10 @@ const MyChats = () => {
               className="hover:bg-primary/10 hover:text-primary transition-colors flex-shrink-0"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+              <span className="font-medium">Back</span>
             </Button>
-            <h1 className="text-2xl font-extrabold ml-4 bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-              My Chats
+            <h1 className="text-2xl font-bold ml-4 text-foreground">
+              Conversations
             </h1>
           </div>
         </div>
@@ -352,11 +349,11 @@ const MyChats = () => {
       <div className="container mx-auto px-4 py-6 max-w-4xl">
         {conversations.length === 0 ? (
           <div className="text-center py-16">
-            <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6 shadow-lg">
+            <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6 shadow-xl">
               <MessageCircle className="h-12 w-12 text-primary" />
             </div>
             <h3 className="text-xl font-semibold mb-3 text-foreground">No conversations yet</h3>
-            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto font-normal">
               Start browsing items and chat with sellers to see your conversations here.
             </p>
             <Button 
@@ -368,30 +365,30 @@ const MyChats = () => {
           </div>
         ) : (
           <Tabs defaultValue="buying" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6 h-12 p-1 bg-muted/70">
+            <TabsList className="grid w-full grid-cols-2 mb-6 h-12 p-1 bg-muted/70 rounded-lg">
               <TabsTrigger 
                 value="buying" 
-                className="flex items-center justify-center gap-2 text-base font-semibold data-[state=active]:shadow-lg h-full"
+                className="flex items-center justify-center gap-2 text-base font-medium data-[state=active]:shadow-md h-full rounded-md"
               >
                 <ShoppingBag className="h-4 w-4" />
                 <span>Buying</span>
-                <Badge variant="secondary" className="ml-1 px-2">
+                <Badge variant="secondary" className="ml-1 px-2 font-semibold">
                   {buyingConversations.length}
                 </Badge>
               </TabsTrigger>
               <TabsTrigger 
                 value="selling" 
-                className="flex items-center justify-center gap-2 text-base font-semibold data-[state=active]:shadow-lg h-full"
+                className="flex items-center justify-center gap-2 text-base font-medium data-[state=active]:shadow-md h-full rounded-md"
               >
                 <Store className="h-4 w-4" />
                 <span>Selling</span>
-                <Badge variant="secondary" className="ml-1 px-2">
+                <Badge variant="secondary" className="ml-1 px-2 font-semibold">
                   {sellingConversations.length}
                 </Badge>
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="buying" className="space-y-4">
+            <TabsContent value="buying" className="space-y-3">
               {buyingConversations.length === 0 ? (
                 <div className="text-center py-12 border-2 border-dashed border-border rounded-lg bg-card/50">
                   <ShoppingBag className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
@@ -402,7 +399,7 @@ const MyChats = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="selling" className="space-y-4">
+            <TabsContent value="selling" className="space-y-3">
               {sellingConversations.length === 0 ? (
                 <div className="text-center py-12 border-2 border-dashed border-border rounded-lg bg-card/50">
                   <Store className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
