@@ -2,7 +2,7 @@
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { Routes, Route } from "react-router-dom";
-import MainLayout from "./layouts/MainLayout"; // ⭐ Import the new MainLayout component
+import MainLayout from "./layouts/MainLayout"; 
 
 // Import all your Page Components
 import Index from "./pages/Index";
@@ -29,14 +29,19 @@ import StaticPage from "./pages/StaticPage";
 
 const App = () => (
     <Routes>
-      {/* 🔥 CRITICAL FIX: Persistent Layout Route wraps ALL shared pages */}
+      
+      {/* ========================================================= */}
+      {/* 🟢 SEGMENT 1: ROUTES WITH PERSISTENT HEADER & FOOTER (MainLayout) */}
+      {/* ========================================================= */}
       <Route element={<MainLayout />}> 
         
-        {/* Public Routes inside the persistent layout */}
+        {/* Public Routes with Layout */}
         <Route path="/" element={<Index />} />
         <Route path="/home" element={<Home />} />
         <Route path="/item/:id" element={<ItemDetail />} />
         <Route path="/profile/:mckId" element={<PublicProfile />} />
+        
+        {/* Static CMS Pages with Layout */}
         <Route path="/terms" element={<StaticPage />} />
         <Route path="/privacy" element={<StaticPage />} />
         <Route path="/about" element={<StaticPage />} />
@@ -44,11 +49,7 @@ const App = () => (
         <Route path="/help" element={<StaticPage />} />
         <Route path="/report" element={<StaticPage />} />
         
-        {/* Protected Routes (nested inside Layout) */}
-        <Route
-          path="/kyc"
-          element={<ProtectedRoute><KYC /></ProtectedRoute>}
-        />
+        {/* Protected Routes with Layout (Dashboard, Listings, etc.) */}
         <Route
           path="/dashboard"
           element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
@@ -60,10 +61,6 @@ const App = () => (
         <Route
           path="/sell"
           element={<ProtectedRoute><SellItem /></ProtectedRoute>}
-        />
-        <Route
-          path="/chat/:conversationId?"
-          element={<ProtectedRoute><Chat /></ProtectedRoute>}
         />
         <Route
           path="/my-chats"
@@ -90,18 +87,47 @@ const App = () => (
           element={<ProtectedRoute><Leaderboard /></ProtectedRoute>}
         />
         <Route
-          path="/scan-qr"
-          element={<ProtectedRoute><ScanQR /></ProtectedRoute>}
-        />
-        <Route
           path="/admin"
           element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>}
         />
       </Route>
       
-      {/* Routes WITHOUT Layout (pure auth/reset pages) */}
+      {/* ========================================================= */}
+      {/* 🔴 SEGMENT 2: FULL-SCREEN ROUTES (NO Header/Footer) */}
+      {/* ========================================================= */}
+
+      {/* Auth Routes */}
       <Route path="/auth" element={<Auth />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      
+      {/* Full-Screen Protected Routes (Chat, KYC, QR Scanner) */}
+      <Route
+        path="/chat/:conversationId?"
+        element={
+          <ProtectedRoute>
+            {/* Chat component should handle its own header/UI fully */}
+            <Chat />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/kyc"
+        element={
+          <ProtectedRoute>
+            {/* KYC form should be full screen */}
+            <KYC />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/scan-qr"
+        element={
+          <ProtectedRoute>
+            {/* QR scanner needs full screen */}
+            <ScanQR />
+          </ProtectedRoute>
+        }
+      />
       
       {/* Catch-all Not Found Page */}
       <Route path="*" element={<NotFound />} />
