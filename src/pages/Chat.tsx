@@ -17,15 +17,17 @@ import {
   CheckCheck,
   Circle,
   Clock,
-  Eye, 
+  Info, // Changed Eye to Info for notice
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useParams } from 'react-router-dom';
-import TypingIndicator from '@/components/TypingIndicator';
+import TypingIndicator from '@/components/TypingIndicator'; // Assuming this component exists
 
 // Constants for Pagination
 const MESSAGES_PER_PAGE = 50;
+const TYPING_TIMEOUT = 2000; // 2 seconds
 
+// --- INTERFACES ---
 interface Message {
   id: string;
   content: string;
@@ -58,18 +60,30 @@ interface Conversation {
   seller_profile: Profile;
 }
 
+// --- UTILITY COMPONENTS ---
+
+const MessageStatus: React.FC<{ isRead: boolean }> = ({ isRead }) => {
+    return isRead ? (
+        <CheckCheck className="h-3.5 w-3.5 text-blue-400 flex-shrink-0" title="Read" />
+    ) : (
+        <Check className="h-3.5 w-3.5 text-primary-foreground/80 flex-shrink-0" title="Sent" />
+    );
+};
+
+// --- MAIN COMPONENT ---
+
 const Chat = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { conversationId } = useParams();
+  const { conversationId } = useParams<{ conversationId: string }>(); // Use generic for safety
   
   // States for Data
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   
-  // States for Loading & Status (Separated for better UX)
+  // States for Loading & Status
   const [conversationLoading, setConversationLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -91,8 +105,8 @@ const Chat = () => {
   
   // Utility Functions ----------------------------------------------------------------
 
-  const formatLastSeen = (timestamp: string | null) => {
-    if (!timestamp) return '';
+  const formatLastSeen = (timestamp: string | null): string => {
+    if (!timestamp) return 'Offline';
     const date = new Date(timestamp);
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
@@ -100,20 +114,27 @@ const Chat = () => {
     if (diffInMinutes < 1) return 'just now';
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+    if (diffInMinutes < 10080) return `${Math.floor(diffInMinutes / 1440)}d ago`;
+    
+    // Fallback to simple date for older times
+    return date.toLocaleDateString();
   };
 
   const markMessagesAsRead = useCallback(async () => {
     if (!conversationId || !user) return;
 
-    try {
-      await supabase.rpc('mark_messages_read', {
-        conv_id: conversationId,
-        uid: user.id
-      });
-    } catch (error) {
-      console.error('Error marking messages as read:', error);
-    }
+    // Use setTimeout to debounce and ensure one call per "new message received" burst
+    // This is a minimal debounce, adjust as needed.
+    setTimeout(async () => {
+        try {
+            await supabase.rpc('mark_messages_read', {
+                conv_id: conversationId,
+                uid: user.id
+            });
+        } catch (error) {
+            console.error('Error marking messages as read:', error);
+        }
+    }, 500); // Debounce by 500ms
   }, [conversationId, user]);
 
 
@@ -125,12 +146,14 @@ const Chat = () => {
   const handleTyping = () => {
     if (!conversationId || !user) return;
 
+    // Send 'isTyping: true' broadcast
     supabase.channel(`typing-${conversationId}`).send({
       type: 'broadcast',
       event: 'typing',
       payload: { user_id: user.id, isTyping: true }
     });
 
+    // Clear previous timeout and set a new one to send 'isTyping: false' after 2s
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
@@ -141,7 +164,7 @@ const Chat = () => {
         event: 'typing',
         payload: { user_id: user.id, isTyping: false }
       });
-    }, 2000);
+    }, TYPING_TIMEOUT);
   };
   
 
@@ -159,17 +182,22 @@ const Chat = () => {
       is_read: false
     };
 
-    // Optimistically add message
+    // 1. Optimistically add message
     setMessages(prev => [...prev, optimisticMessage]);
     setNewMessage('');
     setSending(true);
 
+    // 2. Send 'isTyping: false' immediately to clear typing indicator for self
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
     supabase.channel(`typing-${conversationId}`).send({
       type: 'broadcast',
       event: 'typing',
       payload: { user_id: user.id, isTyping: false }
     });
 
+    // 3. Insert into DB
     const { data, error } = await supabase
       .from('messages')
       .insert({
@@ -191,7 +219,7 @@ const Chat = () => {
         variant: "destructive",
       });
     } else if (data) {
-      // Replace optimistic message with server data
+      // Replace optimistic message with server data (id, created_at, etc.)
       setMessages(prev => prev.map(m => m.id === tempId ? data : m));
     }
     
@@ -202,11 +230,12 @@ const Chat = () => {
 
   // Fetch Messages with Pagination
   const fetchMessages = useCallback(async (pageToFetch: number, initialLoad: boolean) => {
-    if (!conversationId || (!hasMoreMessages && pageToFetch > 1) || fetchingOldMessages) return;
+    if (!conversationId || (!hasMoreMessages && pageToFetch > 1)) return;
     
     if (initialLoad) setMessagesLoading(true);
     if (pageToFetch > 1) {
       setFetchingOldMessages(true);
+      // Save current scroll height before fetching to restore position later
       previousScrollHeightRef.current = messagesContainerRef.current?.scrollHeight || 0;
     }
 
@@ -216,23 +245,20 @@ const Chat = () => {
       .from('messages')
       .select('*')
       .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: false }) 
+      .order('created_at', { ascending: false }) // Fetching newest first
       .range(offset, offset + MESSAGES_PER_PAGE - 1); 
 
     if (error) {
       console.error('Error fetching messages:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load messages",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to load messages", variant: "destructive" });
     } else {
-      const newMessages = (data || []).reverse(); 
+      const newMessages = (data || []).reverse(); // Reverse to get chronological order
       
       setMessages(prev => {
         if (pageToFetch === 1) {
           return newMessages;
         } else {
+          // Prepend new messages to the existing list
           return [...newMessages, ...prev];
         }
       });
@@ -242,15 +268,16 @@ const Chat = () => {
 
       if (initialLoad) {
         setInitialLoadComplete(true);
-        setTimeout(() => scrollToBottom('auto'), 0);
+        // Ensure scroll to bottom on initial load
+        setTimeout(() => scrollToBottom('auto'), 100); 
       }
     }
     setFetchingOldMessages(false);
     if (initialLoad) setMessagesLoading(false);
-  }, [conversationId, hasMoreMessages, fetchingOldMessages, scrollToBottom, toast]);
+  }, [conversationId, hasMoreMessages, scrollToBottom, toast]);
 
 
-  // Fetch Conversation data
+  // Fetch Conversation data (and user profiles)
   const fetchConversation = async () => {
     if (!conversationId || !user) return;
     setConversationLoading(true);
@@ -258,45 +285,39 @@ const Chat = () => {
     const { data: conversationData, error } = await supabase
       .from('conversations')
       .select(`
-        *,
+        buyer_id, seller_id, item_id, created_at, id,
         items (title, price, images)
       `)
       .eq('id', conversationId)
       .single();
 
-    if (error) {
+    if (error || !conversationData) {
       console.error('Error fetching conversation:', error);
-      toast({
-        title: "Error",
-        description: "Conversation not found",
-        variant: "destructive",
-      });
-      navigate('/dashboard');
+      toast({ title: "Error", description: "Conversation not found", variant: "destructive" });
+      navigate('/my-chats'); // Navigate to my-chats on error/not found
       return;
     }
+    
+    const userIdsToFetch = [conversationData.buyer_id, conversationData.seller_id];
 
-    const { data: buyerProfile } = await supabase
+    const { data: profilesData } = await supabase
       .from('profiles')
-      .select('full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
-      .eq('user_id', conversationData.buyer_id)
-      .maybeSingle();
-
-    const { data: sellerProfile } = await supabase
-      .from('profiles')
-      .select('full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
-      .eq('user_id', conversationData.seller_id)
-      .maybeSingle();
+      .select('user_id, full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
+      .in('user_id', userIdsToFetch);
+      
+    const buyerProfile = profilesData?.find(p => p.user_id === conversationData.buyer_id) || { full_name: 'Unknown User' };
+    const sellerProfile = profilesData?.find(p => p.user_id === conversationData.seller_id) || { full_name: 'Unknown User' };
 
     setConversation({
       ...conversationData,
-      buyer_profile: buyerProfile || { full_name: 'Unknown User' },
-      seller_profile: sellerProfile || { full_name: 'Unknown User' }
+      buyer_profile: buyerProfile as Profile,
+      seller_profile: sellerProfile as Profile
     });
     setConversationLoading(false);
   };
   
   const subscribeToMessages = () => {
-    if (!conversationId) return null;
+    if (!conversationId || !user) return null;
 
     const channel = supabase
       .channel(`conversation-${conversationId}`)
@@ -311,21 +332,23 @@ const Chat = () => {
         (payload) => {
           const newMessage = payload.new as Message;
           setMessages(prev => {
-            if (prev.some(m => m.id === newMessage.id)) {
+            // Prevent duplicates from optimistic send or concurrent inserts
+            if (prev.some(m => m.id === newMessage.id || m.id === `temp-${newMessage.id}`)) {
               return prev;
             }
             return [...prev, newMessage];
           });
           
-          if (newMessage.sender_id !== user?.id) {
-            setTimeout(markMessagesAsRead, 500);
+          // Mark as read if it's not the user's own message
+          if (newMessage.sender_id !== user.id) {
+            markMessagesAsRead();
           }
         }
       )
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: 'UPDATE', // Used for 'is_read' updates
           schema: 'public',
           table: 'messages',
           filter: `conversation_id=eq.${conversationId}`
@@ -341,20 +364,20 @@ const Chat = () => {
   };
   
   const subscribeToPresence = () => {
-    if (!conversationId || !user) return null;
+    if (!conversationId || !user || !conversation) return null;
 
-    const otherUserId = conversation?.buyer_id === user.id 
+    const otherUserId = conversation.buyer_id === user.id 
       ? conversation.seller_id 
-      : conversation?.buyer_id;
+      : conversation.buyer_id;
 
     const channel = supabase.channel(`presence-${conversationId}`)
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
-        const isOnline = Object.values(state).some((presences: any) => 
-          presences.some((p: any) => p.user_id === otherUserId)
-        );
+        // Check if any presence record belongs to the other user
+        const isOnline = Object.values(state).flat().some((p: any) => p.user_id === otherUserId);
         setIsOtherUserOnline(isOnline);
         
+        // If not online, try to find a last_seen timestamp
         if (!isOnline) {
           const allPresences = Object.values(state).flat() as any[];
           const otherUserPresence = allPresences.find((p: any) => p.user_id === otherUserId);
@@ -374,11 +397,13 @@ const Chat = () => {
         const isOtherUser = leftPresences.some((p: any) => p.user_id === otherUserId);
         if (isOtherUser) {
           setIsOtherUserOnline(false);
-          setLastSeen(new Date().toISOString());
+          // Update last seen to current time (or time of leave, if provided by channel)
+          setLastSeen(new Date().toISOString()); 
         }
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
+          // Track current user's presence
           await channel.track({
             user_id: user.id,
             online_at: new Date().toISOString()
@@ -390,11 +415,11 @@ const Chat = () => {
   };
 
   const subscribeToTyping = () => {
-    if (!conversationId || !user) return null;
+    if (!conversationId || !user || !conversation) return null;
 
-    const otherUserId = conversation?.buyer_id === user.id 
+    const otherUserId = conversation.buyer_id === user.id 
       ? conversation.seller_id 
-      : conversation?.buyer_id;
+      : conversation.buyer_id;
 
     const channel = supabase.channel(`typing-${conversationId}`)
       .on('broadcast', { event: 'typing' }, ({ payload }) => {
@@ -413,31 +438,45 @@ const Chat = () => {
     if (conversationId && user) {
       fetchConversation();
       fetchMessages(1, true); 
-      markMessagesAsRead();
+      // markMessagesAsRead(); // Mark read is now handled on new message insert
       
-      const messageChannel = subscribeToMessages();
-      const presenceChannel = subscribeToPresence();
-      const typingChannel = subscribeToTyping();
-      
+      // Cleanup function is returned from effects
       return () => {
-        if (messageChannel) supabase.removeChannel(messageChannel);
-        if (presenceChannel) supabase.removeChannel(presenceChannel);
-        if (typingChannel) supabase.removeChannel(typingChannel);
+        // Cleanup function for subscriptions is added in the subsequent effect after conversation loads
       };
     }
-  }, [conversationId, user, fetchMessages, markMessagesAsRead]);
+  }, [conversationId, user, fetchMessages]); // Removed markMessagesAsRead from dependency array
+
+  // Effect to subscribe once conversation details are available
+  useEffect(() => {
+    if (conversation && user) {
+        // Initial mark messages as read when entering the chat
+        markMessagesAsRead();
+
+        const messageChannel = subscribeToMessages();
+        const presenceChannel = subscribeToPresence();
+        const typingChannel = subscribeToTyping();
+
+        return () => {
+            if (messageChannel) supabase.removeChannel(messageChannel);
+            if (presenceChannel) supabase.removeChannel(presenceChannel);
+            if (typingChannel) supabase.removeChannel(typingChannel);
+        };
+    }
+  }, [conversation, user, markMessagesAsRead]); // Re-subscribe when conversation state changes
+
   
   // Scroll Adjustments useEffect for New Messages
   useEffect(() => {
     if (initialLoadComplete) {
-      const lastMessage = messages[messages.length - 1];
-      const isNewMessage = lastMessage && (lastMessage.sender_id === user?.id || !lastMessage.is_read); 
+      // Logic to decide if we should scroll: scroll if it's the user's message OR if the user is currently near the bottom (optional)
+      const shouldScroll = true; // For simplicity, always scroll on new message if initial load is complete
       
-      if (isNewMessage) {
+      if (shouldScroll) {
         scrollToBottom('smooth');
       }
     }
-  }, [messages, user, initialLoadComplete, scrollToBottom]); 
+  }, [messages.length, initialLoadComplete, scrollToBottom]); // Scroll when messages list length changes
   
   // Adjust Scroll Position after Prepending Old Messages
   useEffect(() => {
@@ -445,7 +484,8 @@ const Chat = () => {
       const currentScrollHeight = messagesContainerRef.current?.scrollHeight || 0;
       const heightDifference = currentScrollHeight - previousScrollHeightRef.current;
       
-      if (messagesContainerRef.current) {
+      if (messagesContainerRef.current && heightDifference > 0) {
+        // Adjust scrollTop by the height of the prepended content
         messagesContainerRef.current.scrollTop += heightDifference; 
       }
     }
@@ -455,6 +495,7 @@ const Chat = () => {
   const handleScroll = () => {
     const container = messagesContainerRef.current;
     if (container && hasMoreMessages && !fetchingOldMessages && initialLoadComplete) {
+      // Trigger fetch when scroll position is in the top 10%
       if (container.scrollTop < container.clientHeight * 0.1) {
         fetchMessages(page + 1, false);
       }
@@ -466,14 +507,15 @@ const Chat = () => {
 
   if (conversationLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="ml-3 text-muted-foreground">Loading chat details...</p>
+        <p className="ml-3 mt-3 text-muted-foreground">Loading chat details...</p>
       </div>
     );
   }
 
   if (!conversation) {
+    // Already handled navigation in fetchConversation, but this is a fallback UI
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="p-8 space-y-4 max-w-md w-full mx-4 text-center">
@@ -488,54 +530,55 @@ const Chat = () => {
     ? conversation.seller_profile 
     : conversation.buyer_profile;
 
+  // Render Logic for other user's avatar
+  const getOtherUserAvatarUrl = otherUser.avatar_url 
+    ? supabase.storage.from('avatars').getPublicUrl(otherUser.avatar_url).data.publicUrl 
+    : undefined;
+
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-b from-background via-background to-muted/10">
-      {/* MCK-THEMED HEADER (Improved Look) */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background shadow-md flex-shrink-0">
+    <div className="flex flex-col h-screen bg-muted/10">
+      
+      {/* HEADER: Modern and Clear */}
+      <header className="sticky top-0 z-50 w-full border-b bg-background shadow-lg flex-shrink-0">
         <div className="px-3 sm:px-4 py-3">
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-3">
             <Button 
               variant="ghost" 
               size="icon"
               onClick={() => navigate('/my-chats')}
-              className="h-9 w-9 text-primary hover:bg-primary/10 flex-shrink-0"
+              className="h-10 w-10 text-primary hover:bg-primary/10 flex-shrink-0"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className="relative flex-shrink-0">
-                <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm">
-                  <AvatarImage 
-                    src={otherUser.avatar_url ? supabase.storage.from('avatars').getPublicUrl(otherUser.avatar_url).data.publicUrl : undefined} 
-                    alt={otherUser.full_name} 
-                  />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-base">
-                    {otherUser.full_name?.charAt(0) || <User className="h-5 w-5" />}
+                <Avatar className="h-11 w-11 border-2 border-primary/20 shadow-sm">
+                  <AvatarImage src={getOtherUserAvatarUrl} alt={otherUser.full_name} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
+                    {otherUser.full_name?.charAt(0) || <User className="h-6 w-6" />}
                   </AvatarFallback>
                 </Avatar>
                 {isOtherUserOnline && (
-                  <Circle className="absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-emerald-500 text-emerald-500 border-2 border-background rounded-full" />
+                  <Circle className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 fill-emerald-500 text-emerald-500 border-2 border-background rounded-full" />
                 )}
               </div>
               
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h2 className="font-bold text-base truncate">{otherUser.full_name || 'User'}</h2>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="font-extrabold text-lg truncate">{otherUser.full_name || 'User'}</h2>
                   {otherUser.verification_status === 'approved' && (
-                    <Badge variant="verified" title="Verified User" className="h-5 px-1.5">
-                      <Shield className="h-3 w-3 mr-1" />
+                    <Badge variant="verified" title="Verified User" className="h-5 px-2 bg-green-500/10 text-green-700 border-green-700/50">
+                      <Shield className="h-3 w-3 mr-1 fill-green-500 text-green-500" />
                       Verified
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground truncate">
+                <p className="text-sm text-muted-foreground truncate">
                   {isOtherUserOnline ? (
-                    <span className="text-emerald-500 font-medium">Online</span>
-                  ) : lastSeen ? (
-                    `Last seen ${formatLastSeen(lastSeen)}`
+                    <span className="text-emerald-500 font-bold">Online</span>
                   ) : (
-                    'Offline'
+                    formatLastSeen(lastSeen)
                   )}
                 </p>
               </div>
@@ -546,12 +589,12 @@ const Chat = () => {
 
       {/* Item Info Banner */}
       {conversation.items && (
-        <div className="border-b bg-card/50 backdrop-blur flex-shrink-0">
+        <div className="border-b bg-card shadow-sm flex-shrink-0">
           <div 
             className="px-3 sm:px-4 py-2 flex items-center gap-3 cursor-pointer hover:bg-accent/5 transition-colors"
             onClick={() => navigate(`/item/${conversation.item_id}`)}
           >
-            <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0 shadow-sm">
+            <div className="w-14 h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0 shadow-md">
               {conversation.items.images && conversation.items.images.length > 0 ? (
                 <img 
                   src={conversation.items.images[0]} 
@@ -560,148 +603,160 @@ const Chat = () => {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <Package className="h-5 w-5 text-muted-foreground/50" />
+                  <Package className="h-6 w-6 text-muted-foreground/50" />
                 </div>
               )}
             </div>
             
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-sm truncate">{conversation.items.title}</h3>
-              <p className="text-base font-bold text-primary">
+              <h3 className="font-semibold text-base truncate">{conversation.items.title}</h3>
+              <p className="text-lg font-extrabold text-primary">
                 ₹{conversation.items.price.toLocaleString()}
               </p>
             </div>
 
-            <Button variant="outline" size="sm" className="flex-shrink-0 text-xs h-8">
+            <Button variant="outline" size="sm" className="flex-shrink-0 text-sm h-9 border-primary text-primary hover:bg-primary/10">
               View Item
             </Button>
           </div>
         </div>
       )}
       
-      {/* ⚠️ AUTO-DELETE POLICY NOTICE (45 Days) */}
-      <div className="bg-yellow-50 border-y border-yellow-200 text-yellow-800 text-center p-2 text-xs sm:text-sm flex-shrink-0 flex items-center justify-center gap-2">
-        <Clock className="h-4 w-4 text-yellow-600" />
-        <p className="font-medium">Messages will be automatically deleted after **45 days**.</p>
+      {/* AUTO-DELETE POLICY NOTICE */}
+      <div className="bg-orange-50 border-y border-orange-200 text-orange-800 text-center p-2 text-xs sm:text-sm flex-shrink-0 flex items-center justify-center gap-2">
+        <Info className="h-4 w-4 text-orange-600" />
+        <p>Messages will be **automatically deleted after 45 days**.</p>
       </div>
 
       {/* Messages Container - Optimized for Scroll */}
       <div 
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-4 bg-muted/5"
+        className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-4 bg-pattern-light bg-repeat" // Added a subtle background
+        style={{ backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4" viewBox="0 0 4 4"><rect width="4" height="4" fill="%23fcfcfc" opacity="0.4"/><rect x="0" y="0" width="1" height="1" fill="%23e8e8e8"/></svg>')` }}
       >
         
         {/* Loader at the top when fetching old messages */}
         {fetchingOldMessages && (
           <div className="flex justify-center py-2">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         )}
         
-        {/* MESSAGES LOADING FIX: Show spinner only if initial messages are loading */}
+        {/* Initial Loading State */}
         {messagesLoading && messages.length === 0 && (
            <div className="h-full flex items-center justify-center">
-               <Loader2 className="h-8 w-8 animate-spin text-primary" />
+               <Loader2 className="h-10 w-10 animate-spin text-primary" />
            </div>
         )}
 
+        {/* Empty State */}
         {messages.length === 0 && !messagesLoading ? (
           <div className="h-full flex items-center justify-center px-4">
-            <div className="text-center text-muted-foreground space-y-3">
-              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <User className="h-10 w-10 text-primary" />
+            <div className="text-center text-muted-foreground space-y-4 pt-16">
+              <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto shadow-xl">
+                <MessageCircle className="h-12 w-12 text-primary" />
               </div>
-              <p className="font-semibold text-lg text-foreground">Start your conversation</p>
-              <p className="text-sm max-w-xs mx-auto">Send a message to begin chatting about this item</p>
+              <p className="font-extrabold text-xl text-foreground">Start the Conversation</p>
+              <p className="text-sm max-w-xs mx-auto">Be the first to send a message to the {user?.id === conversation.buyer_id ? 'seller' : 'buyer'}!</p>
             </div>
           </div>
         ) : (
           <>
-            {/* Display message if there are more messages to load */}
+            {/* Load previous messages button */}
             {!fetchingOldMessages && hasMoreMessages && (
-                 <div className="text-center text-muted-foreground text-xs my-3 pb-2 cursor-pointer hover:text-primary transition-colors"
+                 <div className="text-center text-muted-foreground text-sm my-3 py-2 cursor-pointer hover:text-primary transition-colors font-semibold"
                       onClick={() => fetchMessages(page + 1, false)}>
-                    — Load previous messages —
+                    <Clock className="h-4 w-4 inline mr-2 align-text-top" />
+                    Load previous messages
                 </div>
             )}
             
+            {/* Message Bubbles */}
             {messages.map((message, index) => {
               const isOwnMessage = message.sender_id === user?.id;
+              // Group messages for better visual flow: show avatar/gap only if sender is different from previous
               const showAvatar = index === 0 || messages[index - 1].sender_id !== message.sender_id;
+              
+              // Determine if there should be extra space for grouping
+              const isNextMessageSameSender = messages[index + 1]?.sender_id === message.sender_id;
               
               return (
                 <div
                   key={message.id}
-                  className={`flex gap-1.5 sm:gap-2 mb-1 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                  className={`flex gap-1.5 sm:gap-2 ${isOwnMessage ? 'justify-end' : 'justify-start'} ${isNextMessageSameSender ? 'mb-0.5' : 'mb-3'}`}
                 >
-                  {/* Avatar for the other user */}
+                  
+                  {/* Avatar/Spacer for the other user */}
                   {!isOwnMessage && (
                     <div className={showAvatar ? 'block' : 'invisible'}> 
-                      <Avatar className="h-7 w-7 mt-1 shadow-sm border border-primary/20 flex-shrink-0">
-                         <AvatarImage 
-                            src={otherUser.avatar_url ? supabase.storage.from('avatars').getPublicUrl(otherUser.avatar_url).data.publicUrl : undefined} 
-                            alt={otherUser.full_name} 
-                          />
-                          <AvatarFallback className="bg-primary/10 text-primary text-[12px]">
-                            {otherUser.full_name?.charAt(0) || <User className="h-3.5 w-3.5" />}
+                      <Avatar className="h-8 w-8 mt-1 shadow-md border border-primary/20 flex-shrink-0">
+                         <AvatarImage src={getOtherUserAvatarUrl} alt={otherUser.full_name} />
+                          <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
+                            {otherUser.full_name?.charAt(0) || <User className="h-4 w-4" />}
                           </AvatarFallback>
                       </Avatar>
                     </div>
                   )}
-                  {/* Invisible spacer for aligned messages */}
-                  {!isOwnMessage && !showAvatar && <div className="w-7 flex-shrink-0" />} 
+                  {/* Invisible spacer for aligned messages when avatar is hidden */}
+                  {!isOwnMessage && !showAvatar && <div className="w-8 flex-shrink-0" />} 
                   
-                  <div
-                    className={`max-w-[75%] sm:max-w-[70%] rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 shadow-md ${
-                      isOwnMessage
-                        ? 'bg-primary text-primary-foreground rounded-br-sm' 
-                        : 'bg-card border border-border/50 rounded-bl-sm' 
-                    }`}
-                  >
-                    <p className="text-sm break-words whitespace-pre-wrap leading-relaxed">
-                      {message.content}
-                    </p>
-                    <div className={`flex items-center gap-1 mt-1 ${
-                      isOwnMessage 
-                        ? 'text-primary-foreground/80 justify-end' 
-                        : 'text-muted-foreground'
-                    }`}>
-                      <p className="text-[10px] sm:text-xs">
-                        {new Date(message.created_at).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                  <div className='flex flex-col max-w-[75%] sm:max-w-[60%]'>
+                    <div
+                      className={`
+                        rounded-xl px-4 py-2.5 shadow-lg
+                        ${isOwnMessage 
+                          ? 'bg-primary text-primary-foreground rounded-tr-sm' 
+                          : 'bg-card border border-border/50 rounded-tl-sm' 
+                        }
+                        ${!showAvatar && isOwnMessage ? 'rounded-tr-xl' : ''} 
+                        ${!showAvatar && !isOwnMessage ? 'rounded-tl-xl' : ''} 
+                      `}
+                    >
+                      <p className="text-sm break-words whitespace-pre-wrap leading-snug">
+                        {message.content}
                       </p>
-                      {isOwnMessage && (
-                        message.is_read ? (
-                          <CheckCheck className="h-3 w-3 text-accent flex-shrink-0" title="Read" />
-                        ) : (
-                          <Check className="h-3 w-3 flex-shrink-0" title="Sent" />
-                        )
-                      )}
+                    </div>
+                    
+                    {/* Time and Status Indicator */}
+                    <div className={`flex items-center gap-1 mt-1 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+                        <p className={`text-[10px] sm:text-xs font-medium ${isOwnMessage ? 'text-primary-foreground/80' : 'text-muted-foreground/80'}`}>
+                            {new Date(message.created_at).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}
+                        </p>
+                        {isOwnMessage && message.id.startsWith('temp-') && (
+                           <Loader2 className="h-3 w-3 text-primary-foreground/70 animate-spin" title="Sending" />
+                        )}
+                        {isOwnMessage && !message.id.startsWith('temp-') && (
+                            <MessageStatus isRead={message.is_read} />
+                        )}
                     </div>
                   </div>
                 </div>
               );
             })}
+            
+            {/* Typing Indicator */}
             {isOtherUserTyping && (
               <div className="flex gap-1.5 sm:gap-2 justify-start mb-2">
-                <Avatar className="h-7 w-7 mt-1 shadow-sm border border-primary/20">
-                    <AvatarFallback className="bg-primary/10 text-primary text-[12px]">
-                       <User className="h-3.5 w-3.5" />
+                <Avatar className="h-8 w-8 mt-1 shadow-md border border-primary/20">
+                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
+                       {otherUser.full_name?.charAt(0) || <User className="h-4 w-4" />}
                     </AvatarFallback>
                 </Avatar>
                 <TypingIndicator />
               </div>
             )}
+
             <div ref={messagesEndRef} />
           </>
         )}
       </div>
 
-      {/* Message Input - Mobile Optimized */}
-      <div className="border-t bg-background shadow-xl p-3 flex-shrink-0">
+      {/* Message Input - Modern and Elevated */}
+      <div className="border-t bg-card shadow-2xl p-3 flex-shrink-0">
         <form onSubmit={sendMessage} className="flex gap-2">
           <Input
             value={newMessage}
@@ -710,19 +765,19 @@ const Chat = () => {
               handleTyping();
             }}
             placeholder="Type your message..."
-            className="flex-1 rounded-full px-4 py-2.5 text-sm bg-muted/70 border-muted-foreground/20 focus-visible:ring-2 focus-visible:ring-primary h-12"
+            className="flex-1 rounded-full px-5 py-3 text-base bg-muted/50 border-muted-foreground/10 focus-visible:ring-2 focus-visible:ring-primary h-14 shadow-inner"
             disabled={sending}
           />
           <Button 
             type="submit" 
             size="icon"
             disabled={sending || !newMessage.trim()}
-            className="rounded-full h-12 w-12 flex-shrink-0 shadow-lg"
+            className="rounded-full h-14 w-14 flex-shrink-0 shadow-xl bg-primary hover:bg-primary/90 transition-colors"
           >
             {sending ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-6 w-6 animate-spin" />
             ) : (
-              <Send className="h-5 w-5" />
+              <Send className="h-6 w-6" />
             )}
           </Button>
         </form>
