@@ -1,29 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card'; // Card components are now technically unused but left for safety
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Select components are now unused
 import logo from '@/assets/mycampuskart-logo.png';
 import {
   Search,
   User,
   LogIn,
-  Filter,
-  ShoppingBag,
-  Eye,
-  MapPin,
+  Filter, // Filter is now unused
+  ShoppingBag, // ShoppingBag is now unused
+  Eye, // Eye is now unused
+  MapPin, // MapPin is now unused
   ChevronLeft,
   ChevronRight,
   Star,
   Crown,
   Zap,
-  Clock,
+  Clock, // Clock is now unused
   ArrowRight,
+  ShieldCheck, // New icon for the CTA section
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Tooltip is now unused
 import { Footer } from '@/components/Footer';
 
 interface Category {
@@ -33,6 +34,7 @@ interface Category {
   icon: string;
 }
 
+// Item interface is now technically unused but left for safety
 interface Item {
   id: string;
   title: string;
@@ -50,6 +52,7 @@ interface Item {
   expires_at: string;
 }
 
+// getAdTypeBenefits is now technically unused but left for safety
 const getAdTypeBenefits = (adType: string) => {
   switch (adType) {
     case 'featured':
@@ -80,13 +83,13 @@ const getAdTypeBenefits = (adType: string) => {
 
 const Home = () => {
   const navigate = useNavigate();
-  const [items, setItems] = useState<Item[]>([]);
+  // const [items, setItems] = useState<Item[]>([]); // Removed: Not needed without listings
+  // const [loading, setLoading] = useState(true); // Removed: Not needed without listings
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  // const [selectedCategory, setSelectedCategory] = useState<string>('all'); // Removed: Not needed without filter
 
-  // 🔥 FIX 1: Initial fetch for Categories (runs once)
+  // 🔥 FIX 1: Initial fetch for Categories (runs once) - Keep if we want categories for other uses
   useEffect(() => {
     fetchCategories();
   }, []);
@@ -102,56 +105,62 @@ const Home = () => {
     }
   };
 
-  const fetchItems = async () => {
-    // setLoading(true); // setLoading is now in the useEffect hook
-    let query = supabase
-      .from('items')
-      .select(`
-        *,
-        categories (*)
-      `)
-      .eq('is_sold', false)
-      .gt('expires_at', new Date().toISOString())
-      .order('ad_type', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(12);
-
-    if (selectedCategory && selectedCategory !== 'all') {
-      query = query.eq('category_id', selectedCategory);
-    }
-
-    if (searchTerm) {
-      query = query.ilike('title', `%${searchTerm}%`);
-    }
-
-    const { data, error } = await query;
-
-    if (!error) {
-      setItems(data || []);
-    }
-    setLoading(false);
-  };
-
-  // 🔥 FIX 2: Consolidate fetchItems logic into a single debounced effect 
-  // This runs on mount and whenever search/filter state changes.
-  useEffect(() => {
-    setLoading(true); // Set loading state immediately upon change
-    const debounceTimer = setTimeout(() => {
-      fetchItems();
-    }, 500);
-
-    return () => clearTimeout(debounceTimer);
-  }, [searchTerm, selectedCategory]);
+  // fetchItems and the related useEffect are REMOVED as they are not needed for this simplified view.
 
   const handleItemClick = (itemId: string) => {
     navigate(`/item/${itemId}`);
   };
 
-  const getAdTypeBadge = (adType: string) => {
-    return getAdTypeBenefits(adType);
-  };
+  // getAdTypeBadge is now technically unused but left for safety
+  // const getAdTypeBadge = (adType: string) => {
+  //   return getAdTypeBenefits(adType);
+  // };
 
-  // Image slidebar component (UPDATED FOR CONSISTENCY)
+
+  // --- NEW: Hero Section with prominent Login CTA ---
+  const HeroSectionWithCTA = () => {
+    return (
+      <section className="py-20 md:py-32 bg-primary/5">
+        <div className="container mx-auto px-4 text-center">
+          <ShieldCheck className="h-16 w-16 text-primary mx-auto mb-6 animate-bounce-slow" />
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 mb-4 tracking-tight">
+            The Campus Marketplace for Students
+          </h1>
+          <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+            Find the best deals on books, gadgets, and furniture. **Login now** to see listings from your peers!
+          </p>
+
+          <div className="flex justify-center flex-col sm:flex-row gap-4 mb-10">
+            <Button size="lg" className="text-lg px-8 py-6 shadow-xl hover:shadow-2xl transition-all duration-300" onClick={() => navigate('/auth')}>
+              <LogIn className="h-5 w-5 mr-2" />
+              Login with your University Email to Explore Deals
+            </Button>
+            <Button variant="outline" size="lg" className="text-lg px-8 py-6" onClick={() => navigate('/auth')}>
+              <User className="h-5 w-5 mr-2" />
+              Sign Up in Seconds
+            </Button>
+          </div>
+
+          {/* Simplified Search Input - Remains for a user-friendly look */}
+          <div className="mt-8 max-w-xl mx-auto w-full">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                placeholder="Search for an item (login required)"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 border-2 border-primary/20 bg-white/90 shadow-md h-12 text-base"
+                disabled // Disabled since listing fetch is removed
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  };
+  // --- END NEW: Hero Section with prominent Login CTA ---
+
+  // Image slidebar component (UPDATED: Search/Filter is removed from here)
   const ImageSlidebarSection = () => {
     const [sliderImages, setSliderImages] = useState<any[]>([]);
     const [currentSlide, setCurrentSlide] = useState(0);
@@ -255,39 +264,8 @@ const Home = () => {
               ))}
             </div>
           </div>
-
-          {/* Search Bar (Moved out of the space-y-6 container for consistency) */}
-          <div className="mt-8 max-w-2xl mx-auto w-full animate-scale-in"> {/* Added mt-8 for spacing */}
-            <div className="flex flex-col md:flex-row gap-3 p-3 bg-card/50 rounded-xl border">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search for books, electronics, furniture..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 border-0 bg-background/50"
-                />
-              </div>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-full md:w-48 border-0 bg-background/50">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.icon} {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button className="md:px-8">
-                <Search className="h-4 w-4 mr-2" />
-                Search
-              </Button>
-            </div>
-          </div>
+          
+          {/* REMOVED: Search Bar / Filter that was here */}
         </div>
       </section>
     );
@@ -325,173 +303,13 @@ const Home = () => {
         </div>
       </header>
 
-      {/* Image Slidebar Section */}
+      {/* New: Hero Section with prominent Login CTA */}
+      <HeroSectionWithCTA />
+
+      {/* Image Slidebar Section (Kept, but is now below the CTA) */}
       <ImageSlidebarSection />
 
-      {/* Featured Listings */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Featured Listings</h2>
-              <p className="text-muted-foreground">Discover great deals from verified students</p>
-            </div>
-            <Button variant="outline" onClick={() => navigate('/auth')}>
-              View All
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {[...Array(8)].map((_, i) => (
-                <Card key={i} className="animate-pulse overflow-hidden">
-                  <div className="listing-image-container bg-muted"></div>
-                  <CardContent className="p-3">
-                    <div className="h-4 bg-muted rounded mb-2"></div>
-                    <div className="h-6 bg-muted rounded mb-2"></div>
-                    <div className="h-3 bg-muted rounded w-20"></div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : items.length === 0 ? (
-            <div className="text-center py-12">
-              <ShoppingBag className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No items found</h3>
-              <p className="text-muted-foreground">
-                Try adjusting your search or check back later for new listings
-              </p>
-            </div>
-          ) : (
-            <TooltipProvider>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {items.map((item, index) => {
-                  const adBenefits = getAdTypeBadge(item.ad_type);
-                  return (
-                    <Card 
-                      key={item.id} 
-                      className="group hover:shadow-lg transition-all duration-300 cursor-pointer border border-border hover:border-primary/20 overflow-hidden bg-card animate-fade-in hover-scale"
-                      style={{ animationDelay: `${index * 0.05}s` }}
-                      onClick={() => handleItemClick(item.id)}
-                    >
-                       <div className="relative">
-                        <div className="listing-image-container bg-muted flex items-center justify-center overflow-hidden">
-                          {item.images.length > 0 ? (
-                            <img 
-                              src={item.images[0]} 
-                              alt={item.title}
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                              onError={(e) => {
-                                e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik03NSA3NUgxMjVWMTI1SDc1Vjc1WiIgZmlsbD0iIzlDQTNBRiIvPgo8L2F2Zz4K';
-                              }}
-                            />
-                          ) : (
-                            <div className="flex flex-col items-center justify-center text-muted-foreground">
-                              <ShoppingBag className="h-12 w-12 mb-2" />
-                              <span className="text-xs">No Image</span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Ad Type Badge with Tooltip */}
-                        {adBenefits && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge 
-                                className={`absolute top-2 left-2 text-xs flex items-center gap-1 ${adBenefits.color} cursor-help`}
-                              >
-                                {adBenefits.icon}
-                                {adBenefits.label}
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">{adBenefits.benefits}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                    
-                    <Badge 
-                      variant={item.condition === 'new' ? 'default' : 'secondary'}
-                      className="absolute top-2 right-2 text-xs"
-                    >
-                      {item.condition}
-                    </Badge>
-                    
-                    <div className="absolute bottom-2 left-2 bg-background/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
-                      <Eye className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">{item.views}</span>
-                    </div>
-                    
-                    {/* Negotiable Badge */}
-                    {item.is_negotiable && (
-                      <div className="absolute bottom-2 right-2 bg-background/90 backdrop-blur-sm rounded-full px-2 py-1">
-                        <span className="text-xs text-muted-foreground">Negotiable</span>
-                      </div>
-                    )}
-                  </div>
-                  <CardContent className="p-3">
-                    <div className="space-y-2">
-                      <h3 className="font-semibold text-sm leading-tight line-clamp-2 text-card-foreground">
-                        {item.title}
-                      </h3>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-xl font-bold text-primary">₹{item.price.toLocaleString()}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                        {item.description}
-                      </p>
-                      
-                      {/* Tags */}
-                      {item.tags && item.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {item.tags.slice(0, 3).map((tag, tagIndex) => (
-                            <Badge key={tagIndex} variant="outline" className="text-xs px-1 py-0">
-                              {tag}
-                            </Badge>
-                          ))}
-                          {item.tags.length > 3 && (
-                            <Badge variant="outline" className="text-xs px-1 py-0">
-                              +{item.tags.length - 3}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          <span>{item.location || 'Campus'}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          <span>
-                            {Math.max(0, Math.ceil((new Date(item.expires_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))}d left
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <Button 
-                        size="sm" 
-                        className="w-full h-8 text-xs mt-2"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate('/auth');
-                        }}
-                      >
-                        Login to View Details
-                      </Button>
-                    </div>
-                  </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </TooltipProvider>
-          )}
-        </div>
-      </section>
-
+      {/* REMOVED: Featured Listings Section */}
 
       {/* Footer */}
       <Footer />
