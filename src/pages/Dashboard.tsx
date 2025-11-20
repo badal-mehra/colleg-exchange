@@ -1,22 +1,20 @@
-// Dashboard.tsx
+// Dashboard.tsx - Final Clean Version (No Header/Logout Logic)
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card'; // CardHeader, CardTitle removed as they are unused in the JSX part provided
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Plus, User, LogOut, Filter, Heart, MessageCircle, Eye, ShoppingBag, Upload, Shield, Star, MapPin, Package, Trophy, ChevronLeft, ChevronRight, Crown, Zap } from 'lucide-react';
+import { Search, Plus, User, Filter, Heart, MessageCircle, Eye, ShoppingBag, Upload, Star, MapPin, ChevronLeft, ChevronRight, Crown, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ImageCarousel from '@/components/ImageCarousel';
-import logo from '@/assets/mycampuskart-logo.png';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Footer } from '@/components/Footer';
 
+// NOTE: Interfaces remain the same
 interface Profile {
   id: string;
   user_id: string;
@@ -81,13 +79,8 @@ const getAdTypeBenefits = (adType: string) => {
   }
 };
 const Dashboard = () => {
-  const {
-    user,
-    signOut
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [items, setItems] = useState<Item[]>([]);
@@ -98,56 +91,47 @@ const Dashboard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [priceRange, setPriceRange] = useState<string>('all');
   
-  // 🔥 CRITICAL FIX: useEffect loop killer. Runs once when the component mounts and the user is available.
+  // 🔥 CRITICAL FIX: useEffect loop killer (Runs once on mount)
   useEffect(() => {
-    if (!user) return; // Wait for user session to be resolved
+    if (!user) return; 
     
-    // Functions are now called once on mount
     fetchProfile();
     fetchCategories();
     fetchItems();
     checkAdminStatus();
-  }, []); // <-- Dependency array is EMPTY! This fixes the reload feel on navigation.
+  }, []); 
   
   const checkAdminStatus = async () => {
     if (!user) return;
     try {
-      const {
-        data,
-        error
-      } = await supabase.rpc('is_admin', {
-        user_id: user.id
-      });
-      if (!error && data) {
-        setIsAdmin(true);
+      const { data } = await supabase.rpc('is_admin', { user_id: user.id });
+      if (data) {
+        setIsAdmin(true); 
       }
     } catch (error) {
       console.error('Error checking admin status:', error);
     }
   };
+  
   const fetchProfile = async () => {
     if (!user) return;
-    const {
-      data,
-      error
-    } = await supabase.from('profiles').select('*').eq('user_id', user.id).single();
+    const { data, error } = await supabase.from('profiles').select('*').eq('user_id', user.id).single();
     if (error) {
       console.error('Error fetching profile:', error);
     } else {
       setProfile(data);
     }
   };
+  
   const fetchCategories = async () => {
-    const {
-      data,
-      error
-    } = await supabase.from('categories').select('*').order('name');
+    const { data, error } = await supabase.from('categories').select('*').order('name');
     if (error) {
       console.error('Error fetching categories:', error);
     } else {
       setCategories(data || []);
     }
   };
+  
   const fetchItems = async () => {
     setLoading(true);
     let query = supabase.from('items').select(`
@@ -173,10 +157,7 @@ const Dashboard = () => {
         query = query.gte('price', min);
       }
     }
-    const {
-      data,
-      error
-    } = await query;
+    const { data, error } = await query;
     if (error) {
       console.error('Error fetching items:', error);
       toast({
@@ -189,15 +170,14 @@ const Dashboard = () => {
     }
     setLoading(false);
   };
+  
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       fetchItems();
     }, 500);
     return () => clearTimeout(debounceTimer);
   }, [searchTerm, selectedCategory, priceRange]);
-  const handleLogout = async () => {
-    await signOut();
-  };
+  
   const handleStartConversation = async (item: Item) => {
     if (!user || item.seller_id === user.id) return;
 
@@ -213,19 +193,14 @@ const Dashboard = () => {
     }
 
     // Check if conversation already exists
-    const {
-      data: existingConversation
-    } = await supabase.from('conversations').select('id').eq('item_id', item.id).eq('buyer_id', user.id).eq('seller_id', item.seller_id).single();
+    const { data: existingConversation } = await supabase.from('conversations').select('id').eq('item_id', item.id).eq('buyer_id', user.id).eq('seller_id', item.seller_id).single();
     if (existingConversation) {
       navigate(`/chat/${existingConversation.id}`);
       return;
     }
 
     // Create new conversation
-    const {
-      data: newConversation,
-      error
-    } = await supabase.from('conversations').insert({
+    const { data: newConversation, error } = await supabase.from('conversations').insert({
       item_id: item.id,
       buyer_id: user.id,
       seller_id: item.seller_id
@@ -241,9 +216,10 @@ const Dashboard = () => {
       navigate(`/chat/${newConversation.id}`);
     }
   };
+  
   const isVerified = profile?.is_verified && profile?.verification_status === 'approved';
 
-  // Image Slider Component (UPDATED FOR CONSISTENCY AND FLICKER FIX)
+  // Image Slider Component (REMAINS here as it's content)
   const ImageSliderSection = () => {
     const [sliderImages, setSliderImages] = useState<any[]>([]);
     const [currentSlide, setCurrentSlide] = useState(0);
@@ -251,10 +227,7 @@ const Dashboard = () => {
       fetchSliderImages();
     }, []);
     const fetchSliderImages = async () => {
-      const {
-        data,
-        error
-      } = await supabase.from('image_slidebar').select('*').eq('is_active', true).order('sort_order');
+      const { data, error } = await supabase.from('image_slidebar').select('*').eq('is_active', true).order('sort_order');
       if (!error && data) {
         setSliderImages(data);
       }
@@ -274,13 +247,10 @@ const Dashboard = () => {
     if (sliderImages.length === 0) return null;
     const handleSlideClick = (image: any) => {
       if (image.link_url) {
-        // FIX: Using navigate() for internal links is better for SPA experience 
-        // If external link:
-        window.open(image.link_url, '_blank', "noopener,noreferrer"); 
+        window.open(image.link_url, '_blank', "noopener,noreferrer");
       }
     };
     
-    // FIX: Using Home.tsx's wrapper classes and index.css's 'carousel-container' for consistent, fixed height.
     return (
       <section className="py-12 bg-card/50"> 
         <div className="container mx-auto px-4">
@@ -348,72 +318,12 @@ const Dashboard = () => {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      {/* Header */}
-      <header className="border-b glass-effect sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <img 
-                  src={logo} 
-                  alt="MyCampusKart" 
-                  className="h-10 sm:h-12 cursor-pointer"
-                  // 🔥 Navigation Fix: If possible, wrap this img in <Link to="/dashboard"> in a separate component
-                  onClick={() => navigate('/dashboard')} 
-                />
-              </div>
-              <Button size="sm" onClick={() => navigate('/sell')} className="lg:hidden bg-gradient-to-r from-primary to-primary/80 hover-scale">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-hide">
-              <Button variant="outline" size="sm" onClick={() => navigate('/my-chats')} className="hover-scale shrink-0">
-                <MessageCircle className="h-4 w-4 lg:mr-2" />
-                <span className="hidden lg:inline">My Chats</span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate('/my-orders')} className="hover-scale shrink-0">
-                <ShoppingBag className="h-4 w-4 lg:mr-2" />
-                <span className="hidden lg:inline">Orders</span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate('/my-cart')} className="hover-scale shrink-0">
-                <Heart className="h-4 w-4 lg:mr-2" />
-                <span className="hidden lg:inline">My Cart</span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate('/my-listings')} className="hover-scale shrink-0">
-                <Package className="h-4 w-4 lg:mr-2" />
-                <span className="hidden lg:inline">My Items</span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate('/leaderboard')} className="hover-scale shrink-0">
-                <Trophy className="h-4 w-4 lg:mr-2" />
-                <span className="hidden lg:inline">Leaderboard</span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate('/profile')} className="hover-scale gap-2 shrink-0">
-                {profile?.avatar_url ? <Avatar className="h-4 w-4 lg:h-5 lg:w-5">
-                    <AvatarImage src={`${supabase.storage.from('avatars').getPublicUrl(profile.avatar_url).data.publicUrl}`} alt={profile.full_name} />
-                    <AvatarFallback className="text-xs">{profile.full_name?.charAt(0)}</AvatarFallback>
-                  </Avatar> : <User className="h-4 w-4" />}
-                <span className="hidden lg:inline">Profile</span>
-              </Button>
-              {isAdmin && <Button variant="outline" size="sm" onClick={() => navigate('/admin')} className="hover-scale border-primary/50 text-primary shrink-0">
-                  <Shield className="h-4 w-4 lg:mr-2" />
-                  <span className="hidden lg:inline">Admin</span>
-                </Button>}
-              <Button size="sm" onClick={() => navigate('/sell')} className="hidden lg:flex bg-gradient-to-r from-primary to-primary/80 hover-scale shrink-0">
-                <Plus className="h-4 w-4 mr-2" />
-                Sell Item
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleLogout} className="shrink-0">
-                <LogOut className="h-4 w-4 lg:mr-2" />
-                <span className="hidden lg:inline">Logout</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Verification Alert */}
+    // min-h-screen is removed, replaced by flex-1 as Dashboard is now inside Layout.tsx
+    <div className="flex-1"> 
+      
+      {/* ⚠️ Header is GONE */}
+      
+      {/* Verification Alert (Stays here as it's content related) */}
       {!isVerified && <div className="bg-warning/10 border-warning/20 border-b">
           <div className="container mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
@@ -621,8 +531,6 @@ const Dashboard = () => {
           </TooltipProvider>}
       </div>
       
-      {/* Footer component yahan add kiya gaya hai */}
-      <Footer /> 
     </div>
   );
 };
