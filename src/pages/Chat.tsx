@@ -1,3 +1,5 @@
+// Chat.tsx - Final Optimized Version with Minimal Header
+
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,7 +20,7 @@ import {
   Circle,
   Clock,
   Info, 
-  MessageCircle, // Added MessageCircle for empty state
+  MessageCircle,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -67,6 +69,7 @@ const MessageStatus: React.FC<{ isRead: boolean, isSending: boolean }> = ({ isRe
     if (isSending) {
         return <Loader2 className="h-3.5 w-3.5 text-primary-foreground/70 animate-spin flex-shrink-0" title="Sending" />;
     }
+    // Changed read check color to differentiate from sent check
     return isRead ? (
         <CheckCheck className="h-3.5 w-3.5 text-blue-300 flex-shrink-0" title="Read" />
     ) : (
@@ -125,7 +128,6 @@ const Chat = () => {
 
   const markMessagesAsRead = useCallback(() => {
     if (!conversationId || !user) return;
-    // Debounce the RPC call
     setTimeout(async () => {
         try {
             await supabase.rpc('mark_messages_read', {
@@ -447,7 +449,6 @@ const Chat = () => {
   // Scroll Adjustments useEffect for New Messages
   useEffect(() => {
     if (initialLoadComplete && messages.length > 0) {
-      // Simple heuristic: if the user is not scrolled too far up, scroll to bottom
       const container = messagesContainerRef.current;
       const isNearBottom = container && (container.scrollHeight - container.scrollTop < container.clientHeight + 200);
 
@@ -511,36 +512,30 @@ const Chat = () => {
     : undefined;
 
   return (
+    // Root div should take up full screen height for full-screen pages
     <div className="flex flex-col h-screen bg-muted/10">
       
-      {/* HEADER: Clean and Soft */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background shadow-md flex-shrink-0">
-        <div className="px-3 sm:px-4 py-3">
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => navigate('/my-chats')}
-              className="h-10 w-10 text-primary hover:bg-primary/10 flex-shrink-0"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="relative flex-shrink-0">
-                <Avatar className="h-10 w-10 border border-border/70 shadow-sm">
-                  <AvatarImage src={getOtherUserAvatarUrl} alt={otherUser.full_name} />
-                  <AvatarFallback className="bg-muted/50 text-foreground text-base font-medium">
-                    {otherUser.full_name?.charAt(0) || <User className="h-5 w-5" />}
-                  </AvatarFallback>
-                </Avatar>
-                {isOtherUserOnline && (
-                  <Circle className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 fill-emerald-500 text-emerald-500 border-2 border-background rounded-full" />
-                )}
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
+      {/* 🔥 FIX: MINIMAL CHAT HEADER (No sticky/shadow/flex-shrink-0) */}
+      <div className="w-full flex items-center gap-3 px-3 py-3 border-b bg-background">
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={() => navigate('/my-chats')}
+          className="h-10 w-10 text-primary hover:bg-primary/10"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <Avatar className="h-10 w-10 border shadow-sm flex-shrink-0">
+            <AvatarImage src={getOtherUserAvatarUrl} alt={otherUser.full_name} />
+            <AvatarFallback className="bg-muted/50 text-foreground text-base font-medium">
+              {otherUser.full_name?.charAt(0) ?? "U"}
+            </AvatarFallback>
+          </Avatar>
+
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="font-semibold text-lg truncate text-foreground">{otherUser.full_name || 'User'}</h2>
                   {otherUser.verification_status === 'approved' && (
                     <Badge variant="outline" title="Verified User" className="h-5 px-2 text-green-700 border-green-700/50 bg-green-50/50 font-medium">
@@ -548,21 +543,15 @@ const Chat = () => {
                       Verified
                     </Badge>
                   )}
-                </div>
-                <p className={`text-sm truncate ${isOtherUserOnline ? 'text-emerald-500 font-medium' : 'text-muted-foreground'}`}>
-                  {isOtherUserOnline ? (
-                    'Online'
-                  ) : (
-                    formatLastSeen(lastSeen)
-                  )}
-                </p>
-              </div>
             </div>
+            <p className={`text-sm truncate ${isOtherUserOnline ? 'text-emerald-500 font-medium' : 'text-muted-foreground'}`}>
+              {isOtherUserOnline ? 'Online' : formatLastSeen(lastSeen)}
+            </p>
           </div>
         </div>
-      </header>
-
-      {/* Item Info Banner */}
+      </div>
+      
+      {/* Item Info Banner (Remains minimal and functional) */}
       {conversation.items && (
         <div className="border-b bg-card shadow-sm flex-shrink-0">
           <div 
@@ -650,9 +639,7 @@ const Chat = () => {
             {messages.map((message, index) => {
               const isOwnMessage = message.sender_id === user?.id;
               const isOptimistic = message.id.startsWith('temp-');
-              // Group messages: show avatar/gap only if sender is different from previous
               const showAvatar = index === 0 || messages[index - 1].sender_id !== message.sender_id;
-              // Determine if there should be extra space for grouping
               const isNextMessageSameSender = messages[index + 1]?.sender_id === message.sender_id;
               
               return (
