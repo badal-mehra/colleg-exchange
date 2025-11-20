@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,6 @@ import {
   User,
   Shield,
   Package,
-  Image as ImageIcon,
   Loader2,
   Check,
   CheckCheck,
@@ -21,6 +20,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import TypingIndicator from '@/components/TypingIndicator';
+
+// Constants for Pagination
+const MESSAGES_PER_PAGE = 50;
 
 interface Message {
   id: string;
@@ -64,43 +66,107 @@ const Chat = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { conversationId } = useParams();
+  
+  // States for Conversation and Messages
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  
+  // States for Loading & Status
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [isOtherUserOnline, setIsOtherUserOnline] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const [lastSeen, setLastSeen] = useState<string | null>(null);
+
+  // States for Pagination
+  const [page, setPage] = useState(1);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [fetchingOldMessages, setFetchingOldMessages] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+
+  // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  // Ref to store the previous scroll height before new messages are prepended
+  const previousScrollHeightRef = useRef(0); 
+  
+  // Function to mark messages as read
+  const markMessagesAsRead = useCallback(async () => {
+    if (!conversationId || !user) return;
 
-  useEffect(() => {
-    if (conversationId && user) {
-      fetchConversation();
-      fetchMessages();
-      markMessagesAsRead();
-      
-      const messageChannel = subscribeToMessages();
-      const presenceChannel = subscribeToPresence();
-      const typingChannel = subscribeToTyping();
-      
-      return () => {
-        if (messageChannel) supabase.removeChannel(messageChannel);
-        if (presenceChannel) supabase.removeChannel(presenceChannel);
-        if (typingChannel) supabase.removeChannel(typingChannel);
-      };
+    try {
+      // Assuming 'mark_messages_read' RPC handles the logic
+      await supabase.rpc('mark_messages_read', {
+        conv_id: conversationId,
+        uid: user.id
+      });
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
     }
   }, [conversationId, user]);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // ⭐ MODIFICATION: Optimized Scroll to Bottom (Only on new self/other message)
+  const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
   };
+  
+  // ⭐ NEW: Fetch Messages with Pagination
+  const fetchMessages = useCallback(async (pageToFetch: number, initialLoad: boolean) => {
+    if (!conversationId || (!hasMoreMessages && pageToFetch > 1) || fetchingOldMessages) return;
+    
+    if (pageToFetch > 1) {
+      setFetchingOldMessages(true);
+      previousScrollHeightRef.current = messagesContainerRef.current?.scrollHeight || 0;
+    }
+
+    const offset = (pageToFetch - 1) * MESSAGES_PER_PAGE;
+    
+    // Fetch latest first to use range() effectively and simplify SQL query
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      // Sort by created_at DESC to get the latest 50 messages/pages first
+      .order('created_at', { ascending: false }) 
+      .range(offset, offset + MESSAGES_PER_PAGE - 1); 
+
+    if (error) {
+      console.error('Error fetching messages:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load messages",
+        variant: "destructive",
+      });
+    } else {
+      // Reverse the order to display chronologically in the UI
+      const newMessages = (data || []).reverse(); 
+      
+      setMessages(prev => {
+        if (pageToFetch === 1) {
+          // Initial load: Set the latest messages
+          return newMessages;
+        } else {
+          // Prepend older messages for infinite scroll up
+          return [...newMessages, ...prev];
+        }
+      });
+      
+      // Update pagination state
+      setHasMoreMessages(newMessages.length === MESSAGES_PER_PAGE);
+      setPage(pageToFetch);
+
+      if (initialLoad) {
+        setInitialLoadComplete(true);
+        // Scroll to bottom immediately (auto) on first load
+        setTimeout(() => scrollToBottom('auto'), 0);
+      }
+    }
+    setFetchingOldMessages(false);
+  }, [conversationId, hasMoreMessages, fetchingOldMessages, toast]);
+
 
   const fetchConversation = async () => {
     if (!conversationId || !user) return;
@@ -144,41 +210,68 @@ const Chat = () => {
     });
     setLoading(false);
   };
+  
+  // Initial Data Fetch and Subscriptions
+  useEffect(() => {
+    if (conversationId && user) {
+      setLoading(true);
+      fetchConversation();
+      // ⭐ MODIFICATION: Initial fetch with pagination
+      fetchMessages(1, true); 
+      markMessagesAsRead();
+      
+      const messageChannel = subscribeToMessages();
+      const presenceChannel = subscribeToPresence();
+      const typingChannel = subscribeToTyping();
+      
+      return () => {
+        if (messageChannel) supabase.removeChannel(messageChannel);
+        if (presenceChannel) supabase.removeChannel(presenceChannel);
+        if (typingChannel) supabase.removeChannel(typingChannel);
+      };
+    }
+  }, [conversationId, user, fetchMessages, markMessagesAsRead]);
+  
+  // ⭐ NEW: Scroll Adjustments useEffect
+  useEffect(() => {
+    // Only smooth scroll on new messages (INSERT) and not on initial load
+    if (initialLoadComplete) {
+      // Check if the last message belongs to the current user or is a new message from the other user
+      const isNewMessage = messages.length > 0 && 
+                           (messages[messages.length - 1].sender_id === user?.id || 
+                           messages.length > MESSAGES_PER_PAGE * page); 
+      
+      if (isNewMessage) {
+        scrollToBottom('smooth');
+      }
+    }
+  }, [messages, user, initialLoadComplete, page]); 
+  
+  // ⭐ NEW: Adjust Scroll Position after Prepending Old Messages
+  useEffect(() => {
+    if (fetchingOldMessages === false && page > 1) {
+      const currentScrollHeight = messagesContainerRef.current?.scrollHeight || 0;
+      const heightDifference = currentScrollHeight - previousScrollHeightRef.current;
+      
+      if (messagesContainerRef.current) {
+        // Maintain the user's viewing position
+        messagesContainerRef.current.scrollTop += heightDifference; 
+      }
+    }
+  }, [messages, fetchingOldMessages, page]);
 
-  const fetchMessages = async () => {
-    if (!conversationId) return;
-
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching messages:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load messages",
-        variant: "destructive",
-      });
-    } else {
-      setMessages(data || []);
+  // Handle Loading More Messages on Scroll Up
+  const handleScroll = () => {
+    const container = messagesContainerRef.current;
+    if (container && hasMoreMessages && !fetchingOldMessages && initialLoadComplete) {
+      // Load if user scrolls near the top (e.g., within 10% of the container height)
+      if (container.scrollTop < container.clientHeight * 0.1) {
+        fetchMessages(page + 1, false);
+      }
     }
   };
 
-  const markMessagesAsRead = async () => {
-    if (!conversationId || !user) return;
-
-    try {
-      await supabase.rpc('mark_messages_read', {
-        conv_id: conversationId,
-        uid: user.id
-      });
-    } catch (error) {
-      console.error('Error marking messages as read:', error);
-    }
-  };
-
+  // Real-time Subscriptions (No major changes needed, just referencing the existing logic)
   const subscribeToMessages = () => {
     if (!conversationId) return null;
 
@@ -202,6 +295,7 @@ const Chat = () => {
           });
           
           if (newMessage.sender_id !== user?.id) {
+            // Mark as read after a short delay for better UX
             setTimeout(markMessagesAsRead, 500);
           }
         }
@@ -225,6 +319,7 @@ const Chat = () => {
   };
 
   const subscribeToPresence = () => {
+    // ... (Existing presence logic, no change)
     if (!conversationId || !user) return null;
 
     const otherUserId = conversation?.buyer_id === user.id 
@@ -274,6 +369,7 @@ const Chat = () => {
   };
 
   const subscribeToTyping = () => {
+    // ... (Existing typing subscription logic, no change)
     if (!conversationId || !user) return null;
 
     const otherUserId = conversation?.buyer_id === user.id 
@@ -292,6 +388,7 @@ const Chat = () => {
   };
 
   const handleTyping = () => {
+    // ... (Existing typing broadcast logic, no change)
     if (!conversationId || !user) return;
 
     supabase.channel(`typing-${conversationId}`).send({
@@ -327,6 +424,7 @@ const Chat = () => {
       is_read: false
     };
 
+    // Optimistically add message
     setMessages(prev => [...prev, optimisticMessage]);
     setNewMessage('');
     setSending(true);
@@ -349,6 +447,7 @@ const Chat = () => {
 
     if (error) {
       console.error('Error sending message:', error);
+      // Revert optimistic update on error
       setMessages(prev => prev.filter(m => m.id !== tempId));
       setNewMessage(messageContent);
       toast({
@@ -357,6 +456,7 @@ const Chat = () => {
         variant: "destructive",
       });
     } else if (data) {
+      // Replace optimistic message with server data
       setMessages(prev => prev.map(m => m.id === tempId ? data : m));
     }
     
@@ -364,6 +464,7 @@ const Chat = () => {
   };
 
   const formatLastSeen = (timestamp: string | null) => {
+    // ... (Existing formatLastSeen logic, no change)
     if (!timestamp) return '';
     const date = new Date(timestamp);
     const now = new Date();
@@ -392,12 +493,13 @@ const Chat = () => {
     ? conversation.seller_profile 
     : conversation.buyer_profile;
     
-  const isBuyer = user?.id === conversation.buyer_id;
+  // const isBuyer = user?.id === conversation.buyer_id; // Unused variable removed
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-background via-background to-muted/10">
       {/* Mobile-Optimized Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-xl shadow-sm flex-shrink-0">
+        {/* ... (Header content remains the same) */}
         <div className="px-3 sm:px-4 py-3">
           <div className="flex items-center gap-2 sm:gap-3">
             <Button 
@@ -495,9 +597,18 @@ const Chat = () => {
       {/* Messages Container - Flexible Height */}
       <div 
         ref={messagesContainerRef}
+        onScroll={handleScroll}
         className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-4 bg-gradient-to-b from-muted/5 to-background"
       >
-        {messages.length === 0 ? (
+        
+        {/* Loader at the top when fetching old messages */}
+        {fetchingOldMessages && (
+          <div className="flex justify-center py-2">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          </div>
+        )}
+        
+        {messages.length === 0 && !fetchingOldMessages && hasMoreMessages ? (
           <div className="h-full flex items-center justify-center px-4">
             <div className="text-center text-muted-foreground space-y-2 sm:space-y-3">
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg">
@@ -509,6 +620,14 @@ const Chat = () => {
           </div>
         ) : (
           <>
+            {/* Display message if there are more messages but they are not being fetched */}
+            {!fetchingOldMessages && hasMoreMessages && page === 1 && (
+                 <div className="text-center text-muted-foreground text-xs my-2 border-b border-dashed pb-2 cursor-pointer"
+                      onClick={() => fetchMessages(page + 1, false)}>
+                    Tap to load previous messages
+                </div>
+            )}
+            
             {messages.map((message, index) => {
               const isOwnMessage = message.sender_id === user?.id;
               const showAvatar = index === 0 || messages[index - 1].sender_id !== message.sender_id;
