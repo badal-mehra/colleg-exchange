@@ -59,7 +59,7 @@ interface Conversation {
 // --- UTILITY COMPONENTS (Cleaner) ---
 
 const OnlineIndicator: React.FC = () => (
-  <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 fill-emerald-500 text-emerald-500 border-2 border-background rounded-full" title="Online" />
+  <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 bg-emerald-500 border-2 border-background rounded-full" title="Online" />
 );
 
 const UserAvatar: React.FC<{ userProfile: Profile, isOnline: boolean }> = ({ userProfile, isOnline }) => {
@@ -117,40 +117,39 @@ const MyChats = () => {
 
     setLoading(true);
     
-    // 1. Fetch conversations
-    const { data: conversationsData, error: convError } = await supabase
-      .from('conversations')
-      .select(`
-        *,
-        items (id, title, price, images)
-      `)
-      .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-      .order('updated_at', { ascending: false });
+    try {
+      // 1. Fetch conversations
+      const { data: conversationsData, error: convError } = await supabase
+        .from('conversations')
+        .select(`
+          *,
+          items (id, title, price, images)
+        `)
+        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+        .order('updated_at', { ascending: false });
 
-    if (convError) {
-      console.error('Error fetching conversations:', convError);
-      toast({ title: "Error", description: "Failed to load conversations", variant: "destructive" });
-      setLoading(false);
-      return;
-    }
+      if (convError) {
+        console.error('Error fetching conversations:', convError);
+        toast({ title: "Error", description: "Failed to load conversations", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
 
-    // 2. Fetch related data (profiles, last message, unread count)
-    const conversationsWithData = await Promise.all(
-      (conversationsData || []).map(async (conversation) => {
-        
-        const { data: buyerProfile } = await supabase
-          .from('profiles')
-          .select('user_id, full_name, is_verified, verification_status, avatar_url')
-          .eq('user_id', conversation.buyer_id)
-          .maybeSingle();
-
-        const { data: sellerProfile } = await supabase
-          .from('profiles')
-          .select('user_id, full_name, is_verified, verification_status, avatar_url')
-          .eq('user_id', conversation.seller_id)
-          .maybeSingle();
-        
-        const [{ data: lastMessage }, { data: unreadCount }] = await Promise.all([
+      // 2. Fetch related data (profiles, last message, unread count)
+      const conversationsWithData = await Promise.all(
+        (conversationsData || []).map(async (conversation) => {
+          
+          const [{ data: buyerProfile }, { data: sellerProfile }, { data: lastMessage }, { data: unreadCount }] = await Promise.all([
+            supabase
+              .from('profiles')
+              .select('user_id, full_name, is_verified, verification_status, avatar_url')
+              .eq('user_id', conversation.buyer_id)
+              .maybeSingle(),
+            supabase
+              .from('profiles')
+              .select('user_id, full_name, is_verified, verification_status, avatar_url')
+              .eq('user_id', conversation.seller_id)
+              .maybeSingle(),
             supabase
                 .from('messages')
                 .select('content, created_at, sender_id')
@@ -162,49 +161,64 @@ const MyChats = () => {
                 conv_id: conversation.id,
                 uid: user.id
             }),
-        ]);
+          ]);
 
-        return {
-          ...conversation,
-          buyer_profile: (buyerProfile as Profile) || { user_id: conversation.buyer_id, full_name: 'Unknown User' },
-          seller_profile: (sellerProfile as Profile) || { user_id: conversation.seller_id, full_name: 'Unknown User' },
-          last_message: lastMessage || undefined,
-          unread_count: unreadCount || 0
-        };
-      })
-    );
-    
-    setConversations(conversationsWithData);
-    setLoading(false);
+          return {
+            ...conversation,
+            buyer_profile: (buyerProfile as Profile) || { user_id: conversation.buyer_id, full_name: 'Unknown User' },
+            seller_profile: (sellerProfile as Profile) || { user_id: conversation.seller_id, full_name: 'Unknown User' },
+            last_message: lastMessage || undefined,
+            unread_count: unreadCount || 0
+          };
+        })
+      );
+      
+      setConversations(conversationsWithData);
+    } catch (error) {
+      console.error('Error in fetchConversations:', error);
+      toast({ title: "Error", description: "Failed to load conversations", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   }, [user, toast]);
 
-  // Presence Subscription 
+  // Presence Subscription with better cleanup
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase.channel('online-users')
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        const online = new Set(
-          Object.values(state)
-            .flat()
-            .map((presence: any) => presence.user_id)
-        );
-        setOnlineUsers(online);
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({
-            user_id: user.id,
-            online_at: new Date().toISOString()
-          });
-        }
-      });
+    let presenceChannel: any = null;
+    let mounted = true;
 
+    const setupPresence = async () => {
+      presenceChannel = supabase.channel('online-users')
+        .on('presence', { event: 'sync' }, () => {
+          if (!mounted) return;
+          const state = presenceChannel.presenceState();
+          const online = new Set(
+            Object.values(state)
+              .flat()
+              .map((presence: any) => presence.user_id)
+          );
+          setOnlineUsers(online);
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED' && mounted) {
+            await presenceChannel.track({
+              user_id: user.id,
+              online_at: new Date().toISOString()
+            });
+          }
+        });
+    };
+
+    setupPresence();
     fetchConversations();
     
     return () => {
-      supabase.removeChannel(channel);
+      mounted = false;
+      if (presenceChannel) {
+        supabase.removeChannel(presenceChannel);
+      }
     };
   }, [user, fetchConversations]);
 
