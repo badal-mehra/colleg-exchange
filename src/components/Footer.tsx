@@ -112,7 +112,7 @@ export const Footer = () => {
         // Support Links (Hardcoded/Temporary - Can be fetched from a custom table later if needed)
         supportLinks: [
             { key: 'help', value: 'Help Center', link_url: '/help' },
-            { key: 'report', value: 'Report an Issue', link_url: '/report' },
+            { key: 'report', value: 'Report an Issue', link_url: 'https://forms.gle/NyAipeYYQDobkydr9' },
         ] as CustomLink[],
 
 
