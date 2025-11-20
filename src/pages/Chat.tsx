@@ -15,7 +15,9 @@ import {
   Loader2,
   Check,
   CheckCheck,
-  Circle
+  Circle,
+  Clock,
+  Eye, 
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -32,6 +34,15 @@ interface Message {
   is_read: boolean;
 }
 
+interface Profile {
+    full_name: string;
+    is_verified?: boolean;
+    verification_status?: string;
+    avatar_url?: string | null;
+    mck_id?: string;
+    trust_seller_badge?: boolean;
+}
+
 interface Conversation {
   id: string;
   item_id: string;
@@ -43,22 +54,8 @@ interface Conversation {
     price: number;
     images: string[];
   };
-  buyer_profile: {
-    full_name: string;
-    is_verified?: boolean;
-    verification_status?: string;
-    avatar_url?: string | null;
-    mck_id?: string;
-    trust_seller_badge?: boolean;
-  };
-  seller_profile: {
-    full_name: string;
-    is_verified?: boolean;
-    verification_status?: string;
-    avatar_url?: string | null;
-    mck_id?: string;
-    trust_seller_badge?: boolean;
-  };
+  buyer_profile: Profile;
+  seller_profile: Profile;
 }
 
 const Chat = () => {
@@ -67,13 +64,14 @@ const Chat = () => {
   const navigate = useNavigate();
   const { conversationId } = useParams();
   
-  // States for Conversation and Messages
+  // States for Data
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   
-  // States for Loading & Status
-  const [loading, setLoading] = useState(true);
+  // States for Loading & Status (Separated for better UX)
+  const [conversationLoading, setConversationLoading] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [isOtherUserOnline, setIsOtherUserOnline] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
@@ -89,15 +87,26 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
-  // Ref to store the previous scroll height before new messages are prepended
   const previousScrollHeightRef = useRef(0); 
   
-  // Function to mark messages as read
+  // Utility Functions ----------------------------------------------------------------
+
+  const formatLastSeen = (timestamp: string | null) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+
+    if (diffInMinutes < 1) return 'just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+  };
+
   const markMessagesAsRead = useCallback(async () => {
     if (!conversationId || !user) return;
 
     try {
-      // Assuming 'mark_messages_read' RPC handles the logic
       await supabase.rpc('mark_messages_read', {
         conv_id: conversationId,
         uid: user.id
@@ -108,287 +117,12 @@ const Chat = () => {
   }, [conversationId, user]);
 
 
-  // ⭐ MODIFICATION: Optimized Scroll to Bottom (Only on new self/other message)
-  const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
+  const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
-  };
+  }, []);
   
-  // ⭐ NEW: Fetch Messages with Pagination
-  const fetchMessages = useCallback(async (pageToFetch: number, initialLoad: boolean) => {
-    if (!conversationId || (!hasMoreMessages && pageToFetch > 1) || fetchingOldMessages) return;
-    
-    if (pageToFetch > 1) {
-      setFetchingOldMessages(true);
-      previousScrollHeightRef.current = messagesContainerRef.current?.scrollHeight || 0;
-    }
-
-    const offset = (pageToFetch - 1) * MESSAGES_PER_PAGE;
-    
-    // Fetch latest first to use range() effectively and simplify SQL query
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('conversation_id', conversationId)
-      // Sort by created_at DESC to get the latest 50 messages/pages first
-      .order('created_at', { ascending: false }) 
-      .range(offset, offset + MESSAGES_PER_PAGE - 1); 
-
-    if (error) {
-      console.error('Error fetching messages:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load messages",
-        variant: "destructive",
-      });
-    } else {
-      // Reverse the order to display chronologically in the UI
-      const newMessages = (data || []).reverse(); 
-      
-      setMessages(prev => {
-        if (pageToFetch === 1) {
-          // Initial load: Set the latest messages
-          return newMessages;
-        } else {
-          // Prepend older messages for infinite scroll up
-          return [...newMessages, ...prev];
-        }
-      });
-      
-      // Update pagination state
-      setHasMoreMessages(newMessages.length === MESSAGES_PER_PAGE);
-      setPage(pageToFetch);
-
-      if (initialLoad) {
-        setInitialLoadComplete(true);
-        // Scroll to bottom immediately (auto) on first load
-        setTimeout(() => scrollToBottom('auto'), 0);
-      }
-    }
-    setFetchingOldMessages(false);
-  }, [conversationId, hasMoreMessages, fetchingOldMessages, toast]);
-
-
-  const fetchConversation = async () => {
-    if (!conversationId || !user) return;
-
-    const { data: conversationData, error } = await supabase
-      .from('conversations')
-      .select(`
-        *,
-        items (title, price, images)
-      `)
-      .eq('id', conversationId)
-      .single();
-
-    if (error) {
-      console.error('Error fetching conversation:', error);
-      toast({
-        title: "Error",
-        description: "Conversation not found",
-        variant: "destructive",
-      });
-      navigate('/dashboard');
-      return;
-    }
-
-    const { data: buyerProfile } = await supabase
-      .from('profiles')
-      .select('full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
-      .eq('user_id', conversationData.buyer_id)
-      .maybeSingle();
-
-    const { data: sellerProfile } = await supabase
-      .from('profiles')
-      .select('full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
-      .eq('user_id', conversationData.seller_id)
-      .maybeSingle();
-
-    setConversation({
-      ...conversationData,
-      buyer_profile: buyerProfile || { full_name: 'Unknown User' },
-      seller_profile: sellerProfile || { full_name: 'Unknown User' }
-    });
-    setLoading(false);
-  };
-  
-  // Initial Data Fetch and Subscriptions
-  useEffect(() => {
-    if (conversationId && user) {
-      setLoading(true);
-      fetchConversation();
-      // ⭐ MODIFICATION: Initial fetch with pagination
-      fetchMessages(1, true); 
-      markMessagesAsRead();
-      
-      const messageChannel = subscribeToMessages();
-      const presenceChannel = subscribeToPresence();
-      const typingChannel = subscribeToTyping();
-      
-      return () => {
-        if (messageChannel) supabase.removeChannel(messageChannel);
-        if (presenceChannel) supabase.removeChannel(presenceChannel);
-        if (typingChannel) supabase.removeChannel(typingChannel);
-      };
-    }
-  }, [conversationId, user, fetchMessages, markMessagesAsRead]);
-  
-  // ⭐ NEW: Scroll Adjustments useEffect
-  useEffect(() => {
-    // Only smooth scroll on new messages (INSERT) and not on initial load
-    if (initialLoadComplete) {
-      // Check if the last message belongs to the current user or is a new message from the other user
-      const isNewMessage = messages.length > 0 && 
-                           (messages[messages.length - 1].sender_id === user?.id || 
-                           messages.length > MESSAGES_PER_PAGE * page); 
-      
-      if (isNewMessage) {
-        scrollToBottom('smooth');
-      }
-    }
-  }, [messages, user, initialLoadComplete, page]); 
-  
-  // ⭐ NEW: Adjust Scroll Position after Prepending Old Messages
-  useEffect(() => {
-    if (fetchingOldMessages === false && page > 1) {
-      const currentScrollHeight = messagesContainerRef.current?.scrollHeight || 0;
-      const heightDifference = currentScrollHeight - previousScrollHeightRef.current;
-      
-      if (messagesContainerRef.current) {
-        // Maintain the user's viewing position
-        messagesContainerRef.current.scrollTop += heightDifference; 
-      }
-    }
-  }, [messages, fetchingOldMessages, page]);
-
-  // Handle Loading More Messages on Scroll Up
-  const handleScroll = () => {
-    const container = messagesContainerRef.current;
-    if (container && hasMoreMessages && !fetchingOldMessages && initialLoadComplete) {
-      // Load if user scrolls near the top (e.g., within 10% of the container height)
-      if (container.scrollTop < container.clientHeight * 0.1) {
-        fetchMessages(page + 1, false);
-      }
-    }
-  };
-
-  // Real-time Subscriptions (No major changes needed, just referencing the existing logic)
-  const subscribeToMessages = () => {
-    if (!conversationId) return null;
-
-    const channel = supabase
-      .channel(`conversation-${conversationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`
-        },
-        (payload) => {
-          const newMessage = payload.new as Message;
-          setMessages(prev => {
-            if (prev.some(m => m.id === newMessage.id)) {
-              return prev;
-            }
-            return [...prev, newMessage];
-          });
-          
-          if (newMessage.sender_id !== user?.id) {
-            // Mark as read after a short delay for better UX
-            setTimeout(markMessagesAsRead, 500);
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`
-        },
-        (payload) => {
-          const updatedMessage = payload.new as Message;
-          setMessages(prev => prev.map(m => m.id === updatedMessage.id ? updatedMessage : m));
-        }
-      )
-      .subscribe();
-
-    return channel;
-  };
-
-  const subscribeToPresence = () => {
-    // ... (Existing presence logic, no change)
-    if (!conversationId || !user) return null;
-
-    const otherUserId = conversation?.buyer_id === user.id 
-      ? conversation.seller_id 
-      : conversation?.buyer_id;
-
-    const channel = supabase.channel(`presence-${conversationId}`)
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        const isOnline = Object.values(state).some((presences: any) => 
-          presences.some((p: any) => p.user_id === otherUserId)
-        );
-        setIsOtherUserOnline(isOnline);
-        
-        if (!isOnline) {
-          const allPresences = Object.values(state).flat() as any[];
-          const otherUserPresence = allPresences.find((p: any) => p.user_id === otherUserId);
-          if (otherUserPresence?.last_seen) {
-            setLastSeen(otherUserPresence.last_seen);
-          }
-        }
-      })
-      .on('presence', { event: 'join' }, ({ newPresences }) => {
-        const isOtherUser = newPresences.some((p: any) => p.user_id === otherUserId);
-        if (isOtherUser) {
-          setIsOtherUserOnline(true);
-          setLastSeen(null);
-        }
-      })
-      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        const isOtherUser = leftPresences.some((p: any) => p.user_id === otherUserId);
-        if (isOtherUser) {
-          setIsOtherUserOnline(false);
-          setLastSeen(new Date().toISOString());
-        }
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({
-            user_id: user.id,
-            online_at: new Date().toISOString()
-          });
-        }
-      });
-
-    return channel;
-  };
-
-  const subscribeToTyping = () => {
-    // ... (Existing typing subscription logic, no change)
-    if (!conversationId || !user) return null;
-
-    const otherUserId = conversation?.buyer_id === user.id 
-      ? conversation.seller_id 
-      : conversation?.buyer_id;
-
-    const channel = supabase.channel(`typing-${conversationId}`)
-      .on('broadcast', { event: 'typing' }, ({ payload }) => {
-        if (payload.user_id === otherUserId) {
-          setIsOtherUserTyping(payload.isTyping);
-        }
-      })
-      .subscribe();
-
-    return channel;
-  };
 
   const handleTyping = () => {
-    // ... (Existing typing broadcast logic, no change)
     if (!conversationId || !user) return;
 
     supabase.channel(`typing-${conversationId}`).send({
@@ -409,6 +143,7 @@ const Chat = () => {
       });
     }, 2000);
   };
+  
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -463,85 +198,340 @@ const Chat = () => {
     setSending(false);
   };
 
-  const formatLastSeen = (timestamp: string | null) => {
-    // ... (Existing formatLastSeen logic, no change)
-    if (!timestamp) return '';
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+  // Data Fetching and Subscriptions ----------------------------------------------------------------
 
-    if (diffInMinutes < 1) return 'just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+  // Fetch Messages with Pagination
+  const fetchMessages = useCallback(async (pageToFetch: number, initialLoad: boolean) => {
+    if (!conversationId || (!hasMoreMessages && pageToFetch > 1) || fetchingOldMessages) return;
+    
+    if (initialLoad) setMessagesLoading(true);
+    if (pageToFetch > 1) {
+      setFetchingOldMessages(true);
+      previousScrollHeightRef.current = messagesContainerRef.current?.scrollHeight || 0;
+    }
+
+    const offset = (pageToFetch - 1) * MESSAGES_PER_PAGE;
+    
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: false }) 
+      .range(offset, offset + MESSAGES_PER_PAGE - 1); 
+
+    if (error) {
+      console.error('Error fetching messages:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load messages",
+        variant: "destructive",
+      });
+    } else {
+      const newMessages = (data || []).reverse(); 
+      
+      setMessages(prev => {
+        if (pageToFetch === 1) {
+          return newMessages;
+        } else {
+          return [...newMessages, ...prev];
+        }
+      });
+      
+      setHasMoreMessages(newMessages.length === MESSAGES_PER_PAGE);
+      setPage(pageToFetch);
+
+      if (initialLoad) {
+        setInitialLoadComplete(true);
+        setTimeout(() => scrollToBottom('auto'), 0);
+      }
+    }
+    setFetchingOldMessages(false);
+    if (initialLoad) setMessagesLoading(false);
+  }, [conversationId, hasMoreMessages, fetchingOldMessages, scrollToBottom, toast]);
+
+
+  // Fetch Conversation data
+  const fetchConversation = async () => {
+    if (!conversationId || !user) return;
+    setConversationLoading(true);
+
+    const { data: conversationData, error } = await supabase
+      .from('conversations')
+      .select(`
+        *,
+        items (title, price, images)
+      `)
+      .eq('id', conversationId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching conversation:', error);
+      toast({
+        title: "Error",
+        description: "Conversation not found",
+        variant: "destructive",
+      });
+      navigate('/dashboard');
+      return;
+    }
+
+    const { data: buyerProfile } = await supabase
+      .from('profiles')
+      .select('full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
+      .eq('user_id', conversationData.buyer_id)
+      .maybeSingle();
+
+    const { data: sellerProfile } = await supabase
+      .from('profiles')
+      .select('full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
+      .eq('user_id', conversationData.seller_id)
+      .maybeSingle();
+
+    setConversation({
+      ...conversationData,
+      buyer_profile: buyerProfile || { full_name: 'Unknown User' },
+      seller_profile: sellerProfile || { full_name: 'Unknown User' }
+    });
+    setConversationLoading(false);
+  };
+  
+  const subscribeToMessages = () => {
+    if (!conversationId) return null;
+
+    const channel = supabase
+      .channel(`conversation-${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        (payload) => {
+          const newMessage = payload.new as Message;
+          setMessages(prev => {
+            if (prev.some(m => m.id === newMessage.id)) {
+              return prev;
+            }
+            return [...prev, newMessage];
+          });
+          
+          if (newMessage.sender_id !== user?.id) {
+            setTimeout(markMessagesAsRead, 500);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        (payload) => {
+          const updatedMessage = payload.new as Message;
+          setMessages(prev => prev.map(m => m.id === updatedMessage.id ? updatedMessage : m));
+        }
+      )
+      .subscribe();
+
+    return channel;
+  };
+  
+  const subscribeToPresence = () => {
+    if (!conversationId || !user) return null;
+
+    const otherUserId = conversation?.buyer_id === user.id 
+      ? conversation.seller_id 
+      : conversation?.buyer_id;
+
+    const channel = supabase.channel(`presence-${conversationId}`)
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const isOnline = Object.values(state).some((presences: any) => 
+          presences.some((p: any) => p.user_id === otherUserId)
+        );
+        setIsOtherUserOnline(isOnline);
+        
+        if (!isOnline) {
+          const allPresences = Object.values(state).flat() as any[];
+          const otherUserPresence = allPresences.find((p: any) => p.user_id === otherUserId);
+          if (otherUserPresence?.last_seen) {
+            setLastSeen(otherUserPresence.last_seen);
+          }
+        }
+      })
+      .on('presence', { event: 'join' }, ({ newPresences }) => {
+        const isOtherUser = newPresences.some((p: any) => p.user_id === otherUserId);
+        if (isOtherUser) {
+          setIsOtherUserOnline(true);
+          setLastSeen(null);
+        }
+      })
+      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+        const isOtherUser = leftPresences.some((p: any) => p.user_id === otherUserId);
+        if (isOtherUser) {
+          setIsOtherUserOnline(false);
+          setLastSeen(new Date().toISOString());
+        }
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({
+            user_id: user.id,
+            online_at: new Date().toISOString()
+          });
+        }
+      });
+
+    return channel;
   };
 
-  if (loading || !conversation) {
+  const subscribeToTyping = () => {
+    if (!conversationId || !user) return null;
+
+    const otherUserId = conversation?.buyer_id === user.id 
+      ? conversation.seller_id 
+      : conversation?.buyer_id;
+
+    const channel = supabase.channel(`typing-${conversationId}`)
+      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+        if (payload.user_id === otherUserId) {
+          setIsOtherUserTyping(payload.isTyping);
+        }
+      })
+      .subscribe();
+
+    return channel;
+  };
+
+  // Effects and Handlers ----------------------------------------------------------------
+
+  useEffect(() => {
+    if (conversationId && user) {
+      fetchConversation();
+      fetchMessages(1, true); 
+      markMessagesAsRead();
+      
+      const messageChannel = subscribeToMessages();
+      const presenceChannel = subscribeToPresence();
+      const typingChannel = subscribeToTyping();
+      
+      return () => {
+        if (messageChannel) supabase.removeChannel(messageChannel);
+        if (presenceChannel) supabase.removeChannel(presenceChannel);
+        if (typingChannel) supabase.removeChannel(typingChannel);
+      };
+    }
+  }, [conversationId, user, fetchMessages, markMessagesAsRead]);
+  
+  // Scroll Adjustments useEffect for New Messages
+  useEffect(() => {
+    if (initialLoadComplete) {
+      const lastMessage = messages[messages.length - 1];
+      const isNewMessage = lastMessage && (lastMessage.sender_id === user?.id || !lastMessage.is_read); 
+      
+      if (isNewMessage) {
+        scrollToBottom('smooth');
+      }
+    }
+  }, [messages, user, initialLoadComplete, scrollToBottom]); 
+  
+  // Adjust Scroll Position after Prepending Old Messages
+  useEffect(() => {
+    if (fetchingOldMessages === false && page > 1) {
+      const currentScrollHeight = messagesContainerRef.current?.scrollHeight || 0;
+      const heightDifference = currentScrollHeight - previousScrollHeightRef.current;
+      
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop += heightDifference; 
+      }
+    }
+  }, [messages, fetchingOldMessages, page]);
+
+  // Handle Scroll Up for Loading Old Messages
+  const handleScroll = () => {
+    const container = messagesContainerRef.current;
+    if (container && hasMoreMessages && !fetchingOldMessages && initialLoadComplete) {
+      if (container.scrollTop < container.clientHeight * 0.1) {
+        fetchMessages(page + 1, false);
+      }
+    }
+  };
+
+
+  // RENDER LOGIC ----------------------------------------------------------------------
+
+  if (conversationLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center">
-        <Card className="p-8 space-y-4 max-w-md w-full mx-4">
-          <div className="flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-          <p className="text-center text-muted-foreground">Loading conversation...</p>
-        </Card>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="ml-3 text-muted-foreground">Loading chat details...</p>
       </div>
     );
   }
 
+  if (!conversation) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="p-8 space-y-4 max-w-md w-full mx-4 text-center">
+          <p className="text-xl font-semibold">Conversation Not Found</p>
+          <Button onClick={() => navigate('/my-chats')}>Go to My Chats</Button>
+        </Card>
+      </div>
+    );
+  }
+  
   const otherUser = user?.id === conversation.buyer_id 
     ? conversation.seller_profile 
     : conversation.buyer_profile;
-    
-  // const isBuyer = user?.id === conversation.buyer_id; // Unused variable removed
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-background via-background to-muted/10">
-      {/* Mobile-Optimized Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-xl shadow-sm flex-shrink-0">
-        {/* ... (Header content remains the same) */}
+      {/* MCK-THEMED HEADER (Improved Look) */}
+      <header className="sticky top-0 z-50 w-full border-b bg-background shadow-md flex-shrink-0">
         <div className="px-3 sm:px-4 py-3">
           <div className="flex items-center gap-2 sm:gap-3">
             <Button 
               variant="ghost" 
               size="icon"
               onClick={() => navigate('/my-chats')}
-              className="h-9 w-9 hover:bg-primary/10 hover:text-primary flex-shrink-0"
+              className="h-9 w-9 text-primary hover:bg-primary/10 flex-shrink-0"
             >
-              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+              <ArrowLeft className="h-5 w-5" />
             </Button>
             
-            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className="relative flex-shrink-0">
-                <Avatar className="h-9 w-9 sm:h-11 sm:w-11 border-2 border-primary/20 shadow-md">
+                <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm">
                   <AvatarImage 
                     src={otherUser.avatar_url ? supabase.storage.from('avatars').getPublicUrl(otherUser.avatar_url).data.publicUrl : undefined} 
                     alt={otherUser.full_name} 
                   />
-                  <AvatarFallback className="bg-gradient-to-br from-primary/10 to-accent/10 text-primary text-xs sm:text-sm">
-                    {otherUser.full_name?.charAt(0) || <User className="h-4 w-4 sm:h-5 sm:w-5" />}
+                  <AvatarFallback className="bg-primary text-primary-foreground text-base">
+                    {otherUser.full_name?.charAt(0) || <User className="h-5 w-5" />}
                   </AvatarFallback>
                 </Avatar>
                 {isOtherUserOnline && (
-                  <Circle className="absolute -bottom-0.5 -right-0.5 h-3 w-3 sm:h-4 sm:w-4 fill-emerald-500 text-emerald-500 border-2 border-background rounded-full" />
+                  <Circle className="absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-emerald-500 text-emerald-500 border-2 border-background rounded-full" />
                 )}
               </div>
               
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-                  <h2 className="font-semibold text-sm sm:text-base truncate">{otherUser.full_name || 'User'}</h2>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h2 className="font-bold text-base truncate">{otherUser.full_name || 'User'}</h2>
                   {otherUser.verification_status === 'approved' && (
-                    <Badge variant="verified" tooltip="Verified User" className="h-4 px-1">
-                      <Shield className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                    <Badge variant="verified" title="Verified User" className="h-5 px-1.5">
+                      <Shield className="h-3 w-3 mr-1" />
+                      Verified
                     </Badge>
                   )}
                 </div>
-                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                <p className="text-xs text-muted-foreground truncate">
                   {isOtherUserOnline ? (
-                    <span className="flex items-center gap-1">
-                      <Circle className="h-1.5 w-1.5 sm:h-2 sm:w-2 fill-emerald-500 text-emerald-500" />
-                      Online
-                    </span>
+                    <span className="text-emerald-500 font-medium">Online</span>
                   ) : lastSeen ? (
                     `Last seen ${formatLastSeen(lastSeen)}`
                   ) : (
@@ -554,14 +544,14 @@ const Chat = () => {
         </div>
       </header>
 
-      {/* Item Info Banner - Mobile Optimized */}
+      {/* Item Info Banner */}
       {conversation.items && (
         <div className="border-b bg-card/50 backdrop-blur flex-shrink-0">
           <div 
-            className="px-3 sm:px-4 py-2 flex items-center gap-2 sm:gap-3 cursor-pointer hover:bg-accent/5 transition-colors"
+            className="px-3 sm:px-4 py-2 flex items-center gap-3 cursor-pointer hover:bg-accent/5 transition-colors"
             onClick={() => navigate(`/item/${conversation.item_id}`)}
           >
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden bg-gradient-to-br from-muted/50 to-muted flex-shrink-0 shadow">
+            <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0 shadow-sm">
               {conversation.items.images && conversation.items.images.length > 0 ? (
                 <img 
                   src={conversation.items.images[0]} 
@@ -570,35 +560,36 @@ const Chat = () => {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <Package className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground/50" />
+                  <Package className="h-5 w-5 text-muted-foreground/50" />
                 </div>
               )}
             </div>
             
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-xs sm:text-sm truncate">{conversation.items.title}</h3>
-              <p className="text-sm sm:text-base font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <h3 className="font-semibold text-sm truncate">{conversation.items.title}</h3>
+              <p className="text-base font-bold text-primary">
                 ₹{conversation.items.price.toLocaleString()}
               </p>
             </div>
 
-            <Button variant="outline" size="sm" className="flex-shrink-0 text-[10px] sm:text-xs px-2 sm:px-3 h-7 sm:h-8">
-              View
+            <Button variant="outline" size="sm" className="flex-shrink-0 text-xs h-8">
+              View Item
             </Button>
           </div>
         </div>
       )}
       
       {/* ⚠️ AUTO-DELETE POLICY NOTICE (45 Days) */}
-      <div className="bg-yellow-100/70 border-y border-yellow-200 text-yellow-800 text-center p-2 text-xs sm:text-sm flex-shrink-0">
-        <p>⚠️ **Note:** All messages will be automatically deleted from the chat history and server after **45 days**.</p>
+      <div className="bg-yellow-50 border-y border-yellow-200 text-yellow-800 text-center p-2 text-xs sm:text-sm flex-shrink-0 flex items-center justify-center gap-2">
+        <Clock className="h-4 w-4 text-yellow-600" />
+        <p className="font-medium">Messages will be automatically deleted after **45 days**.</p>
       </div>
 
-      {/* Messages Container - Flexible Height */}
+      {/* Messages Container - Optimized for Scroll */}
       <div 
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-4 bg-gradient-to-b from-muted/5 to-background"
+        className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-4 bg-muted/5"
       >
         
         {/* Loader at the top when fetching old messages */}
@@ -608,58 +599,72 @@ const Chat = () => {
           </div>
         )}
         
-        {messages.length === 0 && !fetchingOldMessages && hasMoreMessages ? (
+        {/* MESSAGES LOADING FIX: Show spinner only if initial messages are loading */}
+        {messagesLoading && messages.length === 0 && (
+           <div className="h-full flex items-center justify-center">
+               <Loader2 className="h-8 w-8 animate-spin text-primary" />
+           </div>
+        )}
+
+        {messages.length === 0 && !messagesLoading ? (
           <div className="h-full flex items-center justify-center px-4">
-            <div className="text-center text-muted-foreground space-y-2 sm:space-y-3">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg">
-                <User className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
+            <div className="text-center text-muted-foreground space-y-3">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <User className="h-10 w-10 text-primary" />
               </div>
-              <p className="font-semibold text-base sm:text-lg text-foreground">Start your conversation</p>
-              <p className="text-xs sm:text-sm max-w-xs mx-auto">Send a message to begin chatting about this item</p>
+              <p className="font-semibold text-lg text-foreground">Start your conversation</p>
+              <p className="text-sm max-w-xs mx-auto">Send a message to begin chatting about this item</p>
             </div>
           </div>
         ) : (
           <>
-            {/* Display message if there are more messages but they are not being fetched */}
-            {!fetchingOldMessages && hasMoreMessages && page === 1 && (
-                 <div className="text-center text-muted-foreground text-xs my-2 border-b border-dashed pb-2 cursor-pointer"
+            {/* Display message if there are more messages to load */}
+            {!fetchingOldMessages && hasMoreMessages && (
+                 <div className="text-center text-muted-foreground text-xs my-3 pb-2 cursor-pointer hover:text-primary transition-colors"
                       onClick={() => fetchMessages(page + 1, false)}>
-                    Tap to load previous messages
+                    — Load previous messages —
                 </div>
             )}
             
             {messages.map((message, index) => {
               const isOwnMessage = message.sender_id === user?.id;
               const showAvatar = index === 0 || messages[index - 1].sender_id !== message.sender_id;
-              const isLastMessage = index === messages.length - 1;
               
               return (
                 <div
                   key={message.id}
-                  className={`flex gap-1.5 sm:gap-2 mb-2 sm:mb-3 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                  className={`flex gap-1.5 sm:gap-2 mb-1 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                 >
-                  {!isOwnMessage && showAvatar && (
-                    <Avatar className="h-6 w-6 sm:h-7 sm:w-7 mt-1 shadow-sm border border-primary/20 flex-shrink-0">
-                      <AvatarFallback className="bg-gradient-to-br from-muted to-muted-foreground/20 text-muted-foreground text-[10px]">
-                        <User className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                      </AvatarFallback>
-                    </Avatar>
+                  {/* Avatar for the other user */}
+                  {!isOwnMessage && (
+                    <div className={showAvatar ? 'block' : 'invisible'}> 
+                      <Avatar className="h-7 w-7 mt-1 shadow-sm border border-primary/20 flex-shrink-0">
+                         <AvatarImage 
+                            src={otherUser.avatar_url ? supabase.storage.from('avatars').getPublicUrl(otherUser.avatar_url).data.publicUrl : undefined} 
+                            alt={otherUser.full_name} 
+                          />
+                          <AvatarFallback className="bg-primary/10 text-primary text-[12px]">
+                            {otherUser.full_name?.charAt(0) || <User className="h-3.5 w-3.5" />}
+                          </AvatarFallback>
+                      </Avatar>
+                    </div>
                   )}
-                  {!isOwnMessage && !showAvatar && <div className="w-6 sm:w-7 flex-shrink-0" />}
+                  {/* Invisible spacer for aligned messages */}
+                  {!isOwnMessage && !showAvatar && <div className="w-7 flex-shrink-0" />} 
                   
                   <div
-                    className={`max-w-[75%] sm:max-w-[70%] rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 shadow-sm ${
+                    className={`max-w-[75%] sm:max-w-[70%] rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 shadow-md ${
                       isOwnMessage
-                        ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-br-sm'
-                        : 'bg-card border border-border/50 rounded-bl-sm'
+                        ? 'bg-primary text-primary-foreground rounded-br-sm' 
+                        : 'bg-card border border-border/50 rounded-bl-sm' 
                     }`}
                   >
-                    <p className="text-xs sm:text-sm break-words whitespace-pre-wrap leading-relaxed">
+                    <p className="text-sm break-words whitespace-pre-wrap leading-relaxed">
                       {message.content}
                     </p>
                     <div className={`flex items-center gap-1 mt-1 ${
                       isOwnMessage 
-                        ? 'text-primary-foreground/70 justify-end' 
+                        ? 'text-primary-foreground/80 justify-end' 
                         : 'text-muted-foreground'
                     }`}>
                       <p className="text-[10px] sm:text-xs">
@@ -668,11 +673,11 @@ const Chat = () => {
                           minute: '2-digit'
                         })}
                       </p>
-                      {isOwnMessage && isLastMessage && (
+                      {isOwnMessage && (
                         message.is_read ? (
-                          <CheckCheck className="h-3 w-3 text-accent flex-shrink-0" />
+                          <CheckCheck className="h-3 w-3 text-accent flex-shrink-0" title="Read" />
                         ) : (
-                          <Check className="h-3 w-3 flex-shrink-0" />
+                          <Check className="h-3 w-3 flex-shrink-0" title="Sent" />
                         )
                       )}
                     </div>
@@ -682,10 +687,10 @@ const Chat = () => {
             })}
             {isOtherUserTyping && (
               <div className="flex gap-1.5 sm:gap-2 justify-start mb-2">
-                <Avatar className="h-6 w-6 sm:h-7 sm:w-7 mt-1 shadow-sm border border-primary/20">
-                  <AvatarFallback className="bg-gradient-to-br from-muted to-muted-foreground/20 text-muted-foreground text-[10px]">
-                    <User className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                  </AvatarFallback>
+                <Avatar className="h-7 w-7 mt-1 shadow-sm border border-primary/20">
+                    <AvatarFallback className="bg-primary/10 text-primary text-[12px]">
+                       <User className="h-3.5 w-3.5" />
+                    </AvatarFallback>
                 </Avatar>
                 <TypingIndicator />
               </div>
@@ -696,7 +701,7 @@ const Chat = () => {
       </div>
 
       {/* Message Input - Mobile Optimized */}
-      <div className="border-t bg-background/95 backdrop-blur-xl shadow-lg p-2 sm:p-3 flex-shrink-0">
+      <div className="border-t bg-background shadow-xl p-3 flex-shrink-0">
         <form onSubmit={sendMessage} className="flex gap-2">
           <Input
             value={newMessage}
@@ -704,20 +709,20 @@ const Chat = () => {
               setNewMessage(e.target.value);
               handleTyping();
             }}
-            placeholder="Type a message..."
-            className="flex-1 rounded-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm bg-muted/60 border-muted-foreground/20 focus-visible:ring-2 focus-visible:ring-primary"
+            placeholder="Type your message..."
+            className="flex-1 rounded-full px-4 py-2.5 text-sm bg-muted/70 border-muted-foreground/20 focus-visible:ring-2 focus-visible:ring-primary h-12"
             disabled={sending}
           />
           <Button 
             type="submit" 
             size="icon"
             disabled={sending || !newMessage.trim()}
-            className="rounded-full h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 shadow-lg"
+            className="rounded-full h-12 w-12 flex-shrink-0 shadow-lg"
           >
             {sending ? (
-              <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+              <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
-              <Send className="h-4 w-4 sm:h-5 sm:w-5" />
+              <Send className="h-5 w-5" />
             )}
           </Button>
         </form>
