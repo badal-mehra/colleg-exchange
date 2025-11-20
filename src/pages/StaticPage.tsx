@@ -69,7 +69,7 @@ const StaticPage = () => {
             ) : (
               <div className="text-center py-10">
                 <h3 className="text-lg font-semibold text-destructive">404 - Content Not Found</h3>
-                <p className="text-muted-foreground">The page content for '/{slug}' is not active or does not exist in the CMS.</p>
+                <p className="text-muted-foreground">The page content for '/{slug}' is not active or does not exist in the CMS. Please connect with Team MyCampusKart.</p>
               </div>
             )}
           </CardContent>
