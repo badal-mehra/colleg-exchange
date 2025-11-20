@@ -1,9 +1,8 @@
 // App.tsx
 
-// Remove all Provider Imports (Toaster, QueryClient, AuthProvider, TooltipProvider)
-// They have been moved to main.tsx
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { Routes, Route } from "react-router-dom";
+import MainLayout from "./layouts/MainLayout"; // ⭐ Import the new MainLayout component
 
 // Import all your Page Components
 import Index from "./pages/Index";
@@ -28,142 +27,83 @@ import MyCart from "./pages/MyCart";
 import MyReports from "./pages/MyReports";
 import StaticPage from "./pages/StaticPage";
 
-// 🔥 CRITICAL FIX: App component now renders ONLY the Routes tree.
 const App = () => (
     <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/home" element={<Home />} />
+      {/* 🔥 CRITICAL FIX: Persistent Layout Route wraps ALL shared pages */}
+      <Route element={<MainLayout />}> 
+        
+        {/* Public Routes inside the persistent layout */}
+        <Route path="/" element={<Index />} />
+        <Route path="/home" element={<Home />} />
+        <Route path="/item/:id" element={<ItemDetail />} />
+        <Route path="/profile/:mckId" element={<PublicProfile />} />
+        <Route path="/terms" element={<StaticPage />} />
+        <Route path="/privacy" element={<StaticPage />} />
+        <Route path="/about" element={<StaticPage />} />
+        <Route path="/shipping" element={<StaticPage />} />
+        <Route path="/help" element={<StaticPage />} />
+        <Route path="/report" element={<StaticPage />} />
+        
+        {/* Protected Routes (nested inside Layout) */}
+        <Route
+          path="/kyc"
+          element={<ProtectedRoute><KYC /></ProtectedRoute>}
+        />
+        <Route
+          path="/dashboard"
+          element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
+        />
+        <Route
+          path="/profile"
+          element={<ProtectedRoute><Profile /></ProtectedRoute>}
+        />
+        <Route
+          path="/sell"
+          element={<ProtectedRoute><SellItem /></ProtectedRoute>}
+        />
+        <Route
+          path="/chat/:conversationId?"
+          element={<ProtectedRoute><Chat /></ProtectedRoute>}
+        />
+        <Route
+          path="/my-chats"
+          element={<ProtectedRoute><MyChats /></ProtectedRoute>}
+        />
+        <Route
+          path="/my-cart"
+          element={<ProtectedRoute><MyCart /></ProtectedRoute>}
+        />
+        <Route
+          path="/my-reports"
+          element={<ProtectedRoute><MyReports /></ProtectedRoute>}
+        />
+        <Route
+          path="/my-listings"
+          element={<ProtectedRoute><MyListings /></ProtectedRoute>}
+        />
+        <Route
+          path="/my-orders"
+          element={<ProtectedRoute><MyOrders /></ProtectedRoute>}
+        />
+        <Route
+          path="/leaderboard"
+          element={<ProtectedRoute><Leaderboard /></ProtectedRoute>}
+        />
+        <Route
+          path="/scan-qr"
+          element={<ProtectedRoute><ScanQR /></ProtectedRoute>}
+        />
+        <Route
+          path="/admin"
+          element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>}
+        />
+      </Route>
+      
+      {/* Routes WITHOUT Layout (pure auth/reset pages) */}
       <Route path="/auth" element={<Auth />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/item/:id" element={<ItemDetail />} />
-
-      <Route
-        path="/kyc"
-        element={
-          <ProtectedRoute>
-            <KYC />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <Profile />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route path="/profile/:mckId" element={<PublicProfile />} />
-
-      <Route
-        path="/sell"
-        element={
-          <ProtectedRoute>
-            <SellItem />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/chat/:conversationId?"
-        element={
-          <ProtectedRoute>
-            <Chat />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/my-chats"
-        element={
-          <ProtectedRoute>
-            <MyChats />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/my-cart"
-        element={
-          <ProtectedRoute>
-            <MyCart />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/my-reports"
-        element={
-          <ProtectedRoute>
-            <MyReports />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/my-listings"
-        element={
-          <ProtectedRoute>
-            <MyListings />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/my-orders"
-        element={
-          <ProtectedRoute>
-            <MyOrders />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/leaderboard"
-        element={
-          <ProtectedRoute>
-            <Leaderboard />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/scan-qr"
-        element={
-          <ProtectedRoute>
-            <ScanQR />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute>
-            <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Static CMS Pages */}
-      <Route path="/terms" element={<StaticPage />} />
-      <Route path="/privacy" element={<StaticPage />} />
-      <Route path="/about" element={<StaticPage />} />
-      <Route path="/shipping" element={<StaticPage />} />
-      <Route path="/help" element={<StaticPage />} />
-      <Route path="/report" element={<StaticPage />} />
-
+      
+      {/* Catch-all Not Found Page */}
       <Route path="*" element={<NotFound />} />
     </Routes>
 );
