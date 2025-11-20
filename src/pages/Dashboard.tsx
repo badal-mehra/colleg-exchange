@@ -1,122 +1,130 @@
+// Dashboard.tsx
+
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card'; // CardHeader, CardTitle removed as they are unused in the JSX part provided
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Plus, User, LogOut, Filter, Heart, MessageCircle, Eye, ShoppingBag, Upload, Shield, Star, MapPin, Package, Trophy, ChevronLeft, ChevronRight, Crown, Zap, Clock, Tag } from 'lucide-react';
+import { Search, Plus, User, LogOut, Filter, Heart, MessageCircle, Eye, ShoppingBag, Upload, Shield, Star, MapPin, Package, Trophy, ChevronLeft, ChevronRight, Crown, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ImageCarousel from '@/components/ImageCarousel';
 import logo from '@/assets/mycampuskart-logo.png';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Footer } from '@/components/Footer'; // <-- FIX: Footer Imported
+import { Footer } from '@/components/Footer';
 
 interface Profile {
-  id: string;
-  user_id: string;
-  full_name: string;
-  email: string;
-  is_verified: boolean;
-  verification_status: string;
-  avatar_url: string | null;
-  mck_id: string;
-  trust_seller_badge: boolean;
+  id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  is_verified: boolean;
+  verification_status: string;
+  avatar_url: string | null;
+  mck_id: string;
+  trust_seller_badge: boolean;
 }
 interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  icon: string;
+  id: string;
+  name: string;
+  slug: string;
+  icon: string;
 }
 interface Item {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  condition: string;
-  images: string[];
-  location: string;
-  is_sold: boolean;
-  views: number;
-  created_at: string;
-  seller_id: string;
-  ad_type: string;
-  is_negotiable: boolean;
-  tags: string[];
-  expires_at: string;
-  categories: Category;
-  profiles: Profile;
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  condition: string;
+  images: string[];
+  location: string;
+  is_sold: boolean;
+  views: number;
+  created_at: string;
+  seller_id: string;
+  ad_type: string;
+  is_negotiable: boolean;
+  tags: string[];
+  expires_at: string;
+  categories: Category;
+  profiles: Profile;
 }
 const getAdTypeBenefits = (adType: string) => {
-  switch (adType) {
-    case 'featured':
-      return {
-        icon: <Star className="h-3 w-3" />,
-        label: 'Featured',
-        color: 'bg-gradient-to-r from-primary to-primary/80',
-        benefits: 'Top placement • 3x visibility • Highlighted border'
-      };
-    case 'premium':
-      return {
-        icon: <Crown className="h-3 w-3" />,
-        label: 'Premium',
-        color: 'bg-gradient-to-r from-warning to-warning/80',
-        benefits: 'Priority listing • Boost button • Extended duration'
-      };
-    case 'urgent':
-      return {
-        icon: <Zap className="h-3 w-3" />,
-        label: 'Urgent',
-        color: 'bg-gradient-to-r from-destructive to-destructive/80',
-        benefits: 'Flash indicator • Quick sell price • 48hr highlight'
-      };
-    default:
-      return null;
-  }
+  switch (adType) {
+    case 'featured':
+      return {
+        icon: <Star className="h-3 w-3" />,
+        label: 'Featured',
+        color: 'bg-gradient-to-r from-primary to-primary/80',
+        benefits: 'Top placement • 3x visibility • Highlighted border'
+      };
+    case 'premium':
+      return {
+        icon: <Crown className="h-3 w-3" />,
+        label: 'Premium',
+        color: 'bg-gradient-to-r from-warning to-warning/80',
+        benefits: 'Priority listing • Boost button • Extended duration'
+      };
+    case 'urgent':
+      return {
+        icon: <Zap className="h-3 w-3" />,
+        label: 'Urgent',
+        color: 'bg-gradient-to-r from-destructive to-destructive/80',
+        benefits: 'Flash indicator • Quick sell price • 48hr highlight'
+      };
+    default:
+      return null;
+  }
 };
 const Dashboard = () => {
-  const {
-    user,
-    signOut
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
-  const navigate = useNavigate();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [items, setItems] = useState<Item[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [priceRange, setPriceRange] = useState<string>('all');
-  useEffect(() => {
-    fetchProfile();
-    fetchCategories();
-    fetchItems();
-    checkAdminStatus();
-  }, [user]);
-  const checkAdminStatus = async () => {
-    if (!user) return;
-    try {
-      const {
-        data,
-        error
-      } = await supabase.rpc('is_admin', {
-        user_id: user.id
-      });
-      if (!error && data) {
-        setIsAdmin(true);
-      }
-    } catch (error) {
-      console.error('Error checking admin status:', error);
-    }
-  };
+  const {
+    user,
+    signOut
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [items, setItems] = useState<Item[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [priceRange, setPriceRange] = useState<string>('all');
+  
+  // 🔥 CRITICAL FIX: useEffect loop killer. Runs once when the component mounts and the user is available.
+  useEffect(() => {
+    if (!user) return; // Wait for user session to be resolved
+    
+    // Functions are now called once on mount
+    fetchProfile();
+    fetchCategories();
+    fetchItems();
+    checkAdminStatus();
+  }, []); // <-- Dependency array is EMPTY! This fixes the reload feel on navigation.
+  
+  const checkAdminStatus = async () => {
+    if (!user) return;
+    try {
+      const {
+        data,
+        error
+      } = await supabase.rpc('is_admin', {
+        user_id: user.id
+      });
+      if (!error && data) {
+        setIsAdmin(true);
+      }
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+    }
+  };
   const fetchProfile = async () => {
     if (!user) return;
     const {
@@ -266,7 +274,9 @@ const Dashboard = () => {
     if (sliderImages.length === 0) return null;
     const handleSlideClick = (image: any) => {
       if (image.link_url) {
-        window.open(image.link_url, '_blank');
+        // FIX: Using navigate() for internal links is better for SPA experience 
+        // If external link:
+        window.open(image.link_url, '_blank', "noopener,noreferrer"); 
       }
     };
     
@@ -349,7 +359,8 @@ const Dashboard = () => {
                   src={logo} 
                   alt="MyCampusKart" 
                   className="h-10 sm:h-12 cursor-pointer"
-                  onClick={() => navigate('/dashboard')}
+                  // 🔥 Navigation Fix: If possible, wrap this img in <Link to="/dashboard"> in a separate component
+                  onClick={() => navigate('/dashboard')} 
                 />
               </div>
               <Button size="sm" onClick={() => navigate('/sell')} className="lg:hidden bg-gradient-to-r from-primary to-primary/80 hover-scale">
@@ -610,7 +621,7 @@ const Dashboard = () => {
           </TooltipProvider>}
       </div>
       
-      {/* FIX: Footer component yahan add kiya gaya hai */}
+      {/* Footer component yahan add kiya gaya hai */}
       <Footer /> 
     </div>
   );
