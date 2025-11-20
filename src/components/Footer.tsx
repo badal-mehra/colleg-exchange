@@ -118,9 +118,9 @@ export const Footer = () => {
 
         // Contact Links (Hardcoded/Temporary - Social Media)
         contactLinks: [
-            { key: 'linkedin', value: 'MyCampusKart', link_url: 'https://linkedin.com/campus' },
-            { key: 'instagram', value: '@mycampuskart', link_url: 'https://instagram.com/campus' },
-            { key: 'email', value: 'support@campus.com', link_url: 'mailto:support@campus.com' },
+            { key: 'linkedin', value: 'MyCampusKart', link_url: 'https://www.linkedin.com/company/mycampuskart' },
+            { key: 'instagram', value: '@mycampuskart', link_url: 'https://instagram.com/mycampuskart' },
+            { key: 'email', value: 'support@nycampuskart.com', link_url: 'mailto:support@mycampuskart.com' },
         ] as CustomLink[],
 
         // Copyright Content: Find the unique 'copyright' page
