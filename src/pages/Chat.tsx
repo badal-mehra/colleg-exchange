@@ -486,6 +486,11 @@ const Chat = () => {
           </div>
         </div>
       )}
+      
+      {/* ⚠️ AUTO-DELETE POLICY NOTICE (45 Days) */}
+      <div className="bg-yellow-100/70 border-y border-yellow-200 text-yellow-800 text-center p-2 text-xs sm:text-sm flex-shrink-0">
+        <p>⚠️ **Note:** All messages will be automatically deleted from the chat history and server after **45 days**.</p>
+      </div>
 
       {/* Messages Container - Flexible Height */}
       <div 
