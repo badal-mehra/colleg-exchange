@@ -600,7 +600,7 @@ const Dashboard = () => {
               <div className="flex items-center space-x-3">
                 <Upload className="h-5 w-5 text-warning" />
                 <span className="text-sm font-medium">
-                  **Action Required:** Please verify your student identity to unlock buying/selling features.
+                  Action Required: Please verify your student identity to unlock buying/selling features.
                 </span>
               </div>
               <Button size="sm" variant="default" className="bg-warning text-white hover:bg-warning/90" onClick={() => navigate('/kyc')}>
