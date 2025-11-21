@@ -20,7 +20,8 @@ import {
   Shield,
   Star,
   AlertTriangle,
-  DollarSign
+  DollarSign,
+  Package
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
@@ -65,24 +66,6 @@ interface Item {
   profiles: Profile;
 }
 
-// ⭐ ADDED: Fetch Rating Utility - Common Function
-const fetchUserRating = async (userId: string) => {
-  const { data, error } = await supabase
-    .from("ratings")
-    .select("rating")
-    .eq("to_user_id", userId);
-
-  if (error || !data) return { avg: 0, count: 0 };
-
-  const count = data.length;
-  const avg =
-    count === 0
-      ? 0
-      : data.reduce((sum, item) => sum + item.rating, 0) / count;
-
-  return { avg: parseFloat(avg.toFixed(1)), count };
-};
-
 const ItemDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -96,9 +79,6 @@ const ItemDetail = () => {
   const [checkingFavorite, setCheckingFavorite] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [bargainingDialogOpen, setBargainingDialogOpen] = useState(false);
-  
-  // ADDED: State for Seller Rating
-  const [sellerRating, setSellerRating] = useState({ avg: 0, count: 0 }); 
 
   // --- Data Fetching Hooks ---
 
@@ -140,14 +120,6 @@ const ItemDetail = () => {
       setItem(null); 
     } else {
       setItem(data as Item);
-      
-      // ADDED: Fetch Rating for Seller
-      if (data?.profiles?.user_id) {
-        const rating = await fetchUserRating(data.profiles.user_id);
-        setSellerRating(rating);
-      }
-      // END ADDED: Fetch Rating for Seller
-
       // Increment view count (fire and forget)
       if (data) {
         await supabase
@@ -251,7 +223,80 @@ const ItemDetail = () => {
       });
     }
   };
+  
+  // -------------------------------------------------------------------
+  // NEW: HANDLE BUY NOW FUNCTION
+  // -------------------------------------------------------------------
+  const handleBuyNow = async () => {
+    if (!user) return navigate("/auth");
 
+    // Must be verified to initiate a purchase
+    const isVerified = userProfile?.is_verified && userProfile?.verification_status === 'approved';
+    if (!isVerified) {
+      toast({
+        title: "Verification Required",
+        description: "Complete your KYC to buy this item",
+        variant: "destructive",
+      });
+      return navigate("/kyc");
+    }
+
+    // Cannot buy own item
+    if (user.id === item?.seller_id) {
+      toast({
+        title: "Error",
+        description: "You cannot buy your own item",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Cannot buy sold item
+    if (item?.is_sold) {
+      toast({
+        title: "Error",
+        description: "This item has already been sold.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // CREATE ORDER
+    const { data, error } = await supabase
+      .from("orders")
+      .insert({
+        item_id: item!.id, 
+        seller_id: item!.seller_id,
+        buyer_id: user.id,
+        status: "pending",
+        seller_confirmed: false,
+        buyer_confirmed: false,
+        // Using item price as the initial agreed price for Buy Now
+        agreed_price: item!.price 
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Order Failed:", error);
+      toast({
+        title: "Order Failed",
+        description: "Could not create order. Try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Order Created",
+      description: "Go to My Orders to complete the transaction with the seller.",
+      icon: <Package className="h-4 w-4 text-primary" />
+    });
+
+    navigate("/my-orders");
+  };
+  // -------------------------------------------------------------------
+  
   const handleChatClick = async (offerPrice?: number) => {
     if (!user) {
       toast({
@@ -332,8 +377,6 @@ const ItemDetail = () => {
       });
     }
   };
-
-  // The rest of the action handlers (BuyNow, Share) remain unchanged as they correctly handle authentication checks.
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -541,21 +584,6 @@ const ItemDetail = () => {
                     {item.profiles?.mck_id && (
                       <p className="text-sm font-mono text-primary mb-1">{item.profiles.mck_id}</p>
                     )}
-                    
-                    {/* ADDED: Seller Rating Display */}
-                    {sellerRating.count > 0 && (
-                      <div className="flex items-center gap-3 text-sm mb-1">
-                        <div className="flex items-center gap-1 text-yellow-600">
-                            <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
-                            <span className="font-bold">{sellerRating.avg.toFixed(1)}</span>
-                        </div>
-                        <span className="text-muted-foreground">
-                            ({sellerRating.count} Ratings)
-                        </span>
-                      </div>
-                    )}
-                    {/* END ADDED: Seller Rating Display */}
-
                     <div className="flex gap-4 text-sm text-muted-foreground">
                       <span>{item.profiles?.campus_points || 0} points</span>
                       <span>{item.profiles?.deals_completed || 0} deals</span>
@@ -602,17 +630,31 @@ const ItemDetail = () => {
               <div className="space-y-3">
                 {!isOwner && (
                   <>
+                    {/* NEW: BUY NOW BUTTON */}
+                    <Button
+                      className="w-full h-12 text-lg font-semibold bg-primary hover:bg-primary/90 transition-colors"
+                      size="lg"
+                      onClick={handleBuyNow}
+                      disabled={!user || (!isVerified && !isOwner) || item.is_sold}
+                    >
+                      <Package className="h-5 w-5 mr-2 relative z-10" />
+                      <span className="relative z-10">
+                        {item.is_sold ? 'Sold Out' : 'Buy Now'}
+                      </span>
+                    </Button>
+                    
+                    {/* MAKE AN OFFER BUTTON */}
                     <Button 
                       className="w-full relative group overflow-hidden" 
                       size="lg"
+                      variant="outline"
                       onClick={() => setBargainingDialogOpen(true)}
                       // Disable if NOT logged in, NOT verified (and NOT the owner), OR if item is sold
                       disabled={!user || (!isVerified && !isOwner) || item.is_sold}
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                       <DollarSign className="h-5 w-5 mr-2 relative z-10" />
                       <span className="relative z-10 font-semibold">
-                        {item.is_sold ? 'Sold Out' : 'Make an Offer'}
+                        {item.is_sold ? 'Already Sold' : 'Make an Offer'}
                       </span>
                     </Button>
                     
