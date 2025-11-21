@@ -1,4 +1,4 @@
-// Dashboard.tsx - 🔥 FINAL, BATTLE-TESTED, ERROR-FREE, & VIRTUALIZED
+// Dashboard.tsx - ✅ FINAL, BUILD-SAFE (NO VIRTUALIZATION), & OPTIMIZED
 
 import React, { useEffect, useState, memo, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,7 +17,8 @@ import { useNavigate } from 'react-router-dom';
 import ImageCarousel from '@/components/ImageCarousel';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { VirtuosoGrid } from 'react-virtuoso';
+// ❌ VIRTUALIZATION IMPORT REMOVED: import { VirtuosoGrid } from 'react-virtuoso';
+
 
 // --- INTERFACES (Unchanged) ---
 interface Profile {
@@ -57,7 +58,7 @@ interface RawItem {
   views: number;
   created_at: string;
   seller_id: string;
-  category_id: string | null; // ❌ Nullable category_id handled now
+  category_id: string | null;
   ad_type: string;
   is_negotiable: boolean;
   tags: string[];
@@ -87,7 +88,6 @@ interface FilterState {
 const unique = (arr: (string | null | undefined)[]) => Array.from(new Set(arr)).filter((i): i is string => !!i);
 
 const getAdTypeBenefits = (adType: string) => {
-  // ... (Utility function remains the same) ...
   switch (adType) {
     case 'featured':
       return {
@@ -115,25 +115,10 @@ const getAdTypeBenefits = (adType: string) => {
   }
 };
 
-// --- VIRTUALIZATION COMPONENTS (FIXED) ---
+// ❌ VIRTUALIZATION WRAPPERS REMOVED (ItemWrapper, ItemListWrapper)
 
-// ✅ ItemListWrapper: List component for Virtuoso to apply Tailwind Grid classes
-const ItemListWrapper = React.forwardRef<HTMLDivElement, React.HTMLProps<HTMLDivElement>>((props, ref) => (
-  <div
-    {...props}
-    ref={ref}
-    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
-  />
-));
 
-// ✅ ItemWrapper: REQUIRED component for VirtuosoGrid to wrap individual items
-const ItemWrapper = React.forwardRef<HTMLDivElement, React.HTMLProps<HTMLDivElement>>((props, ref) => (
-  <div {...props} ref={ref} className="w-full">
-    {props.children}
-  </div>
-));
-
-// --- IMAGE SLIDER (Kept for completeness) ---
+// --- IMAGE SLIDER (Kept) ---
 const ImageSliderSectionComponent = () => {
   const [sliderImages, setSliderImages] = useState<SliderImage[] | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -244,7 +229,7 @@ const ImageSliderSectionComponent = () => {
 const ImageSliderSection = memo(ImageSliderSectionComponent);
 
 
-// --- ITEM CARD ---
+// --- ITEM CARD (Memoized) ---
 interface ItemCardProps {
   item: EnrichedItem;
   user: any;
@@ -260,7 +245,6 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [isChatting, setIsChatting] = useState(false);
 
-  // Wrappers to handle loading state locally
   const onChat = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsChatting(true);
@@ -371,7 +355,7 @@ const Dashboard = () => {
   // States
   const [profile, setProfile] = useState<Profile | null>(null);
   const [items, setItems] = useState<EnrichedItem[]>([]);
-  const [allCategories, setAllCategories] = useState<MinimalCategory[] | null>(null); // State tracks if categories loaded
+  const [allCategories, setAllCategories] = useState<MinimalCategory[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
     searchTerm: '',
@@ -383,7 +367,6 @@ const Dashboard = () => {
   const isVerified = useMemo(() => profile?.is_verified && profile?.verification_status === 'approved', [profile]);
 
 
-  // ❌ BONUS FIX: Category load flag is used via 'allCategories !== null'
   const categoriesLoaded = allCategories !== null;
   const categoryMap = useMemo(() => {
     if (!allCategories) return new Map();
@@ -406,25 +389,23 @@ const Dashboard = () => {
     const profileMap = new Map(profilesData?.map(p => [p.user_id, p as MinimalProfile]));
 
     return rawItems.map(item => {
-      // ❌ ISSUE 2 FIX: Handle null/undefined category_id and use fallback
       const safeCategoryId = item.category_id || 'unassigned';
-      
+
       const profileDetails = profileMap.get(item.seller_id) || { user_id: item.seller_id, full_name: 'Unknown Seller', trust_seller_badge: false, avatar_url: null };
-      
+
       const categoryDetails = categoryMap.get(safeCategoryId) || { id: safeCategoryId, name: 'Other', icon: '❓' };
-      
+
       return {
         ...item,
         profiles: profileDetails,
         categories: categoryDetails,
       } as EnrichedItem;
     });
-  }, [allCategories, categoryMap]); // Dependency on categoryMap and allCategories
+  }, [allCategories, categoryMap]);
 
 
   const fetchItems = useCallback(async () => {
     if (!categoriesLoaded) {
-      // If categories haven't loaded, hold off on fetching items
       setLoading(true);
       return;
     }
@@ -467,7 +448,6 @@ const Dashboard = () => {
   const fetchAllCategories = useCallback(async () => {
     const { data, error } = await supabase.from('categories').select('id, name, icon').order('name');
     if (!error) {
-      // Add a default entry for unassigned items (Issue 2 Fix)
       const defaultCategory = { id: 'unassigned', name: 'Unassigned', icon: '❓' };
       setAllCategories([...data as MinimalCategory[], defaultCategory]);
     }
@@ -481,12 +461,12 @@ const Dashboard = () => {
   useEffect(() => {
     if (!user) return;
     fetchProfile(user.id);
-    fetchAllCategories(); // Categories load first
+    fetchAllCategories();
   }, [user, fetchProfile, fetchAllCategories]);
 
   // Debounced Item Fetch on Filter/Search Change (Waits for categories to load)
   useEffect(() => {
-    if (!categoriesLoaded) return; // Wait for categories to be available
+    if (!categoriesLoaded) return;
 
     const debounceTimer = setTimeout(() => {
       fetchItems();
@@ -496,14 +476,12 @@ const Dashboard = () => {
   }, [searchTerm, selectedCategory, priceRange, fetchItems, categoriesLoaded]);
 
 
-  // --- HANDLERS (FIXED: Wrapped in useCallback) ---
+  // --- HANDLERS (Wrapped in useCallback for memoization stability) ---
 
-  // ❌ ISSUE 3 FIX: Wrap in useCallback
   const handleFilterChange = useCallback((key: keyof FilterState, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   }, []);
 
-  // ❌ ISSUE 3 FIX: Wrap in useCallback
   const handleStartConversation = useCallback(async (item: EnrichedItem) => {
     if (!user || item.seller_id === user.id) return;
 
@@ -512,7 +490,7 @@ const Dashboard = () => {
       navigate('/kyc');
       return;
     }
-    // ... (Logic remains the same) ...
+    
     try {
       let { data: existingConversation } = await supabase
         .from('conversations')
@@ -538,7 +516,6 @@ const Dashboard = () => {
     }
   }, [user, isVerified, navigate, toast]);
 
-  // ❌ ISSUE 3 FIX: Wrap in useCallback
   const handleFavoriteToggle = useCallback(async (e: React.MouseEvent, item: EnrichedItem) => {
     e.stopPropagation();
     if (!user) {
@@ -551,7 +528,7 @@ const Dashboard = () => {
       navigate('/kyc');
       return;
     }
-    // ... (Logic remains the same) ...
+    
     try {
       const { data: existing } = await supabase
         .from('favorites')
@@ -600,7 +577,7 @@ const Dashboard = () => {
       <SelectContent>
         <SelectItem value="all">All Categories</SelectItem>
         {allCategories && allCategories
-          .filter(c => c.id !== 'unassigned') // Don't show the internal fallback category in the filter list
+          .filter(c => c.id !== 'unassigned')
           .map(category => (
           <SelectItem key={category.id} value={category.id}>
             <span className="mr-2 inline-block" role="img" aria-label={category.name}>{category.icon}</span>
@@ -691,7 +668,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Items Grid */}
+        {/* Items Grid (Standard Native Grid) */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {[...Array(8)].map((_, i) => (
@@ -719,26 +696,20 @@ const Dashboard = () => {
           </div>
         ) : (
           <TooltipProvider>
-            {/* ❌ ISSUE 1 FIX: Correct VirtuosoGrid Implementation */}
-            <VirtuosoGrid
-              totalCount={items.length}
-              components={{
-                List: ItemListWrapper,
-                Item: ItemWrapper, // ✅ Added required Item component
-              }}
-              overscan={10}
-              itemContent={(index) => (
+            {/* 🚀 NATIVE GRID REPLACEMENT: Fast and Build-Safe */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {items.map((item) => (
                 <ItemCard
-                  // Pass item data and stable functions
-                  item={items[index]} 
+                  key={item.id}
+                  item={item}
                   user={user}
                   isVerified={isVerified}
                   navigate={navigate}
                   handleStartConversation={handleStartConversation}
                   handleFavoriteToggle={handleFavoriteToggle}
                 />
-              )}
-            />
+              ))}
+            </div>
           </TooltipProvider>
         )}
       </div>
