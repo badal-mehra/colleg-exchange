@@ -1,4 +1,4 @@
-// Leaderboard.tsx - Redesigned for a smoother, professional, and premium look
+// Leaderboard.tsx - Redesigned for Maximum Professionalism and Distinct Top Ranks
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,12 +15,13 @@ import {
   Crown,
   Zap,
   User as UserIcon,
-  Sparkles
+  Sparkles,
+  ShieldCheck
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator'; // Assuming you have a Separator component
+import { Separator } from '@/components/ui/separator';
 
 // --- Interfaces & Types (Unchanged) ---
 interface LeaderboardEntry {
@@ -36,20 +37,55 @@ interface LeaderboardEntry {
 // --- Custom Components for Redesign ---
 
 /**
- * Renders the custom card for the top 3 users (The Podium).
- * @param entry - The leaderboard entry data.
- * @param rank - The rank (1, 2, or 3).
- * @param index - The zero-based index (0, 1, or 2).
+ * Custom Rank Badge Component for the Top 3 (Metallic Effect)
  */
-const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number; index: number }> = ({ entry, rank, index }) => {
-  
-  const rankStyles = {
-    1: { color: 'text-yellow-500', bg: 'bg-gradient-to-br from-yellow-500/10 to-yellow-400/5', border: 'border-yellow-500/30', icon: Crown },
-    2: { color: 'text-gray-400', bg: 'bg-gradient-to-br from-gray-400/10 to-gray-300/5', border: 'border-gray-400/30', icon: Medal },
-    3: { color: 'text-amber-600', bg: 'bg-gradient-to-br from-amber-600/10 to-amber-500/5', border: 'border-amber-600/30', icon: Award },
+const RankBadge: React.FC<{ rank: number }> = ({ rank }) => {
+  const styles = {
+    1: { color: 'text-yellow-400', bg: 'bg-gradient-to-br from-yellow-600 to-yellow-300', icon: Crown },
+    2: { color: 'text-gray-400', bg: 'bg-gradient-to-br from-gray-500 to-gray-200', icon: ShieldCheck },
+    3: { color: 'text-amber-600', bg: 'bg-gradient-to-br from-amber-700 to-amber-400', icon: Award },
   };
 
-  const Icon = rankStyles[rank].icon;
+  const currentStyle = styles[rank];
+  const Icon = currentStyle.icon;
+
+  return (
+    <div className={`absolute -top-6 left-1/2 transform -translate-x-1/2 z-10 w-12 h-12 rounded-full flex items-center justify-center shadow-lg ${currentStyle.bg} border-2 border-white/50 ring-2 ring-background`}>
+      <Icon className={`h-6 w-6 ${currentStyle.color}`} strokeWidth={3} />
+      <span className="absolute bottom-0 text-xs font-black text-white">{rank}</span>
+    </div>
+  );
+};
+
+/**
+ * Renders the custom card for the top 3 users (The Podium).
+ */
+const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number }> = ({ entry, rank }) => {
+  
+  const isChampion = rank === 1;
+
+  const rankStyles = {
+    1: { 
+      color: 'text-yellow-500', 
+      bg: 'bg-gradient-to-br from-yellow-500/10 to-yellow-400/5', 
+      border: 'border-yellow-500/50', 
+      scale: 'scale-[1.05] shadow-2xl ring-4 ring-yellow-500/30' 
+    },
+    2: { 
+      color: 'text-gray-400', 
+      bg: 'bg-gradient-to-br from-gray-400/10 to-gray-300/5', 
+      border: 'border-gray-400/30', 
+      scale: 'shadow-lg' 
+    },
+    3: { 
+      color: 'text-amber-600', 
+      bg: 'bg-gradient-to-br from-amber-600/10 to-amber-500/5', 
+      border: 'border-amber-600/30', 
+      scale: 'shadow-lg' 
+    },
+  };
+
+  const currentStyle = rankStyles[rank];
 
   const avatarUrl = entry.avatar_url 
     ? supabase.storage.from('avatars').getPublicUrl(entry.avatar_url).data.publicUrl 
@@ -57,16 +93,13 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number; index: numb
 
   return (
     <Card 
-      className={`p-6 flex flex-col items-center text-center transition-all duration-300 transform hover:scale-[1.03] shadow-xl border-2 ${rankStyles[rank].border} ${rankStyles[rank].bg}`}
+      className={`p-6 flex flex-col items-center text-center transition-all duration-500 transform ${currentStyle.scale} border-2 ${currentStyle.border} ${currentStyle.bg} ${isChampion ? 'md:h-[400px]' : 'md:h-[350px]'} w-full relative`}
     >
-      <div className={`relative mb-4 w-20 h-20 flex-shrink-0`}>
-        {/* Rank Icon */}
-        <div className={`absolute -top-3 -right-3 z-10 p-1 rounded-full ${rankStyles[rank].bg} border ${rankStyles[rank].border}`}>
-          <Icon className={`h-8 w-8 ${rankStyles[rank].color}`} />
-        </div>
-        
+      <RankBadge rank={rank} />
+      
+      <div className={`mt-6 mb-4 ${isChampion ? 'w-24 h-24' : 'w-20 h-20'} flex-shrink-0`}>
         {/* Avatar */}
-        <Avatar className={`h-full w-full border-4 ${rank === 1 ? 'border-yellow-500' : rank === 2 ? 'border-gray-400' : 'border-amber-600'}`}>
+        <Avatar className={`h-full w-full border-4 ${currentStyle.border}`}>
           <AvatarImage src={avatarUrl} alt={entry.full_name} className="object-cover" />
           <AvatarFallback className="bg-primary/80 text-white text-2xl">
             {entry.full_name?.charAt(0) || <UserIcon className="h-8 w-8" />}
@@ -75,14 +108,14 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number; index: numb
       </div>
       
       <div className="min-w-0 mb-3">
-        <h3 className="text-xl font-bold truncate">{entry.full_name}</h3>
+        <h3 className={`font-bold truncate ${isChampion ? 'text-2xl' : 'text-xl'}`}>{entry.full_name}</h3>
         <p className="text-sm text-muted-foreground truncate">{entry.university || entry.mck_id}</p>
       </div>
 
       <Separator className="w-1/2 mb-3 bg-border/50" />
 
       <div className="flex flex-col items-center">
-        <div className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70 mb-1">{entry.campus_points}</div>
+        <div className={`font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500 mb-1 ${isChampion ? 'text-5xl' : 'text-4xl'}`}>{entry.campus_points}</div>
         <div className="text-sm font-medium text-muted-foreground">Campus Points</div>
       </div>
       
@@ -100,7 +133,7 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number; index: numb
  * Renders the streamlined list item for ranks 4 onwards.
  */
 const ListItemCard: React.FC<{ entry: LeaderboardEntry; index: number }> = ({ entry, index }) => {
-
+  // ... (ListItemCard component remains the same for consistency and efficiency)
   const avatarUrl = entry.avatar_url 
     ? supabase.storage.from('avatars').getPublicUrl(entry.avatar_url).data.publicUrl 
     : undefined;
@@ -158,7 +191,6 @@ const Leaderboard = () => {
 
   const fetchLeaderboard = async () => {
     setLoading(true);
-    // Uses the existing RPC for monthly data
     const { data, error } = await supabase.rpc('get_monthly_leaderboard');
 
     if (error) {
@@ -191,7 +223,7 @@ const Leaderboard = () => {
   const remainingRanks = leaderboard.slice(3);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 bg-dot-pattern"> {/* Subtle BG Pattern for Pro Feel */}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 bg-dot-pattern">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         
         {/* Header & Back Button */}
@@ -216,11 +248,11 @@ const Leaderboard = () => {
           {topThree.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
               {/* Rank 2 (Second) */}
-              {topThree[1] && <TopRankCard entry={topThree[1]} rank={2} index={1} />}
+              {topThree[1] && <TopRankCard entry={topThree[1]} rank={2} />}
               {/* Rank 1 (Centerpiece) */}
-              {topThree[0] && <TopRankCard entry={topThree[0]} rank={1} index={0} />}
+              {topThree[0] && <TopRankCard entry={topThree[0]} rank={1} />}
               {/* Rank 3 (Third) */}
-              {topThree[2] && <TopRankCard entry={topThree[2]} rank={3} index={2} />}
+              {topThree[2] && <TopRankCard entry={topThree[2]} rank={3} />}
             </div>
           )}
 
@@ -253,7 +285,7 @@ const Leaderboard = () => {
             </Card>
           )}
 
-          {/* 🌟 Rewards & Points Section (Cleaned Up) */}
+          {/* 🌟 Rewards & Points Section (Unchanged - Already Clean) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card className="bg-gradient-to-br from-primary/5 to-background border-primary/20">
               <CardHeader>
