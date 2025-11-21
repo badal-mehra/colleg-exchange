@@ -1,4 +1,4 @@
-// Leaderboard.tsx - Redesigned for Maximum Professionalism and Distinct Top Ranks
+// Leaderboard.tsx - Fully Responsive Redesign (Mobile-First)
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -69,19 +69,28 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number }> = ({ entr
       color: 'text-yellow-500', 
       bg: 'bg-gradient-to-br from-yellow-500/10 to-yellow-400/5', 
       border: 'border-yellow-500/50', 
-      scale: 'scale-[1.05] shadow-2xl ring-4 ring-yellow-500/30' 
+      scale: 'scale-[1.05] shadow-2xl ring-4 ring-yellow-500/30',
+      p: 'p-8', // Larger padding for Rank 1
+      avatar: 'w-24 h-24',
+      points: 'text-5xl'
     },
     2: { 
       color: 'text-gray-400', 
       bg: 'bg-gradient-to-br from-gray-400/10 to-gray-300/5', 
       border: 'border-gray-400/30', 
-      scale: 'shadow-lg' 
+      scale: 'shadow-lg',
+      p: 'p-6',
+      avatar: 'w-20 h-20',
+      points: 'text-4xl'
     },
     3: { 
       color: 'text-amber-600', 
       bg: 'bg-gradient-to-br from-amber-600/10 to-amber-500/5', 
       border: 'border-amber-600/30', 
-      scale: 'shadow-lg' 
+      scale: 'shadow-lg',
+      p: 'p-6',
+      avatar: 'w-20 h-20',
+      points: 'text-4xl'
     },
   };
 
@@ -91,13 +100,17 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number }> = ({ entr
     ? supabase.storage.from('avatars').getPublicUrl(entry.avatar_url).data.publicUrl 
     : undefined;
 
+  // Conditional order for mobile stacking
+  const orderClass = isChampion ? 'order-1' : (rank === 2 ? 'order-2' : 'order-3');
+
   return (
     <Card 
-      className={`p-6 flex flex-col items-center text-center transition-all duration-500 transform ${currentStyle.scale} border-2 ${currentStyle.border} ${currentStyle.bg} ${isChampion ? 'md:h-[400px]' : 'md:h-[350px]'} w-full relative`}
+      // Apply different margins on desktop vs mobile for podium effect vs stacking
+      className={`flex-shrink-0 ${currentStyle.p} flex flex-col items-center text-center transition-all duration-500 transform ${currentStyle.scale} border-2 ${currentStyle.border} ${currentStyle.bg} w-full relative ${orderClass} md:order-none ${isChampion ? 'md:-mt-10' : 'md:mt-0'}`}
     >
       <RankBadge rank={rank} />
       
-      <div className={`mt-6 mb-4 ${isChampion ? 'w-24 h-24' : 'w-20 h-20'} flex-shrink-0`}>
+      <div className={`mt-6 mb-4 ${currentStyle.avatar} flex-shrink-0`}>
         {/* Avatar */}
         <Avatar className={`h-full w-full border-4 ${currentStyle.border}`}>
           <AvatarImage src={avatarUrl} alt={entry.full_name} className="object-cover" />
@@ -115,7 +128,7 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number }> = ({ entr
       <Separator className="w-1/2 mb-3 bg-border/50" />
 
       <div className="flex flex-col items-center">
-        <div className={`font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500 mb-1 ${isChampion ? 'text-5xl' : 'text-4xl'}`}>{entry.campus_points}</div>
+        <div className={`font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500 mb-1 ${currentStyle.points}`}>{entry.campus_points}</div>
         <div className="text-sm font-medium text-muted-foreground">Campus Points</div>
       </div>
       
@@ -130,10 +143,10 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number }> = ({ entr
 
 
 /**
- * Renders the streamlined list item for ranks 4 onwards.
+ * Renders the streamlined list item for ranks 4 onwards. (No changes needed, already mobile friendly)
  */
 const ListItemCard: React.FC<{ entry: LeaderboardEntry; index: number }> = ({ entry, index }) => {
-  // ... (ListItemCard component remains the same for consistency and efficiency)
+
   const avatarUrl = entry.avatar_url 
     ? supabase.storage.from('avatars').getPublicUrl(entry.avatar_url).data.publicUrl 
     : undefined;
@@ -227,18 +240,19 @@ const Leaderboard = () => {
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         
         {/* Header & Back Button */}
-        <div className="flex justify-between items-center mb-10">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="text-muted-foreground hover:bg-primary/10 transition duration-300">
+        {/* Adjusted header layout for better mobile spacing */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-10 text-center sm:text-left">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="text-muted-foreground hover:bg-primary/10 transition duration-300 w-fit mx-auto sm:mx-0 mb-4 sm:mb-0">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
-          <div className="text-center">
-            <h1 className="text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500 mb-2 tracking-tight">
+          <div className="text-center sm:flex-1">
+            <h1 className="text-4xl sm:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500 mb-2 tracking-tight">
               Campus Elite Leaderboard
             </h1>
-            <p className="text-lg text-muted-foreground/80 font-medium">Monthly Top Performers - Ranked by Campus Points</p>
+            <p className="text-base sm:text-lg text-muted-foreground/80 font-medium">Monthly Top Performers - Ranked by Campus Points</p>
           </div>
-          <div className="w-24"></div> {/* Spacer for symmetry */}
+          <div className="w-24 hidden sm:block"></div> {/* Spacer for symmetry */}
         </div>
 
         {/* --- MAIN CONTENT --- */}
@@ -246,12 +260,16 @@ const Leaderboard = () => {
           
           {/* 🥇 The Podium (Top 3) */}
           {topThree.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-              {/* Rank 2 (Second) */}
-              {topThree[1] && <TopRankCard entry={topThree[1]} rank={2} />}
-              {/* Rank 1 (Centerpiece) */}
+            <div className="flex flex-col gap-6 md:grid md:grid-cols-3 md:gap-6 md:items-end">
+              {/* Rank 1, 2, 3 cards are wrapped in divs to handle the grid and flex contexts properly on both screens */}
+              
+              {/* Rank 1 (Centerpiece) - Will be shown first on mobile due to flexbox order-1*/}
               {topThree[0] && <TopRankCard entry={topThree[0]} rank={1} />}
-              {/* Rank 3 (Third) */}
+              
+              {/* Rank 2 - Will be shown second on mobile */}
+              {topThree[1] && <TopRankCard entry={topThree[1]} rank={2} />}
+              
+              {/* Rank 3 - Will be shown third on mobile */}
               {topThree[2] && <TopRankCard entry={topThree[2]} rank={3} />}
             </div>
           )}
@@ -285,7 +303,8 @@ const Leaderboard = () => {
             </Card>
           )}
 
-          {/* 🌟 Rewards & Points Section (Unchanged - Already Clean) */}
+          {/* 🌟 Rewards & Points Section */}
+          {/* This section is already responsive with grid-cols-1 lg:grid-cols-2 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card className="bg-gradient-to-br from-primary/5 to-background border-primary/20">
               <CardHeader>
