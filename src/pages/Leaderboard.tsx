@@ -1,16 +1,14 @@
+// Leaderboard.tsx - Cleaned & Fixed Version (Sales/Revenue/Deals Removed)
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  Trophy, 
-  Medal, 
-  Award, 
-  Star, 
-  TrendingUp, 
-  DollarSign,
-  Package,
+import {
+  Trophy,
+  Medal,
+  Award,
+  Star,
   Target,
   ArrowLeft,
   Crown,
@@ -26,10 +24,7 @@ interface LeaderboardEntry {
   full_name: string;
   university: string;
   campus_points: number;
-  deals_completed: number;
   trust_seller_badge: boolean;
-  monthly_sales: number;
-  monthly_revenue: number;
   avatar_url?: string | null;
   mck_id?: string;
 }
@@ -46,16 +41,11 @@ const Leaderboard = () => {
 
   const fetchLeaderboard = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .rpc('get_monthly_leaderboard');
+    const { data, error } = await supabase.rpc('get_monthly_leaderboard');
 
     if (error) {
       console.error('Error fetching leaderboard:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load leaderboard",
-        variant: "destructive",
-      });
+      toast({ title: 'Error', description: 'Failed to load leaderboard', variant: 'destructive' });
     } else {
       setLeaderboard(data || []);
     }
@@ -78,13 +68,13 @@ const Leaderboard = () => {
   const getRankCardClass = (index: number) => {
     switch (index) {
       case 0:
-        return "bg-gradient-to-r from-yellow-500/10 via-yellow-400/10 to-yellow-500/10 border-yellow-500/30";
+        return 'bg-gradient-to-r from-yellow-500/10 via-yellow-400/10 to-yellow-500/10 border-yellow-500/30';
       case 1:
-        return "bg-gradient-to-r from-gray-400/10 via-gray-300/10 to-gray-400/10 border-gray-400/30";
+        return 'bg-gradient-to-r from-gray-400/10 via-gray-300/10 to-gray-400/10 border-gray-400/30';
       case 2:
-        return "bg-gradient-to-r from-amber-600/10 via-amber-500/10 to-amber-600/10 border-amber-600/30";
+        return 'bg-gradient-to-r from-amber-600/10 via-amber-500/10 to-amber-600/10 border-amber-600/30';
       default:
-        return "bg-card border-border hover:border-primary/30";
+        return 'bg-card border-border hover:border-primary/30';
     }
   };
 
@@ -119,9 +109,7 @@ const Leaderboard = () => {
                 Campus Leaderboard
               </h1>
             </div>
-            <p className="text-muted-foreground text-lg">
-              Top Sellers of the Month - Compete, Earn, and Win Amazing Rewards! 🏆
-            </p>
+            <p className="text-muted-foreground text-lg">Top performers ranked by Campus Points 🏆</p>
           </div>
 
           {/* Rewards Section */}
@@ -158,75 +146,48 @@ const Leaderboard = () => {
             <div className="text-center py-12">
               <Trophy className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">No data yet</h3>
-              <p className="text-muted-foreground">Start selling to appear on the leaderboard!</p>
+              <p className="text-muted-foreground">Start earning points to appear on the leaderboard!</p>
             </div>
           ) : (
             <div className="space-y-4">
               {leaderboard.map((entry, index) => (
-                <Card 
-                  key={entry.user_id} 
-                  className={`${getRankCardClass(index)} hover:shadow-lg transition-all duration-300 hover-scale`}
-                >
+                <Card key={entry.user_id} className={`${getRankCardClass(index)} hover:shadow-lg transition-all duration-300`}>
                   <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                      {/* LEFT SIDE */}
+                      <div className="flex items-start md:items-center gap-4 min-w-0">
                         <div className="flex items-center justify-center w-12 h-12">
                           {getRankIcon(index)}
                         </div>
-                        
-                        <Avatar className="h-14 w-14 border-2 border-primary/20">
-                          <AvatarImage 
-                            src={entry.avatar_url ? `${supabase.storage.from('avatars').getPublicUrl(entry.avatar_url).data.publicUrl}` : undefined} 
-                            alt={entry.full_name} 
+
+                        <Avatar className="h-14 w-14 flex-shrink-0 border-2 border-primary/20">
+                          <AvatarImage
+                            src={entry.avatar_url ? `${supabase.storage.from('avatars').getPublicUrl(entry.avatar_url).data.publicUrl}` : undefined}
+                            alt={entry.full_name}
+                            className="object-cover"
                           />
                           <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-white">
                             {entry.full_name?.charAt(0) || <UserIcon className="h-7 w-7" />}
                           </AvatarFallback>
                         </Avatar>
-                        
-                        <div>
+
+                        <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-semibold">{entry.full_name}</h3>
+                            <h3 className="text-lg font-semibold truncate">{entry.full_name}</h3>
                             {entry.trust_seller_badge && (
                               <Badge variant="secondary" className="bg-gradient-to-r from-warning/20 to-warning/10 text-warning">
-                                <Zap className="h-3 w-3 mr-1" />
-                                Trusted Seller
+                                <Zap className="h-3 w-3 mr-1" /> Trusted Seller
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-muted-foreground">{entry.university || entry.mck_id}</p>
+                          <p className="text-sm text-muted-foreground truncate">{entry.university || entry.mck_id}</p>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                        <div>
-                          <div className="text-2xl font-bold text-primary">{entry.monthly_sales}</div>
-                          <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-                            <Package className="h-3 w-3" />
-                            Sales This Month
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-2xl font-bold text-success">₹{Number(entry.monthly_revenue).toLocaleString()}</div>
-                          <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-                            <DollarSign className="h-3 w-3" />
-                            Revenue
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-2xl font-bold text-warning">{entry.campus_points}</div>
-                          <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-                            <Target className="h-3 w-3" />
-                            Campus Points
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-2xl font-bold text-info">{entry.deals_completed}</div>
-                          <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-                            <TrendingUp className="h-3 w-3" />
-                            Total Deals
-                          </div>
-                        </div>
+                      {/* RIGHT SIDE — Only Campus Points */}
+                      <div className="flex flex-col items-center md:items-end text-right min-w-0">
+                        <div className="text-3xl font-bold text-primary truncate">{entry.campus_points}</div>
+                        <div className="text-xs text-muted-foreground truncate">Campus Points</div>
                       </div>
                     </div>
                   </CardContent>
@@ -239,8 +200,7 @@ const Leaderboard = () => {
           <Card className="bg-gradient-to-br from-muted/50 to-muted/30">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-primary" />
-                How Campus Points Work
+                <Target className="h-5 w-5 text-primary" /> How Campus Points Work
               </CardTitle>
             </CardHeader>
             <CardContent>
