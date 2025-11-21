@@ -65,6 +65,24 @@ interface Item {
   profiles: Profile;
 }
 
+// ⭐ ADDED: Fetch Rating Utility - Common Function
+const fetchUserRating = async (userId: string) => {
+  const { data, error } = await supabase
+    .from("ratings")
+    .select("rating")
+    .eq("to_user_id", userId);
+
+  if (error || !data) return { avg: 0, count: 0 };
+
+  const count = data.length;
+  const avg =
+    count === 0
+      ? 0
+      : data.reduce((sum, item) => sum + item.rating, 0) / count;
+
+  return { avg: parseFloat(avg.toFixed(1)), count };
+};
+
 const ItemDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -78,6 +96,9 @@ const ItemDetail = () => {
   const [checkingFavorite, setCheckingFavorite] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [bargainingDialogOpen, setBargainingDialogOpen] = useState(false);
+  
+  // ADDED: State for Seller Rating
+  const [sellerRating, setSellerRating] = useState({ avg: 0, count: 0 }); 
 
   // --- Data Fetching Hooks ---
 
@@ -119,6 +140,14 @@ const ItemDetail = () => {
       setItem(null); 
     } else {
       setItem(data as Item);
+      
+      // ADDED: Fetch Rating for Seller
+      if (data?.profiles?.user_id) {
+        const rating = await fetchUserRating(data.profiles.user_id);
+        setSellerRating(rating);
+      }
+      // END ADDED: Fetch Rating for Seller
+
       // Increment view count (fire and forget)
       if (data) {
         await supabase
@@ -512,6 +541,21 @@ const ItemDetail = () => {
                     {item.profiles?.mck_id && (
                       <p className="text-sm font-mono text-primary mb-1">{item.profiles.mck_id}</p>
                     )}
+                    
+                    {/* ADDED: Seller Rating Display */}
+                    {sellerRating.count > 0 && (
+                      <div className="flex items-center gap-3 text-sm mb-1">
+                        <div className="flex items-center gap-1 text-yellow-600">
+                            <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
+                            <span className="font-bold">{sellerRating.avg.toFixed(1)}</span>
+                        </div>
+                        <span className="text-muted-foreground">
+                            ({sellerRating.count} Ratings)
+                        </span>
+                      </div>
+                    )}
+                    {/* END ADDED: Seller Rating Display */}
+
                     <div className="flex gap-4 text-sm text-muted-foreground">
                       <span>{item.profiles?.campus_points || 0} points</span>
                       <span>{item.profiles?.deals_completed || 0} deals</span>
