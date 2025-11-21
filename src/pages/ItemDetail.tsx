@@ -1,3 +1,4 @@
+// ItemDetail.tsx
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -69,7 +70,7 @@ interface Item {
 const ItemDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth(); // Assume this returns { user: Session | null }
+  const { user } = useAuth(); 
   const { toast } = useToast();
   const [item, setItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,7 +94,6 @@ const ItemDetail = () => {
       fetchUserProfile();
       checkIfFavorited();
     } else {
-      // Clear profile and favorites state if user logs out while on the page
       setUserProfile(null);
       setIsFavorited(false);
     }
@@ -114,8 +114,6 @@ const ItemDetail = () => {
       .single();
 
     if (error) {
-      // **CRITICAL FIX: Do not redirect here.**
-      // Let the component render the "Item Not Found" message below.
       console.error("Item fetch failed:", error); 
       setItem(null); 
     } else {
@@ -225,12 +223,17 @@ const ItemDetail = () => {
   };
   
   // -------------------------------------------------------------------
-  // NEW: HANDLE BUY NOW FUNCTION
+  // FINAL: HANDLE BUY NOW FUNCTION
   // -------------------------------------------------------------------
   const handleBuyNow = async () => {
     if (!user) return navigate("/auth");
+    
+    // Critical check added
+    if (!item) {
+        sonnerToast.error("Item data not loaded properly. Please refresh.");
+        return;
+    }
 
-    // Must be verified to initiate a purchase
     const isVerified = userProfile?.is_verified && userProfile?.verification_status === 'approved';
     if (!isVerified) {
       toast({
@@ -241,8 +244,7 @@ const ItemDetail = () => {
       return navigate("/kyc");
     }
 
-    // Cannot buy own item
-    if (user.id === item?.seller_id) {
+    if (user.id === item.seller_id) {
       toast({
         title: "Error",
         description: "You cannot buy your own item",
@@ -251,8 +253,7 @@ const ItemDetail = () => {
       return;
     }
     
-    // Cannot buy sold item
-    if (item?.is_sold) {
+    if (item.is_sold) {
       toast({
         title: "Error",
         description: "This item has already been sold.",
@@ -261,18 +262,17 @@ const ItemDetail = () => {
       return;
     }
 
-    // CREATE ORDER
+    // CREATE ORDER - Inserts into the fixed table schema
     const { data, error } = await supabase
       .from("orders")
       .insert({
-        item_id: item!.id, 
-        seller_id: item!.seller_id,
+        item_id: item.id, 
+        seller_id: item.seller_id,
         buyer_id: user.id,
         status: "pending",
         seller_confirmed: false,
         buyer_confirmed: false,
-        // Using item price as the initial agreed price for Buy Now
-        agreed_price: item!.price 
+        agreed_price: item.price 
       })
       .select()
       .single();
@@ -281,7 +281,7 @@ const ItemDetail = () => {
       console.error("Order Failed:", error);
       toast({
         title: "Order Failed",
-        description: "Could not create order. Try again.",
+        description: "Could not create order. (Check DB schema for missing columns: agreed_price, status, confirmed flags)",
         variant: "destructive",
       });
       return;
@@ -320,13 +320,15 @@ const ItemDetail = () => {
 
     // Existing chat and new conversation logic (kept intact)
     try {
+      if (!item) return; 
+
       // Check if conversation already exists
       const { data: existingConversation } = await supabase
         .from('conversations')
         .select('id')
-        .eq('item_id', item!.id)
+        .eq('item_id', item.id)
         .eq('buyer_id', user.id)
-        .eq('seller_id', item!.seller_id)
+        .eq('seller_id', item.seller_id)
         .maybeSingle();
 
       if (existingConversation) {
@@ -336,7 +338,7 @@ const ItemDetail = () => {
             .insert({
               conversation_id: existingConversation.id,
               sender_id: user.id,
-              content: `Hi! I'm interested in "${item!.title}". I'd like to offer ₹${offerPrice.toLocaleString()} for this item. Can we negotiate?`
+              content: `Hi! I'm interested in "${item.title}". I'd like to offer ₹${offerPrice.toLocaleString()} for this item. Can we negotiate?`
             });
         }
         navigate(`/chat/${existingConversation.id}`);
@@ -347,9 +349,9 @@ const ItemDetail = () => {
       const { data: newConversation, error } = await supabase
         .from('conversations')
         .insert({
-          item_id: item!.id,
+          item_id: item.id,
           buyer_id: user.id,
-          seller_id: item!.seller_id,
+          seller_id: item.seller_id,
         })
         .select()
         .single();
@@ -363,7 +365,7 @@ const ItemDetail = () => {
           .insert({
             conversation_id: newConversation.id,
             sender_id: user.id,
-            content: `Hi! I'm interested in "${item!.title}". I'd like to offer ₹${offerPrice.toLocaleString()} for this item. Can we negotiate?`
+            content: `Hi! I'm interested in "${item.title}". I'd like to offer ₹${offerPrice.toLocaleString()} for this item. Can we negotiate?`
           });
       }
 
@@ -435,8 +437,6 @@ const ItemDetail = () => {
   }
 
   const isOwner = user?.id === item.seller_id;
-  
-  // Conditionally set isVerified based on whether userProfile exists and is approved
   const isVerified = user && userProfile?.is_verified && userProfile?.verification_status === 'approved'; 
 
   return (
@@ -595,7 +595,7 @@ const ItemDetail = () => {
 
             {/* Action Buttons (Logic refined) */}
             <div className="space-y-3">
-              {/* Show Login Required Message for unauthenticated users */}
+              {/* Login/KYC checks (kept intact) */}
               {!user && (
                 <div className="p-4 bg-warning/10 border border-warning/20 rounded-lg">
                   <div className="flex items-center gap-2 text-warning">
@@ -611,7 +611,6 @@ const ItemDetail = () => {
                 </div>
               )}
 
-              {/* Show KYC Required Message for logged-in but unverified users */}
               {user && !isVerified && !isOwner && (
                 <div className="p-4 bg-info/10 border border-info/20 rounded-lg">
                   <div className="flex items-center gap-2 text-info">
@@ -630,7 +629,7 @@ const ItemDetail = () => {
               <div className="space-y-3">
                 {!isOwner && (
                   <>
-                    {/* NEW: BUY NOW BUTTON */}
+                    {/* BUY NOW BUTTON */}
                     <Button
                       className="w-full h-12 text-lg font-semibold bg-primary hover:bg-primary/90 transition-colors"
                       size="lg"
@@ -649,7 +648,6 @@ const ItemDetail = () => {
                       size="lg"
                       variant="outline"
                       onClick={() => setBargainingDialogOpen(true)}
-                      // Disable if NOT logged in, NOT verified (and NOT the owner), OR if item is sold
                       disabled={!user || (!isVerified && !isOwner) || item.is_sold}
                     >
                       <DollarSign className="h-5 w-5 mr-2 relative z-10" />
@@ -664,7 +662,6 @@ const ItemDetail = () => {
                         className="flex-1" 
                         size="lg"
                         onClick={() => handleChatClick()}
-                        // Disable if NOT logged in, NOT verified (and NOT the owner)
                         disabled={!user || (!isVerified && !isOwner) || item.is_sold}
                       >
                         <MessageCircle className="h-5 w-5 mr-2" />
@@ -677,7 +674,6 @@ const ItemDetail = () => {
                           e.stopPropagation();
                           toggleFavorite();
                         }}
-                        // Disable only if checking status or item is sold
                         disabled={checkingFavorite || item.is_sold}
                         className={`transition-colors ${
                           isFavorited 
