@@ -34,6 +34,24 @@ interface Profile {
   avatar_url: string | null;
 }
 
+// ⭐ ADDED: Fetch Rating Utility - Common Function
+const fetchUserRating = async (userId: string) => {
+  const { data, error } = await supabase
+    .from("ratings")
+    .select("rating")
+    .eq("to_user_id", userId);
+
+  if (error || !data) return { avg: 0, count: 0 };
+
+  const count = data.length;
+  const avg =
+    count === 0
+      ? 0
+      : data.reduce((sum, item) => sum + item.rating, 0) / count;
+
+  return { avg: parseFloat(avg.toFixed(1)), count };
+};
+
 const Profile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -56,6 +74,9 @@ const Profile = () => {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  
+  // ADDED: State for My Rating
+  const [myRating, setMyRating] = useState({ avg: 0, count: 0 });
 
   useEffect(() => {
     fetchProfile();
@@ -95,6 +116,11 @@ const Profile = () => {
       });
     } else {
       setProfile(data);
+      
+      // ADDED: Fetch Rating after profile loads
+      const rating = await fetchUserRating(data.user_id);
+      setMyRating(rating);
+      
       setFormData({
         full_name: data.full_name || '',
         phone: data.phone || '',
@@ -434,6 +460,21 @@ const Profile = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  
+                  {/* ADDED: My Rating Stat */}
+                  {myRating.count > 0 && (
+                    <div className="text-center p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                      <div className="text-3xl font-bold text-yellow-500 flex items-center justify-center gap-2">
+                        <Star className="h-6 w-6 fill-yellow-500" />
+                        {myRating.avg.toFixed(1)}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {myRating.count} Ratings
+                      </div>
+                    </div>
+                  )}
+                  {/* END ADDED: My Rating Stat */}
+
                   <div className="text-center p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg">
                     <div className="text-3xl font-bold text-primary">{profile?.campus_points || 0}</div>
                     <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
