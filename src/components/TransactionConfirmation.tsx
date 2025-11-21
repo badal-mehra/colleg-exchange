@@ -17,6 +17,8 @@ interface Order {
     price: number;
     images: string[];
   };
+  seller_id: string;
+  buyer_id: string;
   seller_profiles?: {
     full_name: string;
     mck_id: string;
@@ -46,7 +48,7 @@ export function TransactionConfirmation({ order, userType, onConfirm }: Transact
         return;
       }
 
-      const { data, error } = await supabase.rpc('complete_order_with_confirmation', {
+      const { data, error } = await supabase.rpc("complete_order_with_confirmation", {
         order_id: order.id,
         confirming_user_id: user.id,
         user_type: userType
@@ -56,10 +58,33 @@ export function TransactionConfirmation({ order, userType, onConfirm }: Transact
 
       if (data?.success) {
         if (data?.completed) {
+          // ★ GIVE POINTS WHEN ORDER COMPLETES ★
+          const sellerId = order.seller_id;
+          const buyerId = order.buyer_id;
+
+          // Seller → +10 points
+          if (sellerId) {
+            await supabase.from("points_history").insert({
+              user_id: sellerId,
+              points: 10,
+              reason: "Completed Sale"
+            });
+          }
+
+          // Buyer → +5 points
+          if (buyerId) {
+            await supabase.from("points_history").insert({
+              user_id: buyerId,
+              points: 5,
+              reason: "Purchase"
+            });
+          }
+
           toast.success(data.message);
         } else {
           toast.success(data.message);
         }
+
         onConfirm();
       } else {
         toast.error(data?.error || "Failed to confirm transaction");
@@ -72,9 +97,12 @@ export function TransactionConfirmation({ order, userType, onConfirm }: Transact
     }
   };
 
-  const otherParty = userType === "seller" ? order.buyer_profiles : order.seller_profiles;
-  const userConfirmed = userType === "seller" ? order.seller_confirmed : order.buyer_confirmed;
-  const otherConfirmed = userType === "seller" ? order.buyer_confirmed : order.seller_confirmed;
+  const otherParty =
+    userType === "seller" ? order.buyer_profiles : order.seller_profiles;
+  const userConfirmed =
+    userType === "seller" ? order.seller_confirmed : order.buyer_confirmed;
+  const otherConfirmed =
+    userType === "seller" ? order.buyer_confirmed : order.seller_confirmed;
 
   return (
     <Card className="p-6 bg-gradient-to-br from-background to-muted/20 border-2">
@@ -106,10 +134,15 @@ export function TransactionConfirmation({ order, userType, onConfirm }: Transact
 
         {/* Confirmation Status */}
         <div className="space-y-3">
+
           {/* Your Status */}
-          <div className={`flex items-center justify-between p-4 rounded-lg border-2 ${
-            userConfirmed ? 'bg-success/10 border-success' : 'bg-muted/30 border-border'
-          }`}>
+          <div
+            className={`flex items-center justify-between p-4 rounded-lg border-2 ${
+              userConfirmed
+                ? "bg-success/10 border-success"
+                : "bg-muted/30 border-border"
+            }`}
+          >
             <div className="flex items-center gap-3">
               {userConfirmed ? (
                 <CheckCircle2 className="w-6 h-6 text-success" />
@@ -129,9 +162,13 @@ export function TransactionConfirmation({ order, userType, onConfirm }: Transact
           </div>
 
           {/* Other Party Status */}
-          <div className={`flex items-center justify-between p-4 rounded-lg border-2 ${
-            otherConfirmed ? 'bg-success/10 border-success' : 'bg-muted/30 border-border'
-          }`}>
+          <div
+            className={`flex items-center justify-between p-4 rounded-lg border-2 ${
+              otherConfirmed
+                ? "bg-success/10 border-success"
+                : "bg-muted/30 border-border"
+            }`}
+          >
             <div className="flex items-center gap-3">
               {otherConfirmed ? (
                 <CheckCircle2 className="w-6 h-6 text-success" />
@@ -139,16 +176,21 @@ export function TransactionConfirmation({ order, userType, onConfirm }: Transact
                 <Clock className="w-6 h-6 text-muted-foreground" />
               )}
               <div>
-                <p className="font-semibold">{otherParty?.full_name || "Other Party"}</p>
+                <p className="font-semibold">
+                  {otherParty?.full_name || "Other Party"}
+                </p>
                 <p className="text-sm text-muted-foreground">
-                  {userType === "seller" ? "Buyer" : "Seller"} • {otherParty?.mck_id}
+                  {userType === "seller" ? "Buyer" : "Seller"} •{" "}
+                  {otherParty?.mck_id}
                 </p>
               </div>
             </div>
             {otherConfirmed ? (
               <span className="text-xs font-medium text-success">Confirmed</span>
             ) : (
-              <span className="text-xs font-medium text-muted-foreground">Pending</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                Pending
+              </span>
             )}
           </div>
         </div>
@@ -160,8 +202,9 @@ export function TransactionConfirmation({ order, userType, onConfirm }: Transact
             <div className="text-sm space-y-1">
               <p className="font-semibold text-info">Important:</p>
               <p className="text-muted-foreground">
-                Only confirm after you've successfully {userType === "seller" ? "handed over the item" : "received the item"} in person. 
-                This action cannot be undone.
+                Only confirm after you've successfully{" "}
+                {userType === "seller" ? "handed over the item" : "received the item"}{" "}
+                in person. This action cannot be undone.
               </p>
             </div>
           </div>
@@ -175,11 +218,17 @@ export function TransactionConfirmation({ order, userType, onConfirm }: Transact
             className="w-full h-12 text-base font-semibold"
             size="lg"
           >
-            {confirming ? "Confirming..." : `Confirm ${userType === "seller" ? "Item Delivered" : "Item Received"}`}
+            {confirming
+              ? "Confirming..."
+              : `Confirm ${
+                  userType === "seller" ? "Item Delivered" : "Item Received"
+                }`}
           </Button>
         ) : (
           <div className="text-center py-4">
-            <p className="text-success font-semibold mb-2">✓ You've confirmed this transaction</p>
+            <p className="text-success font-semibold mb-2">
+              ✓ You've confirmed this transaction
+            </p>
             {!otherConfirmed && (
               <p className="text-sm text-muted-foreground">
                 Waiting for {userType === "seller" ? "buyer" : "seller"} confirmation...
