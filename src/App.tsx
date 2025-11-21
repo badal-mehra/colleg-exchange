@@ -11,7 +11,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import ItemDetail from "./pages/ItemDetail";
-import KYC from "./pages/KYC";
+import KYC from "./pages/KYC";   // ✅ IMPORTANT: KYC imported
 import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
 import SellItem from "./pages/SellItem";
@@ -35,9 +35,6 @@ const App = () => (
     {/** ----------------------------------------------------- */}
     <Route element={<MainLayout />}>
 
-
-
-
       {/** DASHBOARD ONLY (Protected) */}
       <Route
         path="/dashboard"
@@ -47,6 +44,7 @@ const App = () => (
           </ProtectedRoute>
         }
       />
+
     </Route>
 
     {/** ----------------------------------------------------- */}
@@ -57,20 +55,31 @@ const App = () => (
     <Route path="/auth" element={<Auth />} />
     <Route path="/reset-password" element={<ResetPassword />} />
 
-          {/** STATIC PAGES */}
-      <Route path="/terms" element={<StaticPage />} />
-      <Route path="/privacy" element={<StaticPage />} />
-      <Route path="/about" element={<StaticPage />} />
-      <Route path="/shipping" element={<StaticPage />} />
-      <Route path="/help" element={<StaticPage />} />
-      <Route path="/report" element={<StaticPage />} />
-      <Route path="/home" element={<StaticPage />} />
+    {/** STATIC PAGES */}
+    <Route path="/terms" element={<StaticPage />} />
+    <Route path="/privacy" element={<StaticPage />} />
+    <Route path="/about" element={<StaticPage />} />
+    <Route path="/shipping" element={<StaticPage />} />
+    <Route path="/help" element={<StaticPage />} />
+    <Route path="/report" element={<StaticPage />} />
+    <Route path="/home" element={<StaticPage />} />
 
     {/** PUBLIC NO-LAYOUT PAGES */}
     <Route path="/item/:id" element={<ItemDetail />} />
     <Route path="/profile/:mckId" element={<PublicProfile />} />
 
     {/** PROTECTED NO-LAYOUT PAGES */}
+
+    {/** ✅ ADDED KYC ROUTE — THIS WAS MISSING */}
+    <Route
+      path="/kyc"
+      element={
+        <ProtectedRoute>
+          <KYC />
+        </ProtectedRoute>
+      }
+    />
+
     <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
     <Route path="/sell" element={<ProtectedRoute><SellItem /></ProtectedRoute>} />
     <Route path="/chat/:conversationId?" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
