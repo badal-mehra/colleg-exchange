@@ -34,7 +34,7 @@ interface Profile {
   avatar_url: string | null;
 }
 
-// ⭐ ADDED: Fetch Rating Utility - Common Function
+// ⭐ ADDED: Fetch Rating Utility - Common Function (STEP 2)
 const fetchUserRating = async (userId: string) => {
   const { data, error } = await supabase
     .from("ratings")
@@ -49,6 +49,7 @@ const fetchUserRating = async (userId: string) => {
       ? 0
       : data.reduce((sum, item) => sum + item.rating, 0) / count;
 
+  // Rounding to one decimal place for clean display
   return { avg: parseFloat(avg.toFixed(1)), count };
 };
 
@@ -75,7 +76,7 @@ const Profile = () => {
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   
-  // ADDED: State for My Rating
+  // ADDED: State for My Rating (STEP 1)
   const [myRating, setMyRating] = useState({ avg: 0, count: 0 });
 
   useEffect(() => {
@@ -117,7 +118,7 @@ const Profile = () => {
     } else {
       setProfile(data);
       
-      // ADDED: Fetch Rating after profile loads
+      // ADDED: Fetch Rating after profile loads (STEP 3)
       const rating = await fetchUserRating(data.user_id);
       setMyRating(rating);
       
@@ -461,7 +462,7 @@ const Profile = () => {
               <CardContent>
                 <div className="space-y-4">
                   
-                  {/* ADDED: My Rating Stat */}
+                  {/* ADDED: My Rating Stat (STEP 4) */}
                   {myRating.count > 0 && (
                     <div className="text-center p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
                       <div className="text-3xl font-bold text-yellow-500 flex items-center justify-center gap-2">
@@ -474,7 +475,7 @@ const Profile = () => {
                     </div>
                   )}
                   {/* END ADDED: My Rating Stat */}
-
+                  
                   <div className="text-center p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg">
                     <div className="text-3xl font-bold text-primary">{profile?.campus_points || 0}</div>
                     <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
