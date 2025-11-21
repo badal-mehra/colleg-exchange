@@ -33,6 +33,24 @@ interface Item {
   condition: string;
 }
 
+// ⭐ ADDED: Fetch Rating Utility - Common Function
+const fetchUserRating = async (userId: string) => {
+  const { data, error } = await supabase
+    .from("ratings")
+    .select("rating")
+    .eq("to_user_id", userId);
+
+  if (error || !data) return { avg: 0, count: 0 };
+
+  const count = data.length;
+  const avg =
+    count === 0
+      ? 0
+      : data.reduce((sum, item) => sum + item.rating, 0) / count;
+
+  return { avg: parseFloat(avg.toFixed(1)), count };
+};
+
 const PublicProfile = () => {
   const { mckId } = useParams();
   const navigate = useNavigate();
@@ -41,6 +59,9 @@ const PublicProfile = () => {
   const [listings, setListings] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  
+  // ADDED: State for Seller Rating
+  const [sellerRating, setSellerRating] = useState({ avg: 0, count: 0 });
 
   useEffect(() => {
     fetchProfileAndListings();
@@ -69,7 +90,14 @@ const PublicProfile = () => {
     }
 
     setProfile(profileData);
-
+    
+    // ADDED: Fetch Rating
+    if (profileData.user_id) {
+      const rating = await fetchUserRating(profileData.user_id);
+      setSellerRating(rating);
+    }
+    // END ADDED: Fetch Rating
+    
     // Fetch user's listings
     const { data: itemsData, error: itemsError } = await supabase
       .from('items')
@@ -168,6 +196,16 @@ const PublicProfile = () => {
                     <span className="font-semibold">{profile.deals_completed}</span>
                     <span className="text-sm text-muted-foreground">Deals</span>
                   </div>
+                  
+                  {/* ADDED: Seller Rating Badge */}
+                  {sellerRating.count > 0 && (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 rounded-lg">
+                      <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                      <span className="font-semibold">{sellerRating.avg.toFixed(1)}</span>
+                      <span className="text-sm text-muted-foreground">({sellerRating.count})</span>
+                    </div>
+                  )}
+                  {/* END ADDED: Seller Rating Badge */}
 
                   {profile.trust_seller_badge && (
                     <Badge className="bg-warning/10 text-warning border-warning/20 flex items-center gap-1">
