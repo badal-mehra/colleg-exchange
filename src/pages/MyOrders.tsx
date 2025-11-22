@@ -61,9 +61,9 @@ const getStatusBadge = (status: string) => {
     case "completed":
       return (
         <Badge
-          className={`${baseClasses} border-green-300 text-green-700 bg-white dark:bg-transparent dark:border-green-700 dark:text-green-300`}
+          className={`${baseClasses} bg-gray-50 text-gray-700 border-gray-300 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700`}
         >
-          <CheckCircle className="mr-1 h-3 w-3" />
+          <CheckCircle className="mr-1 h-3 w-3 text-gray-500" />
           Completed
         </Badge>
       );
@@ -71,9 +71,9 @@ const getStatusBadge = (status: string) => {
     case "pending":
       return (
         <Badge
-          className={`${baseClasses} border-gray-300 text-gray-700 bg-white dark:bg-transparent dark:border-gray-600 dark:text-gray-300`}
+          className={`${baseClasses} bg-gray-50 text-gray-600 border-gray-300 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700`}
         >
-          <Clock className="mr-1 h-3 w-3" />
+          <Clock className="mr-1 h-3 w-3 text-gray-500" />
           Pending
         </Badge>
       );
@@ -81,9 +81,9 @@ const getStatusBadge = (status: string) => {
     case "cancelled":
       return (
         <Badge
-          className={`${baseClasses} border-red-300 text-red-700 bg-white dark:bg-transparent dark:border-red-700 dark:text-red-300`}
+          className={`${baseClasses} bg-gray-50 text-gray-500 border-gray-300 line-through dark:bg-gray-900 dark:text-gray-500 dark:border-gray-700`}
         >
-          <X className="mr-1 h-3 w-3" />
+          <X className="mr-1 h-3 w-3 text-gray-500" />
           Cancelled
         </Badge>
       );
@@ -92,7 +92,6 @@ const getStatusBadge = (status: string) => {
       return <Badge variant="outline">{status}</Badge>;
   }
 };
-
 
 // --- COMPONENTS ---
 
