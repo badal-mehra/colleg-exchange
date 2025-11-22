@@ -12,9 +12,10 @@ interface RatingModalProps {
   orderId: string;
   toUserId: string;
   toUserName: string;
+  onSuccess: () => void; // Added for callback
 }
 
-export function RatingModal({ open, onClose, orderId, toUserId, toUserName }: RatingModalProps) {
+export function RatingModal({ open, onClose, orderId, toUserId, toUserName, onSuccess }: RatingModalProps) {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [review, setReview] = useState("");
@@ -43,9 +44,15 @@ export function RatingModal({ open, onClose, orderId, toUserId, toUserName }: Ra
 
       toast.success("Rating submitted successfully!");
       onClose();
+      onSuccess(); // Call success callback to refresh parent list
     } catch (error: any) {
       console.error("Error submitting rating:", error);
-      toast.error(error.message || "Failed to submit rating");
+      // Backend unique constraint (order_id, from_user_id) will prevent duplicates.
+      if (error.code === '23505') { 
+        toast.error("You have already rated this order.");
+      } else {
+        toast.error(error.message || "Failed to submit rating");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -73,9 +80,9 @@ export function RatingModal({ open, onClose, orderId, toUserId, toUserName }: Ra
                   className="transition-transform hover:scale-110"
                 >
                   <Star
-                    className={`w-10 h-10 ${
+                    className={`w-10 h-10 transition-colors cursor-pointer ${
                       star <= (hoverRating || rating)
-                        ? "fill-warning text-warning"
+                        ? "fill-yellow-500 text-yellow-500" // Updated to yellow-500 with hover/rating logic
                         : "text-muted-foreground"
                     }`}
                   />
