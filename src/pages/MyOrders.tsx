@@ -54,22 +54,62 @@ const hasUserRated = async (orderId: string, userId: string): Promise<boolean> =
 };
 
 // **UPDATED: Professional Color Scheme for Badges**
+// const getStatusBadge = (status: string) => {
+//     const baseClasses = "text-xs font-semibold px-2 py-0.5 rounded-full flex items-center";
+//     switch (status) {
+//       case "completed":
+//         // Using Emerald (a clean, professional green) for success
+//         return <Badge className={`${baseClasses} bg-emerald-100 text-emerald-800 dark:bg-emerald-700 dark:text-emerald-100`}><CheckCircle className="mr-1 h-3 w-3" />Completed</Badge>;
+//       case "pending":
+//         // Using Amber (Orange/Yellow) for warning/pending
+//         return <Badge className={`${baseClasses} bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300`}><Clock className="mr-1 h-3 w-3" />Pending</Badge>;
+//       case "cancelled":
+//         // Using Red for destructive/cancelled status
+//         return <Badge className={`${baseClasses} bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300`}><X className="mr-1 h-3 w-3" />Cancelled</Badge>;
+//       default:
+//         return <Badge variant="outline">{status}</Badge>;
+//     }
+// };
 const getStatusBadge = (status: string) => {
-    const baseClasses = "text-xs font-semibold px-2 py-0.5 rounded-full flex items-center";
-    switch (status) {
-      case "completed":
-        // Using Emerald (a clean, professional green) for success
-        return <Badge className={`${baseClasses} bg-emerald-100 text-emerald-800 dark:bg-emerald-700 dark:text-emerald-100`}><CheckCircle className="mr-1 h-3 w-3" />Completed</Badge>;
-      case "pending":
-        // Using Amber (Orange/Yellow) for warning/pending
-        return <Badge className={`${baseClasses} bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300`}><Clock className="mr-1 h-3 w-3" />Pending</Badge>;
-      case "cancelled":
-        // Using Red for destructive/cancelled status
-        return <Badge className={`${baseClasses} bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300`}><X className="mr-1 h-3 w-3" />Cancelled</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
+  const baseClasses =
+    "text-xs font-medium px-2 py-0.5 rounded-full flex items-center";
+
+  switch (status) {
+    case "completed":
+      return (
+        <Badge
+          className={`${baseClasses} bg-green-50 text-green-700 dark:bg-green-800 dark:text-green-100`}
+        >
+          <CheckCircle className="mr-1 h-3 w-3" />
+          Completed
+        </Badge>
+      );
+
+    case "pending":
+      return (
+        <Badge
+          className={`${baseClasses} bg-blue-50 text-blue-700 dark:bg-blue-800 dark:text-blue-100`}
+        >
+          <Clock className="mr-1 h-3 w-3" />
+          Pending
+        </Badge>
+      );
+
+    case "cancelled":
+      return (
+        <Badge
+          className={`${baseClasses} bg-red-50 text-red-700 dark:bg-red-800 dark:text-red-100`}
+        >
+          <X className="mr-1 h-3 w-3" />
+          Cancelled
+        </Badge>
+      );
+
+    default:
+      return <Badge variant="outline">{status}</Badge>;
+  }
 };
+// Ends
 
 // --- COMPONENTS ---
 
