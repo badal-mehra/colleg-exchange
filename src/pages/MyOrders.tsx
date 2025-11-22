@@ -1,13 +1,13 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TransactionConfirmation } from "@/components/TransactionConfirmation";
 import { RatingModal } from "@/components/RatingModal";
-import { ArrowLeft, Package, ShoppingCart, CheckCircle, Clock, X, Star, Loader2 } from "lucide-react"; // Added Loader2 for a better spinner
+import { ArrowLeft, Package, ShoppingCart, CheckCircle, Clock, X, Star, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 // --- INTERFACES ---
@@ -36,7 +36,7 @@ interface Order {
   items: ItemData;
   buyer_profiles?: UserProfileData;
   seller_profiles?: UserProfileData;
-  hasRated: boolean; // Must be defined
+  hasRated: boolean;
 }
 
 // --- UTILITY FUNCTIONS ---
@@ -53,16 +53,18 @@ const hasUserRated = async (orderId: string, userId: string): Promise<boolean> =
     return !!data;
 };
 
+// **UPDATED: Professional Color Scheme for Badges**
 const getStatusBadge = (status: string) => {
     const baseClasses = "text-xs font-semibold px-2 py-0.5 rounded-full flex items-center";
     switch (status) {
       case "completed":
-        return <Badge className={`${baseClasses} bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300`}><CheckCircle className="mr-1 h-3 w-3" />Completed</Badge>;
+        // Using Emerald (a clean, professional green) for success
+        return <Badge className={`${baseClasses} bg-emerald-100 text-emerald-800 dark:bg-emerald-700 dark:text-emerald-100`}><CheckCircle className="mr-1 h-3 w-3" />Completed</Badge>;
       case "pending":
-        // Use a less aggressive yellow for better contrast
+        // Using Amber (Orange/Yellow) for warning/pending
         return <Badge className={`${baseClasses} bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300`}><Clock className="mr-1 h-3 w-3" />Pending</Badge>;
       case "cancelled":
-        // Use a lighter variant for destructive actions in a badge
+        // Using Red for destructive/cancelled status
         return <Badge className={`${baseClasses} bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300`}><X className="mr-1 h-3 w-3" />Cancelled</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
@@ -144,8 +146,8 @@ const OrderCard = ({ order, isSeller, onActionSuccess }: { order: Order; isSelle
                         )}
 
                         {order.status === "completed" && order.hasRated && (
-                            <div className="flex items-center justify-center py-2 text-sm font-medium text-success dark:text-green-400">
-                                <Star className="mr-2 h-4 w-4 fill-success text-success dark:fill-green-400 dark:text-green-400" />
+                            <div className="flex items-center justify-center py-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                                <Star className="mr-2 h-4 w-4 fill-emerald-600 text-emerald-600 dark:fill-emerald-400 dark:text-emerald-400" />
                                 Rating Submitted
                             </div>
                         )}
@@ -168,7 +170,6 @@ const OrderCard = ({ order, isSeller, onActionSuccess }: { order: Order; isSelle
                     toUserId={ratingModal.toUserId}
                     toUserName={ratingModal.toUserName}
                     onSuccess={() => {
-                        // Optimistically update the rating status locally before refetching
                         onActionSuccess();
                         setRatingModal(null);
                     }}
@@ -264,13 +265,11 @@ export default function MyOrders() {
 
   useEffect(() => {
     fetchOrders();
-  }, [fetchOrders]); // Dependency on fetchOrders
+  }, [fetchOrders]); 
 
   const handleOrderActionSuccess = () => {
-      // Fast solution: Re-fetch all orders to update the status/rating
+      // Re-fetch all orders to update the status/rating
       fetchOrders();
-      // A more 'smoother' approach would be to update the specific order state
-      // (buyerOrders/sellerOrders) locally, but a full refetch is safer for now.
   }
 
   // Memoized lists for faster tab switching
