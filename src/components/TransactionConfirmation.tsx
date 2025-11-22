@@ -10,15 +10,13 @@ interface Order {
   status: string;
   seller_confirmed: boolean;
   buyer_confirmed: boolean;
-  seller_confirmed_at?: string;
-  buyer_confirmed_at?: string;
+  seller_id: string;
+  buyer_id: string;
   items: {
     title: string;
     price: number;
     images: string[];
   };
-  seller_id: string;
-  buyer_id: string;
   seller_profiles?: {
     full_name: string;
     mck_id: string;
@@ -35,56 +33,39 @@ interface TransactionConfirmationProps {
   onConfirm: () => void;
 }
 
-export function TransactionConfirmation({ order, userType, onConfirm }: TransactionConfirmationProps) {
+export function TransactionConfirmation({
+  order,
+  userType,
+  onConfirm,
+}: TransactionConfirmationProps) {
   const [confirming, setConfirming] = useState(false);
 
   const handleConfirm = async () => {
     try {
       setConfirming(true);
-      
-      const { data: { user } } = await supabase.auth.getUser();
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         toast.error("Please log in to confirm transaction");
         return;
       }
 
-      const { data, error } = await supabase.rpc("complete_order_with_confirmation", {
-        order_id: order.id,
-        confirming_user_id: user.id,
-        user_type: userType
-      }) as { data: any; error: any };
+      // ✅ CALL RPC ONLY — NO POINTS INSERT ON FRONTEND
+      const { data, error } = await supabase.rpc(
+        "complete_order_with_confirmation",
+        {
+          order_id: order.id,
+          confirming_user_id: user.id,
+          user_type: userType,
+        }
+      );
 
       if (error) throw error;
 
       if (data?.success) {
-        if (data?.completed) {
-          // ★ GIVE POINTS WHEN ORDER COMPLETES ★
-          const sellerId = order.seller_id;
-          const buyerId = order.buyer_id;
-
-          // Seller → +10 points
-          if (sellerId) {
-            await supabase.from("points_history").insert({
-              user_id: sellerId,
-              points: 10,
-              reason: "Completed Sale"
-            });
-          }
-
-          // Buyer → +5 points
-          if (buyerId) {
-            await supabase.from("points_history").insert({
-              user_id: buyerId,
-              points: 5,
-              reason: "Purchase"
-            });
-          }
-
-          toast.success(data.message);
-        } else {
-          toast.success(data.message);
-        }
-
+        toast.success(data.message);
         onConfirm();
       } else {
         toast.error(data?.error || "Failed to confirm transaction");
@@ -97,27 +78,27 @@ export function TransactionConfirmation({ order, userType, onConfirm }: Transact
     }
   };
 
-  const otherParty =
-    userType === "seller" ? order.buyer_profiles : order.seller_profiles;
   const userConfirmed =
     userType === "seller" ? order.seller_confirmed : order.buyer_confirmed;
+
   const otherConfirmed =
     userType === "seller" ? order.buyer_confirmed : order.seller_confirmed;
+
+  const otherParty =
+    userType === "seller" ? order.buyer_profiles : order.seller_profiles;
 
   return (
     <Card className="p-6 bg-gradient-to-br from-background to-muted/20 border-2">
       <div className="space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <h3 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Transaction Confirmation
-          </h3>
+          <h3 className="text-2xl font-bold">Transaction Confirmation</h3>
           <p className="text-sm text-muted-foreground">
             Both parties must confirm to complete the transaction
           </p>
         </div>
 
-        {/* Item Details */}
+        {/* Item */}
         <div className="flex items-center gap-4 p-4 bg-background rounded-lg border">
           {order.items.images?.[0] && (
             <img
@@ -128,13 +109,14 @@ export function TransactionConfirmation({ order, userType, onConfirm }: Transact
           )}
           <div className="flex-1">
             <h4 className="font-semibold">{order.items.title}</h4>
-            <p className="text-lg font-bold text-primary">₹{order.items.price}</p>
+            <p className="text-lg font-bold text-primary">
+              ₹{order.items.price}
+            </p>
           </div>
         </div>
 
-        {/* Confirmation Status */}
+        {/* Status */}
         <div className="space-y-3">
-
           {/* Your Status */}
           <div
             className={`flex items-center justify-between p-4 rounded-lg border-2 ${
@@ -161,7 +143,7 @@ export function TransactionConfirmation({ order, userType, onConfirm }: Transact
             )}
           </div>
 
-          {/* Other Party Status */}
+          {/* Other Party */}
           <div
             className={`flex items-center justify-between p-4 rounded-lg border-2 ${
               otherConfirmed
@@ -195,22 +177,20 @@ export function TransactionConfirmation({ order, userType, onConfirm }: Transact
           </div>
         </div>
 
-        {/* Info Box */}
+        {/* Info */}
         {!userConfirmed && (
           <div className="flex items-start gap-3 p-4 bg-info/10 border border-info rounded-lg">
             <AlertCircle className="w-5 h-5 text-info flex-shrink-0 mt-0.5" />
             <div className="text-sm space-y-1">
               <p className="font-semibold text-info">Important:</p>
               <p className="text-muted-foreground">
-                Only confirm after you've successfully{" "}
-                {userType === "seller" ? "handed over the item" : "received the item"}{" "}
-                in person. This action cannot be undone.
+                Only confirm after the item exchange has happened in person.
               </p>
             </div>
           </div>
         )}
 
-        {/* Action Button */}
+        {/* Button */}
         {!userConfirmed ? (
           <Button
             onClick={handleConfirm}
@@ -229,14 +209,9 @@ export function TransactionConfirmation({ order, userType, onConfirm }: Transact
             <p className="text-success font-semibold mb-2">
               ✓ You've confirmed this transaction
             </p>
-            {!otherConfirmed && (
-              <p className="text-sm text-muted-foreground">
-                Waiting for {userType === "seller" ? "buyer" : "seller"} confirmation...
-              </p>
-            )}
             {otherConfirmed && (
               <p className="text-sm text-success">
-                🎉 Transaction completed! Points awarded.
+                🎉 Transaction completed!
               </p>
             )}
           </div>
