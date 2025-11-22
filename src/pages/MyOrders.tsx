@@ -34,15 +34,28 @@ interface Order {
     full_name: string;
     mck_id: string;
   };
+  hasRated?: boolean; // Added to track rating status
 }
 
 export default function MyOrders() {
   const navigate = useNavigate();
-  const [sellerOrders, setSellerOrders] = useState<Order[]>([]);
-  const [buyerOrders, setBuyerOrders] = useState<Order[]>([]);
+  const [sellerOrders, setSellerOrders] = useState<Order[]>([] as Order[]);
+  const [buyerOrders, setBuyerOrders] = useState<Order[]>([] as Order[]);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [ratingModal, setRatingModal] = useState<{ open: boolean; orderId: string; toUserId: string; toUserName: string } | null>(null);
+
+  // Function to check if a user has already rated an order
+  const hasUserRated = async (orderId: string, userId: string) => {
+    const { data } = await supabase
+      .from("ratings")
+      .select("id")
+      .eq("order_id", orderId)
+      .eq("from_user_id", userId)
+      .maybeSingle();
+
+    return !!data;
+  };
 
   useEffect(() => {
     fetchOrders();
@@ -91,7 +104,6 @@ export default function MyOrders() {
           };
         })
       );
-      setSellerOrders(sellerOrdersWithData as any);
 
       // Fetch buyer orders
       const { data: buyerData, error: buyerError } = await supabase
@@ -117,7 +129,22 @@ export default function MyOrders() {
           };
         })
       );
-      setBuyerOrders(buyerOrdersWithData as any);
+      
+      // Check rating status for all orders
+      const addRatingStatus = async (orders: any[]) => {
+        const updated = [];
+        for (const order of orders) {
+          const rated = await hasUserRated(order.id, user.id);
+          updated.push({ ...order, hasRated: rated });
+        }
+        return updated;
+      };
+
+      const finalSellerOrders = await addRatingStatus(sellerOrdersWithData as any);
+      const finalBuyerOrders = await addRatingStatus(buyerOrdersWithData as any);
+
+      setSellerOrders(finalSellerOrders);
+      setBuyerOrders(finalBuyerOrders);
 
     } catch (error: any) {
       console.error("Error fetching orders:", error);
@@ -180,7 +207,7 @@ export default function MyOrders() {
           </div>
         </div>
 
-        {/* Transaction Confirmation */}
+        {/* Transaction Confirmation and Rating */}
         <div className="mt-4">
           {order.status === "pending" && (
             <TransactionConfirmation
@@ -190,7 +217,7 @@ export default function MyOrders() {
             />
           )}
 
-          {order.status === "completed" && (
+          {order.status === "completed" && !order.hasRated && (
             <Button
               variant="outline"
               size="sm"
@@ -206,12 +233,20 @@ export default function MyOrders() {
               Rate {isSeller ? "Buyer" : "Seller"}
             </Button>
           )}
+
+          {order.status === "completed" && order.hasRated && (
+             <div className="flex items-center justify-center py-2 text-sm font-medium text-success">
+                <Star className="mr-2 h-4 w-4 fill-success text-success" />
+                Rated
+             </div>
+          )}
         </div>
       </CardContent>
     </Card>
   );
 
   if (loading) {
+// ... existing loading skeleton ...
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 p-4">
         <div className="max-w-6xl mx-auto space-y-6">
@@ -318,6 +353,7 @@ export default function MyOrders() {
           orderId={ratingModal.orderId}
           toUserId={ratingModal.toUserId}
           toUserName={ratingModal.toUserName}
+          onSuccess={fetchOrders} // Passed callback to refresh orders after submission
         />
       )}
     </div>
