@@ -41,7 +41,6 @@ interface Order {
 
 // --- UTILITY FUNCTIONS ---
 
-// Function to check if a user has already rated an order
 const hasUserRated = async (orderId: string, userId: string): Promise<boolean> => {
     const { data } = await supabase
       .from("ratings")
@@ -53,63 +52,43 @@ const hasUserRated = async (orderId: string, userId: string): Promise<boolean> =
     return !!data;
 };
 
-// **UPDATED: Professional Color Scheme for Badges**
-// const getStatusBadge = (status: string) => {
-//     const baseClasses = "text-xs font-semibold px-2 py-0.5 rounded-full flex items-center";
-//     switch (status) {
-//       case "completed":
-//         // Using Emerald (a clean, professional green) for success
-//         return <Badge className={`${baseClasses} bg-emerald-100 text-emerald-800 dark:bg-emerald-700 dark:text-emerald-100`}><CheckCircle className="mr-1 h-3 w-3" />Completed</Badge>;
-//       case "pending":
-//         // Using Amber (Orange/Yellow) for warning/pending
-//         return <Badge className={`${baseClasses} bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300`}><Clock className="mr-1 h-3 w-3" />Pending</Badge>;
-//       case "cancelled":
-//         // Using Red for destructive/cancelled status
-//         return <Badge className={`${baseClasses} bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300`}><X className="mr-1 h-3 w-3" />Cancelled</Badge>;
-//       default:
-//         return <Badge variant="outline">{status}</Badge>;
-//     }
-// };
+// **FIXED: Implemented Muted, Professional Color Palette for Status Badges**
 const getStatusBadge = (status: string) => {
-  const baseClasses =
-    "text-xs font-medium px-2 py-0.5 rounded-full flex items-center";
-
-  switch (status) {
-    case "completed":
-      return (
-        <Badge
-          className={`${baseClasses} bg-green-50 text-green-700 dark:bg-green-800 dark:text-green-100`}
-        >
-          <CheckCircle className="mr-1 h-3 w-3" />
-          Completed
-        </Badge>
-      );
-
-    case "pending":
-      return (
-        <Badge
-          className={`${baseClasses} bg-blue-50 text-blue-700 dark:bg-blue-800 dark:text-blue-100`}
-        >
-          <Clock className="mr-1 h-3 w-3" />
-          Pending
-        </Badge>
-      );
-
-    case "cancelled":
-      return (
-        <Badge
-          className={`${baseClasses} bg-red-50 text-red-700 dark:bg-red-800 dark:text-red-100`}
-        >
-          <X className="mr-1 h-3 w-3" />
-          Cancelled
-        </Badge>
-      );
-
-    default:
-      return <Badge variant="outline">{status}</Badge>;
-  }
+    // Added border and tracking-tight for cleaner appearance and better consistency
+    const baseClasses = "text-xs font-semibold px-2 py-0.5 rounded-full flex items-center tracking-tight";
+    
+    switch (status) {
+      case "completed":
+        // Success: Muted green background (50) with strong green text (700).
+        return (
+          <Badge 
+            className={`${baseClasses} bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-300 border border-green-200 dark:border-green-800`}
+          >
+            <CheckCircle className="mr-1 h-3 w-3" />Completed
+          </Badge>
+        );
+      case "pending":
+        // Pending/Info: Replaced harsh yellow/amber with a professional blue palette.
+        return (
+          <Badge 
+            className={`${baseClasses} bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-800`}
+          >
+            <Clock className="mr-1 h-3 w-3" />Pending
+          </Badge>
+        );
+      case "cancelled":
+        // Destructive: Muted red background (50) with strong red text (700).
+        return (
+          <Badge 
+            className={`${baseClasses} bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-300 border border-red-200 dark:border-red-800`}
+          >
+            <X className="mr-1 h-3 w-3" />Cancelled
+          </Badge>
+        );
+      default:
+        return <Badge variant="secondary" className="border border-input">{status}</Badge>;
+    }
 };
-// Ends
 
 // --- COMPONENTS ---
 
@@ -120,11 +99,11 @@ const OrderCard = ({ order, isSeller, onActionSuccess }: { order: Order; isSelle
 
     return (
         <>
-            <Card className="shadow-sm hover:shadow-md transition-shadow duration-300 ease-in-out">
+            <Card className="shadow-sm hover:shadow-lg transition-shadow duration-300 ease-in-out">
                 <CardContent className="p-4 sm:p-6">
                     <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
                         {/* Item Image */}
-                        <div className="w-full h-40 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                        <div className="w-full h-40 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                             {order.items.images?.[0] ? (
                                 <img
                                     src={order.items.images[0]}
@@ -133,7 +112,7 @@ const OrderCard = ({ order, isSeller, onActionSuccess }: { order: Order; isSelle
                                 />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                    <Package className="h-8 w-8 text-muted-foreground" />
+                                    <Package className="h-10 w-10 text-muted-foreground" />
                                 </div>
                             )}
                         </div>
@@ -142,7 +121,7 @@ const OrderCard = ({ order, isSeller, onActionSuccess }: { order: Order; isSelle
                         <div className="flex-1 space-y-2">
                             <div className="flex items-start justify-between gap-2">
                                 <div>
-                                    <h3 className="font-bold line-clamp-1 text-base">{order.items.title}</h3>
+                                    <h3 className="font-bold line-clamp-1 text-lg">{order.items.title}</h3>
                                     <p className="text-xl font-extrabold text-primary mt-1">₹{order.items.price.toLocaleString('en-IN')}</p>
                                 </div>
                                 {getStatusBadge(order.status)}
@@ -152,14 +131,14 @@ const OrderCard = ({ order, isSeller, onActionSuccess }: { order: Order; isSelle
                                 **{isSeller ? "Buyer" : "Seller"}**: {targetUser?.full_name} ({targetUser?.mck_id})
                             </div>
 
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-xs text-muted-foreground pt-1">
                                 **Order Date**: {new Date(order.created_at).toLocaleDateString()} at {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </div>
                         </div>
                     </div>
 
                     {/* Action Section */}
-                    <div className="mt-4 pt-4 border-t border-dashed border-muted">
+                    <div className="mt-4 pt-4 border-t border-solid border-border">
                         {order.status === "pending" && (
                             <TransactionConfirmation
                                 order={order}
@@ -178,7 +157,7 @@ const OrderCard = ({ order, isSeller, onActionSuccess }: { order: Order; isSelle
                                     toUserId: isSeller ? order.buyer_id : order.seller_id,
                                     toUserName: targetUser?.full_name || "User"
                                 })}
-                                className="w-full text-indigo-600 border-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:border-indigo-400 dark:hover:bg-indigo-950"
+                                className="w-full border-primary text-primary hover:bg-primary/10"
                             >
                                 <Star className="mr-2 h-4 w-4" />
                                 Rate {isSeller ? "Buyer" : "Seller"}
@@ -186,8 +165,9 @@ const OrderCard = ({ order, isSeller, onActionSuccess }: { order: Order; isSelle
                         )}
 
                         {order.status === "completed" && order.hasRated && (
-                            <div className="flex items-center justify-center py-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                                <Star className="mr-2 h-4 w-4 fill-emerald-600 text-emerald-600 dark:fill-emerald-400 dark:text-emerald-400" />
+                            // Using a calmer green palette for the text here too
+                            <div className="flex items-center justify-center py-2 text-sm font-medium text-green-700 dark:text-green-400">
+                                <Star className="mr-2 h-4 w-4 fill-green-600 text-green-600 dark:fill-green-400 dark:text-green-400" />
                                 Rating Submitted
                             </div>
                         )}
@@ -240,7 +220,6 @@ export default function MyOrders() {
       }
       setCurrentUserId(user.id);
 
-      // 1. Fetch ALL orders for the user (both buyer and seller) in parallel
       const { data: allOrders, error: ordersError } = await supabase
         .from("orders")
         .select(`
@@ -256,12 +235,11 @@ export default function MyOrders() {
           return;
       }
 
-      // 2. Separate orders and collect profile IDs
+      // Profile fetching logic for performance
       const sellerOrderIds = allOrders.filter(o => o.seller_id === user.id).map(o => o.buyer_id);
       const buyerOrderIds = allOrders.filter(o => o.buyer_id === user.id).map(o => o.seller_id);
       const profileIdsToFetch = Array.from(new Set([...sellerOrderIds, ...buyerOrderIds]));
 
-      // 3. Fetch all necessary profiles in one go
       let profilesMap = new Map<string, UserProfileData>();
       if (profileIdsToFetch.length > 0) {
         const { data: profilesData, error: profilesError } = await supabase
@@ -275,16 +253,15 @@ export default function MyOrders() {
         });
       }
 
-      // 4. Check rating status for ALL orders
+      // Check rating status for ALL orders
       const ratingChecks = allOrders.map(order => hasUserRated(order.id, user.id));
       const hasRatedStatuses = await Promise.all(ratingChecks);
 
-      // 5. Combine data and set state
+      // Combine data and set state
       const ordersWithData = allOrders.map((order, index) => ({
         ...order,
         items: order.items as ItemData || { title: "", price: 0, images: [] },
         hasRated: hasRatedStatuses[index],
-        // Attach profiles
         buyer_profiles: order.buyer_id !== user.id ? profilesMap.get(order.buyer_id) : undefined,
         seller_profiles: order.seller_id !== user.id ? profilesMap.get(order.seller_id) : undefined,
       })) as Order[];
@@ -308,7 +285,6 @@ export default function MyOrders() {
   }, [fetchOrders]); 
 
   const handleOrderActionSuccess = () => {
-      // Re-fetch all orders to update the status/rating
       fetchOrders();
   }
 
@@ -380,7 +356,7 @@ export default function MyOrders() {
             {[1, 2].map((i) => (
               <Card key={i} className="animate-pulse shadow-lg">
                 <CardContent className="p-6 flex items-center gap-6">
-                  <div className="w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0" />
+                  <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0" />
                   <div className="flex-1 space-y-3">
                     <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-4/5" />
                     <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
