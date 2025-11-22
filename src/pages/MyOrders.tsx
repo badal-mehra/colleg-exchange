@@ -54,41 +54,45 @@ const hasUserRated = async (orderId: string, userId: string): Promise<boolean> =
 
 // **FIXED: Implemented Muted, Professional Color Palette for Status Badges**
 const getStatusBadge = (status: string) => {
-    // Added border and tracking-tight for cleaner appearance and better consistency
-    const baseClasses = "text-xs font-semibold px-2 py-0.5 rounded-full flex items-center tracking-tight";
-    
-    switch (status) {
-      case "completed":
-        // Success: Muted green background (50) with strong green text (700).
-        return (
-          <Badge 
-            className={`${baseClasses} bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-300 border border-green-200 dark:border-green-800`}
-          >
-            <CheckCircle className="mr-1 h-3 w-3" />Completed
-          </Badge>
-        );
-      case "pending":
-        // Pending/Info: Replaced harsh yellow/amber with a professional blue palette.
-        return (
-          <Badge 
-            className={`${baseClasses} bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-800`}
-          >
-            <Clock className="mr-1 h-3 w-3" />Pending
-          </Badge>
-        );
-      case "cancelled":
-        // Destructive: Muted red background (50) with strong red text (700).
-        return (
-          <Badge 
-            className={`${baseClasses} bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-300 border border-red-200 dark:border-red-800`}
-          >
-            <X className="mr-1 h-3 w-3" />Cancelled
-          </Badge>
-        );
-      default:
-        return <Badge variant="secondary" className="border border-input">{status}</Badge>;
-    }
+  const baseClasses =
+    "text-xs font-medium px-2 py-0.5 rounded-full flex items-center border";
+
+  switch (status) {
+    case "completed":
+      return (
+        <Badge
+          className={`${baseClasses} border-green-300 text-green-700 bg-white dark:bg-transparent dark:border-green-700 dark:text-green-300`}
+        >
+          <CheckCircle className="mr-1 h-3 w-3" />
+          Completed
+        </Badge>
+      );
+
+    case "pending":
+      return (
+        <Badge
+          className={`${baseClasses} border-gray-300 text-gray-700 bg-white dark:bg-transparent dark:border-gray-600 dark:text-gray-300`}
+        >
+          <Clock className="mr-1 h-3 w-3" />
+          Pending
+        </Badge>
+      );
+
+    case "cancelled":
+      return (
+        <Badge
+          className={`${baseClasses} border-red-300 text-red-700 bg-white dark:bg-transparent dark:border-red-700 dark:text-red-300`}
+        >
+          <X className="mr-1 h-3 w-3" />
+          Cancelled
+        </Badge>
+      );
+
+    default:
+      return <Badge variant="outline">{status}</Badge>;
+  }
 };
+
 
 // --- COMPONENTS ---
 
