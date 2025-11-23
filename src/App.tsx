@@ -1,4 +1,4 @@
-// App.tsx
+// ✅ FIXED App.tsx
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { Routes, Route } from "react-router-dom";
@@ -11,7 +11,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import ItemDetail from "./pages/ItemDetail";
-import KYC from "./pages/KYC";   // ✅ IMPORTANT: KYC imported
+import KYC from "./pages/KYC";
 import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
 import SellItem from "./pages/SellItem";
@@ -30,47 +30,35 @@ import StaticPage from "./pages/StaticPage";
 const App = () => (
   <Routes>
 
-    {/** ----------------------------------------------------- */}
-    {/** 🟢 ROUTES WITH HEADER + FOOTER (MainLayout)          */}
-    {/** ----------------------------------------------------- */}
-    <Route element={<MainLayout />}>
-
-      {/** DASHBOARD ONLY (Protected) */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-
-    </Route>
-
-    {/** ----------------------------------------------------- */}
-    {/** 🔴 FULLSCREEN ROUTES (NO HEADER / NO FOOTER)         */}
-    {/** ----------------------------------------------------- */}
+    {/* ✅ MAIN HOMEPAGE */}
     <Route path="/" element={<Index />} />
-    <Route path="/home" element={<Home />} />
+
+    {/* ✅ AUTH */}
     <Route path="/auth" element={<Auth />} />
     <Route path="/reset-password" element={<ResetPassword />} />
 
-    {/** STATIC PAGES */}
+    {/* ✅ STATIC PAGES */}
     <Route path="/terms" element={<StaticPage />} />
     <Route path="/privacy" element={<StaticPage />} />
     <Route path="/about" element={<StaticPage />} />
     <Route path="/shipping" element={<StaticPage />} />
     <Route path="/help" element={<StaticPage />} />
     <Route path="/report" element={<StaticPage />} />
-    <Route path="/home" element={<StaticPage />} />
 
-    {/** PUBLIC NO-LAYOUT PAGES */}
+    {/* ✅ PUBLIC PAGES */}
     <Route path="/item/:id" element={<ItemDetail />} />
     <Route path="/profile/:mckId" element={<PublicProfile />} />
 
-    {/** PROTECTED NO-LAYOUT PAGES */}
+    {/* ✅ PROTECTED PAGES */}
+    <Route
+      path="/dashboard"
+      element={
+        <ProtectedRoute>
+          <Dashboard />
+        </ProtectedRoute>
+      }
+    />
 
-    {/** ✅ ADDED KYC ROUTE — THIS WAS MISSING */}
     <Route
       path="/kyc"
       element={
@@ -92,8 +80,9 @@ const App = () => (
     <Route path="/scan-qr" element={<ProtectedRoute><ScanQR /></ProtectedRoute>} />
     <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
 
-    {/** NOT FOUND */}
+    {/* ✅ 404 FALLBACK */}
     <Route path="*" element={<NotFound />} />
+
   </Routes>
 );
 
