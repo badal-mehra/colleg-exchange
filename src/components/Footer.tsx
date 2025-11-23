@@ -42,7 +42,7 @@ export const Footer = () => {
     contactLinks: [],
     copyright: []
   });
-
+// changed
   // Define the hardcoded Home Link object
   const homeLink: (StaticPage & { value: string }) = {
     id: 'home-link-hardcoded', // Unique ID for key prop
@@ -50,7 +50,7 @@ export const Footer = () => {
     slug: 'home',
     content: '',
     version: '1',
-    link_url: '/',
+    link_url: '/dashboard',  
     is_active: true,
     created_at: new Date().toISOString(),
     value: 'Home'
