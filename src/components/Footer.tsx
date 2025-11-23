@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
-import { Linkedin, Instagram, Mail } from 'lucide-react';
+import { Linkedin, Instagram, Mail, Home } from 'lucide-react'; // Import Home icon
 import logo from '@/assets/mycampuskart-logo.png';
 
 interface StaticPage {
@@ -43,6 +43,20 @@ export const Footer = () => {
     copyright: []
   });
 
+  // Define the hardcoded Home Link object
+  const homeLink: (StaticPage & { value: string }) = {
+    id: 'home-link-hardcoded', // Unique ID for key prop
+    title: 'Home',
+    slug: 'home',
+    content: '',
+    version: '1',
+    link_url: '/',
+    is_active: true,
+    created_at: new Date().toISOString(),
+    value: 'Home'
+  };
+
+
   // FIX: Using a helper function for setting data to avoid repetition
   const setFooterData = (data: typeof staticData) => {
       setStaticData(data);
@@ -68,7 +82,7 @@ export const Footer = () => {
         // FIX: Error case mein bhi setFooterData ko use karna
         setFooterData({
             aboutContent: [],
-            quickLinks: [],
+            quickLinks: [homeLink], // Include home link on error
             supportLinks: [],
             contactLinks: [],
             copyright: [],
@@ -92,7 +106,7 @@ export const Footer = () => {
     const uniquePages = Array.from(uniquePagesMap.values());
     
     // Quick Links: Generate links for Terms, Privacy, About, Shipping from unique active pages
-    const quickLinks = uniquePages
+    const fetchedQuickLinks = uniquePages
         .filter(p => ['terms', 'privacy', 'about', 'shipping'].includes(p.slug))
         .map(current => ({
             ...current,
@@ -102,12 +116,15 @@ export const Footer = () => {
             value: current.title || current.slug.replace('-', ' ') 
         }));
 
+    // Add the hardcoded Home link to the beginning of the list
+    const finalQuickLinks = [homeLink, ...fetchedQuickLinks];
+
 
     const groupedData = {
         // About Content: Find the unique 'about' page
         aboutContent: uniquePages.filter(p => p.slug === 'about').slice(0, 1) as StaticPage[],
 
-        quickLinks: quickLinks,
+        quickLinks: finalQuickLinks, // Use the list with the Home link
 
         // Support Links (Hardcoded/Temporary - Can be fetched from a custom table later if needed)
         supportLinks: [
@@ -179,9 +196,11 @@ export const Footer = () => {
             <ul className="space-y-2">
               {staticData.quickLinks.length > 0 ? (
                 staticData.quickLinks.map((item) => {
+                  // Use 'id' for dynamically fetched pages, 'id' or 'key' for hardcoded.
+                  const linkKey = item.id || item.slug;
                   const external = isExternal(item.link_url); 
                   return (
-                    <li key={item.id}>
+                    <li key={linkKey}>
                       {item.link_url ? (
                         external ? ( // Use <a> for external links
                           <a
@@ -192,7 +211,7 @@ export const Footer = () => {
                           >
                             {item.value}
                           </a>
-                        ) : ( // Use <Link> for internal routes (e.g., /terms)
+                        ) : ( // Use <Link> for internal routes (e.g., /terms, /)
                           <Link
                             to={item.link_url}
                             className="text-sm text-muted-foreground hover:text-primary transition-colors"
@@ -203,12 +222,12 @@ export const Footer = () => {
                       ) : (
                         <span className="text-sm text-muted-foreground">{item.value}</span>
                       )}
-                    </li>
+                  </li>
                   );
                 })
               ) : (
-                // Fallback message now simplified
-                <li><span className="text-sm text-muted-foreground">No Quick Links configured in CMS.</span></li>
+                // Fallback message only when the hardcoded link is also missing (shouldn't happen)
+                <li><span className="text-sm text-muted-foreground">No Quick Links configured.</span></li>
               )}
             </ul>
           </div>
