@@ -2,6 +2,9 @@
   "redirects": [
     {
       "source": "/(.*)",
+      "has": [
+        { "type": "host", "value": "www.mycampuskart.com" }
+      ],
       "destination": "https://mycampuskart.com/$1",
       "permanent": true
     }
