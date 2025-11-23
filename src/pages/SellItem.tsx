@@ -77,6 +77,7 @@ const SellItem = () => {
       .select('campus_points')
       .eq('user_id', user.id)
       .single();
+
     setUserPoints(data?.campus_points || 0);
   };
 
@@ -127,7 +128,7 @@ const SellItem = () => {
     e.preventDefault();
     if (!user) return;
 
-    // BASIC VALIDATION
+    // ✅ BASIC VALIDATION
     if (!formData.title.trim()) return toast({ title: "Error", description: "Enter a title", variant: "destructive" });
     if (!formData.description.trim()) return toast({ title: "Error", description: "Enter a description", variant: "destructive" });
     if (!formData.price || parseFloat(formData.price) <= 0) return toast({ title: "Error", description: "Enter a valid price", variant: "destructive" });
@@ -136,7 +137,7 @@ const SellItem = () => {
     const selectedPackage = getSelectedAdPackage();
     const cost = selectedPackage?.points_cost || 0;
 
-    // ✅ CHECK POINT BALANCE
+    // ✅ CHECK BALANCE
     if (userPoints < cost) {
       toast({
         title: "Not Enough Points",
@@ -148,16 +149,26 @@ const SellItem = () => {
 
     setLoading(true);
 
-    // ✅ DEDUCT POINTS
-    await supabase
+    // ✅ DEDUCT POINTS FIRST
+    const { error: deductError } = await supabase
       .from('profiles')
       .update({ campus_points: userPoints - cost })
-      .eq('id', user.id);
+      .eq('user_id', user.id);
 
-    // ✅ CREATE ITEM (₹ PRICE STAYS SAME)
+    if (deductError) {
+      toast({
+        title: "Error",
+        description: "Failed to deduct points",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
+    // ✅ THEN CREATE ITEM
     const durationDays = selectedPackage?.duration_days || 30;
 
-    const { error } = await supabase
+    const { error: insertError } = await supabase
       .from('items')
       .insert({
         title: formData.title.trim(),
@@ -176,13 +187,18 @@ const SellItem = () => {
         tags: tags
       });
 
-    if (error) {
+    if (insertError) {
       toast({ title: "Error", description: "Failed to list item", variant: "destructive" });
-    } else {
-      toast({ title: "Success", description: "Item listed using campus points!" });
-      navigate('/dashboard');
+      setLoading(false);
+      return;
     }
 
+    toast({
+      title: "Success",
+      description: "Item listed & points deducted!",
+    });
+
+    navigate('/dashboard');
     setLoading(false);
   };
 
@@ -207,7 +223,7 @@ const SellItem = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
 
-              {/* ✅ EVERYTHING BELOW STAYS SAME UNTIL PACKAGE SECTION */}
+              {/* ✅ Everything below is unchanged UI */}
 
               {/* Images */}
               <div className="space-y-2">
@@ -361,7 +377,7 @@ const SellItem = () => {
                 </div>
               </div>
 
-              {/* ✅ AD PACKAGES UPDATED TO POINTS */}
+              {/* ✅ AD PACKAGES (POINTS) */}
               <div className="space-y-4">
                 <Label>Choose Ad Package</Label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -395,7 +411,7 @@ const SellItem = () => {
                 </div>
               </div>
 
-              {/* Submit */}
+              {/* ✅ Submit */}
               <Button type="submit" className="w-full" disabled={loading}>
                 <Upload className="h-4 w-4 mr-2" />
                 {loading ? 'Listing...' : 'List Item'}
