@@ -75,7 +75,7 @@ const SellItem = () => {
     const { data } = await supabase
       .from('profiles')
       .select('campus_points')
-      .eq('id', user.id)
+      .eq('user_id', user.id)
       .single();
     setUserPoints(data?.campus_points || 0);
   };
