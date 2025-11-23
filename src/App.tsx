@@ -50,16 +50,18 @@ const App = () => (
     <Route path="/profile/:mckId" element={<PublicProfile />} />
 
     {/* ✅ PROTECTED PAGES */}
-<Route
-  path="/dashboard"
-  element={
-    <ProtectedRoute>
-      <MainLayout>
-        <Dashboard />
-      </MainLayout>
-    </ProtectedRoute>
-  }
-/>
+    <Route element={<MainLayout />}>
+
+      {/** DASHBOARD ONLY (Protected) */}
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+    </Route>
 
 
     <Route
