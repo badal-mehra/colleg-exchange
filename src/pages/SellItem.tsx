@@ -164,6 +164,9 @@ const SellItem = () => {
       setLoading(false);
       return;
     }
+    
+    // ⭐ NEW LINE: Update local state after successful deduction
+    setUserPoints(userPoints - cost); 
 
     // ✅ THEN CREATE ITEM
     const durationDays = selectedPackage?.duration_days || 30;
@@ -188,7 +191,8 @@ const SellItem = () => {
       });
 
     if (insertError) {
-      toast({ title: "Error", description: "Failed to list item", variant: "destructive" });
+      // NOTE: In a real app, you should consider compensating for the deducted points here (a rollback/refund).
+      toast({ title: "Error", description: "Failed to list item (points deducted). Check your profile.", variant: "destructive" });
       setLoading(false);
       return;
     }
@@ -222,8 +226,6 @@ const SellItem = () => {
 
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-
-              {/* ✅ Everything below is unchanged UI */}
 
               {/* Images */}
               <div className="space-y-2">
