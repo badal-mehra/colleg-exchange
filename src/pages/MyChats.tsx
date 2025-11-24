@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-// --- INTERFACES ---
+// --- INTERFACES (Kept for completeness) ---
 interface Profile {
   id?: string;
   user_id: string;
@@ -90,11 +90,10 @@ const MyChats = () => {
   const { toast } = useToast();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
-  // Centralized online users state
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set()); 
   
-  // FIX 1: Controlled Tabs - State to manage the active tab
-  const [tab, setTab] = useState("buying");
+  // Tab state initialization
+  const [tab, setTab] = useState<string>("buying");
 
   // Utility to format time for chat list
   const formatTime = (timestamp: string): string => {
@@ -119,9 +118,13 @@ const MyChats = () => {
     return conversation.buyer_id === user?.id ? conversation.seller_id : conversation.buyer_id;
   }, [user]);
   
-  // Optimized Fetch Conversations logic (Batch Fetches Profiles, Last Messages, and Unread Counts)
+  // Optimized Fetch Conversations logic (Dependencies are stable: user and toast)
   const fetchConversations = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+        setConversations([]);
+        setLoading(false);
+        return;
+    }
 
     setLoading(true);
     
@@ -158,9 +161,6 @@ const MyChats = () => {
       );
 
       // 3. BATCH FETCH LAST MESSAGE & UNREAD COUNT
-      // These are still separate due to Supabase API limitations outside of custom functions/views, 
-      // but running them in Promise.all is much faster than running them inside a map loop.
-
       const lastMessagePromises = conversationIds.map(id => 
         supabase
             .from('messages')
@@ -189,7 +189,6 @@ const MyChats = () => {
         const buyerProfile = profileMap.get(conversation.buyer_id) || { user_id: conversation.buyer_id, full_name: 'Unknown User' };
         const sellerProfile = profileMap.get(conversation.seller_id) || { user_id: conversation.seller_id, full_name: 'Unknown User' };
         const lastMessage = lastMessagesResults[index].data;
-        // Handle unreadCount return type (assumed to be a number from RPC)
         const unreadCount = unreadCountsResults[index].data as number || 0; 
 
         return {
@@ -211,14 +210,25 @@ const MyChats = () => {
     }
   }, [user, toast]);
   
-  // FIX 2: Optimized Data Fetching. Run fetchConversations ONLY once on mount.
+  // FIX 1: Fetch Conversations ONLY once on mount
   useEffect(() => {
-    if (user) {
-        fetchConversations();
-    }
-  }, [user, fetchConversations]); // Note: fetchConversations is stable due to useCallback
+    fetchConversations();
+  }, [fetchConversations]); 
 
-  // FIX 3: Presence Subscription isolated. Runs only on mount for setup.
+  // FIX 2a: Load saved tab state from localStorage on mount
+  useEffect(() => {
+      const savedTab = localStorage.getItem("mychats-tab");
+      if (savedTab === "buying" || savedTab === "selling") {
+        setTab(savedTab);
+      }
+  }, []);
+
+  // FIX 2b: Save current tab state to localStorage whenever the tab changes
+  useEffect(() => {
+      localStorage.setItem("mychats-tab", tab);
+  }, [tab]);
+
+  // Presence Subscription (Isolated for stable behavior)
   useEffect(() => {
     if (!user) return;
 
@@ -252,11 +262,10 @@ const MyChats = () => {
     return () => {
       mounted = false;
       if (presenceChannel) {
-        // Ensure channel is removed cleanly on unmount
         supabase.removeChannel(presenceChannel).catch(console.error);
       }
     };
-  }, [user]); // Dependencies only include user, setup runs once per user login/load
+  }, [user]);
 
 
   const handleConversationClick = (conversationId: string) => {
@@ -415,8 +424,7 @@ const MyChats = () => {
             </Button>
           </div>
         ) : (
-          // FIX 1: Controlled Tabs implementation
-          <Tabs value={tab} onValueChange={(value) => setTab(value as "buying" | "selling")} className="w-full">
+          <Tabs value={tab} onValueChange={setTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6 h-12 p-1 bg-muted/70 rounded-lg">
               <TabsTrigger 
                 value="buying" 
@@ -440,7 +448,8 @@ const MyChats = () => {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="buying" className="space-y-3">
+            {/* CRITICAL FIX: Added forceMount to prevent unmounting/remounting, ensuring zero flicker */}
+            <TabsContent value="buying" forceMount className="space-y-3">
               {buyingConversations.length === 0 ? (
                 <div className="text-center py-12 border-2 border-dashed border-border rounded-lg bg-card/50">
                   <ShoppingBag className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
@@ -451,7 +460,8 @@ const MyChats = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="selling" className="space-y-3">
+            {/* CRITICAL FIX: Added forceMount */}
+            <TabsContent value="selling" forceMount className="space-y-3">
               {sellingConversations.length === 0 ? (
                 <div className="text-center py-12 border-2 border-dashed border-border rounded-lg bg-card/50">
                   <Store className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
