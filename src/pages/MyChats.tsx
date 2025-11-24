@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-// --- INTERFACES (Kept for completeness) ---
+// --- INTERFACES ---
 interface Profile {
   id?: string;
   user_id: string;
@@ -448,8 +448,13 @@ const MyChats = () => {
               </TabsTrigger>
             </TabsList>
 
-            {/* CRITICAL FIX: Added forceMount to prevent unmounting/remounting, ensuring zero flicker */}
-            <TabsContent value="buying" forceMount className="space-y-3">
+            {/* FIX 3: forceMount and INLINE style visibility control to prevent flicker/overlap without external CSS */}
+            <TabsContent 
+              value="buying" 
+              forceMount 
+              className="space-y-3"
+              style={{ display: tab === "buying" ? "block" : "none" }}
+            >
               {buyingConversations.length === 0 ? (
                 <div className="text-center py-12 border-2 border-dashed border-border rounded-lg bg-card/50">
                   <ShoppingBag className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
@@ -460,8 +465,13 @@ const MyChats = () => {
               )}
             </TabsContent>
 
-            {/* CRITICAL FIX: Added forceMount */}
-            <TabsContent value="selling" forceMount className="space-y-3">
+            {/* FIX 3: forceMount and INLINE style visibility control to prevent flicker/overlap without external CSS */}
+            <TabsContent 
+              value="selling" 
+              forceMount 
+              className="space-y-3"
+              style={{ display: tab === "selling" ? "block" : "none" }}
+            >
               {sellingConversations.length === 0 ? (
                 <div className="text-center py-12 border-2 border-dashed border-border rounded-lg bg-card/50">
                   <Store className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
