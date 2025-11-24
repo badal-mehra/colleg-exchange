@@ -50,16 +50,16 @@ const App = () => (
     <Route path="/profile/:mckId" element={<PublicProfile />} />
 
     {/* ✅ PROTECTED PAGES */}
-{/* ✅ PROTECTED PAGES WITH LAYOUT */}
-<Route
-  element={
-    <ProtectedRoute>
-      <MainLayout />
-    </ProtectedRoute>
-  }
->
-  <Route path="dashboard" element={<Dashboard />} />
-</Route>
+    {/* ✅ PROTECTED PAGES WITH LAYOUT */}
+    <Route
+      element={
+        <ProtectedRoute>
+          <MainLayout />
+        </ProtectedRoute>
+      }
+    >
+      <Route path="dashboard" element={<Dashboard />} />
+    </Route>
 
 
     <Route
@@ -73,7 +73,8 @@ const App = () => (
 
     <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
     <Route path="/sell" element={<ProtectedRoute><SellItem /></ProtectedRoute>} />
-    <Route path="/chat/:conversationId?" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+    {/* ✅ CRITICAL FIX: Removed the '?' from :conversationId to ensure ID is present */}
+    <Route path="/chat/:conversationId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
     <Route path="/my-chats" element={<ProtectedRoute><MyChats /></ProtectedRoute>} />
     <Route path="/my-cart" element={<ProtectedRoute><MyCart /></ProtectedRoute>} />
     <Route path="/my-reports" element={<ProtectedRoute><MyReports /></ProtectedRoute>} />
