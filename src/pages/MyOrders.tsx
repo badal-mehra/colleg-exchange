@@ -142,8 +142,6 @@ const OrderCard = ({ order, isSeller, onActionSuccess }: { order: Order; isSelle
 
                     {/* Action Section */}
                     <div className="mt-4 pt-4 border-t border-solid border-border">
-                        {/* TransactionConfirmation is rendered for pending orders, regardless of who has confirmed,
-                            as the component itself handles the logic for showing confirmation/cancel buttons based on user role and confirmed flags. */}
                         {order.status === "pending" && (
                             <TransactionConfirmation
                                 order={order}
