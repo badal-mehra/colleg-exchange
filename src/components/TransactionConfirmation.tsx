@@ -1,4 +1,4 @@
-// TransactionConfirmation.tsx
+// TransactionConfirmation.tsx (Final Version)
 
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,7 +41,7 @@ export function TransactionConfirmation({
   onConfirm,
 }: TransactionConfirmationProps) {
   const [confirming, setConfirming] = useState(false);
-  const [cancelling, setCancelling] = useState(false); // State for cancellation
+  const [cancelling, setCancelling] = useState(false);
 
   const handleConfirm = async () => {
     try {
@@ -55,7 +55,7 @@ export function TransactionConfirmation({
         return;
       }
 
-      // RPC handles confirmation logic and conditional status update
+      // Call RPC for confirmation (fixes stale data issue)
       const { data, error } = await supabase.rpc(
         "complete_order_with_confirmation",
         {
@@ -140,7 +140,7 @@ export function TransactionConfirmation({
           </p>
         </div>
 
-        {/* Item */}
+        {/* Item - Omitted for brevity */}
         <div className="flex items-center gap-4 p-4 bg-background rounded-lg border">
           {order.items.images?.[0] && (
             <img
@@ -220,7 +220,7 @@ export function TransactionConfirmation({
         </div>
 
         {/* Info */}
-        {!userConfirmed && (
+        {!userConfirmed && order.status === "pending" && (
           <div className="flex items-start gap-3 p-4 bg-info/10 border border-info rounded-lg">
             <AlertCircle className="w-5 h-5 text-info flex-shrink-0 mt-0.5" />
             <div className="text-sm space-y-1">
@@ -234,7 +234,8 @@ export function TransactionConfirmation({
 
         {/* Button Section */}
         <div className="space-y-3">
-            {!userConfirmed ? (
+            {/* Show Confirm button only if status is PENDING and YOU have NOT confirmed */}
+            {order.status === "pending" && !userConfirmed ? (
               <Button
                 onClick={handleConfirm}
                 disabled={confirming || cancelling}
@@ -247,20 +248,28 @@ export function TransactionConfirmation({
                       userType === "seller" ? "Item Delivered" : "Item Received"
                     }`}
               </Button>
-            ) : (
-              <div className="text-center py-4">
-                <p className="text-success font-semibold mb-2">
-                  ✓ You've confirmed this transaction
-                </p>
-                {otherConfirmed && (
-                  <p className="text-sm text-success">
-                    🎉 Transaction completed!
-                  </p>
-                )}
-              </div>
+            ) : order.status === "pending" && userConfirmed && (
+                // Show waiting message if I confirmed and waiting for other party
+                <div className="text-center py-4">
+                    <p className="text-success font-semibold mb-2">
+                      ✓ You've confirmed this transaction
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Waiting for {otherParty?.full_name || "the other party"} to complete the transaction.
+                    </p>
+                </div>
             )}
             
-            {/* ✅ NEW: Cancel Button (Seller Only, Pending Status) */}
+            {/* If status is completed, show completion message (this handles the final state) */}
+            {order.status === "completed" && (
+                <div className="text-center py-4">
+                    <p className="text-success font-semibold mb-2">
+                      🎉 Transaction completed!
+                    </p>
+                </div>
+            )}
+
+            {/* Show Cancel Button if Seller AND status is PENDING. */}
             {userType === "seller" && order.status === "pending" && (
                 <Button
                     onClick={handleCancel}
