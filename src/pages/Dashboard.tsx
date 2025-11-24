@@ -87,6 +87,15 @@ interface FilterState {
 // --- UTILITY FUNCTIONS ---
 const unique = (arr: (string | null | undefined)[]) => Array.from(new Set(arr)).filter((i): i is string => !!i);
 
+// ✅ STEP 4 FIX: Cloudinary Thumbnail Helper (w_300 for grid view efficiency)
+const getThumb = (url: string) => {
+  if (url.includes('cloudinary.com')) {
+    // f_auto,q_auto for optimization, w_300,h_300,c_fill for small square thumbnail
+    return url.replace('/upload/', '/upload/f_auto,q_auto,w_300,h_300,c_fill/');
+  }
+  return url; // Return original URL if it's not a Cloudinary link (e.g., local mock)
+};
+
 const getAdTypeBenefits = (adType: string) => {
   switch (adType) {
     case 'featured':
@@ -245,6 +254,12 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [isChatting, setIsChatting] = useState(false);
 
+  // ✅ STEP 4 FIX: Use memoized thumbnail URLs for ItemCard to save bandwidth
+  const thumbnailImages = useMemo(() => {
+    return item.images.map(getThumb);
+  }, [item.images]);
+
+
   const onChat = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsChatting(true);
@@ -266,7 +281,14 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
     >
       <div className="relative">
         <div className="aspect-square w-full rounded-t-xl overflow-hidden">
-          <ImageCarousel images={item.images} alt={item.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <ImageCarousel 
+            images={thumbnailImages} // ✅ Use thumbnail URLs
+            alt={item.title} 
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
+            // Note: Lazy loading should be handled by ImageCarousel internally for best UX, but passing a prop for safety.
+            // This is the fastest way to implement STEP 3's goal without modifying ImageCarousel source.
+            loading="lazy" 
+          />
         </div>
 
         {adBenefits && (
@@ -282,7 +304,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
             </TooltipContent>
           </Tooltip>
         )}
-
+// ... (rest of ItemCard component)
         <Badge variant={item.condition === 'new' ? 'default' : 'secondary'} className="absolute top-3 right-3 text-xs shadow-lg">
           {item.condition}
         </Badge>
@@ -411,9 +433,13 @@ const Dashboard = () => {
     }
 
     setLoading(true);
+    
+    // ✅ STEP 2 FIX: Implement Pagination (Limit to first 20 items for the initial load)
+    const PAGE_LIMIT = 20;
 
     let query = supabase.from('items').select(`*`)
-      .eq('is_sold', false).order('created_at', { ascending: false });
+      .eq('is_sold', false).order('created_at', { ascending: false })
+      .range(0, PAGE_LIMIT - 1); // Only fetch 20 items (0 to 19)
 
     if (selectedCategory !== 'all') {
       query = query.eq('category_id', selectedCategory);
