@@ -1,5 +1,5 @@
 // ItemDetail.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,7 +29,25 @@ import { toast as sonnerToast } from 'sonner';
 import { ReportModal } from '@/components/ReportModal';
 import { BargainingDialog } from '@/components/BargainingDialog';
 
-// Define the shape of your data interfaces
+// --- Cloudinary Optimization Helpers ---
+
+// For the main detail image view (w_1200 for good quality, still optimized)
+const getDetailImage = (url: string) => {
+  if (url.includes('cloudinary.com')) {
+    return url.replace('/upload/', '/upload/f_auto,q_auto:best,w_1200/');
+  }
+  return url;
+};
+
+// For the small gallery strip thumbnails (w_100 for maximum speed)
+const getThumbImage = (url: string) => {
+  if (url.includes('cloudinary.com')) {
+    return url.replace('/upload/', '/upload/f_auto,q_auto:low,w_100,h_100,c_fill/');
+  }
+  return url;
+};
+
+// --- Define the shape of your data interfaces (Unchanged) ---
 interface Profile {
   id: string;
   user_id: string;
@@ -468,14 +486,17 @@ const ItemDetail = () => {
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Image Gallery (kept intact) */}
+          {/* Image Gallery */}
           <div className="space-y-4">
             <div className="relative aspect-square rounded-lg overflow-hidden bg-muted flex items-center justify-center">
               {item.images.length > 0 ? (
+                // ✅ Egress Fix 1: Use getDetailImage for the main, large view.
                 <img
-                  src={item.images[currentImageIndex]}
+                  src={getDetailImage(item.images[currentImageIndex])}
                   alt={item.title}
                   className="w-full h-full object-contain"
+                  // ✅ Egress Fix 2: Lazy load for the main image (first image is usually already visible/preloaded)
+                  loading={currentImageIndex === 0 ? 'eager' : 'lazy'} 
                   onError={(e) => {
                     e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xNTAgMTUwSDI1MFYyNTBIMTUwVjE1MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+Cg==';
                   }}
@@ -503,10 +524,12 @@ const ItemDetail = () => {
                       index === currentImageIndex ? 'border-primary' : 'border-transparent'
                     }`}
                   >
+                    {/* ✅ Egress Fix 3: Use getThumbImage for gallery strip */}
                     <img
-                      src={image}
+                      src={getThumbImage(image)} 
                       alt={`${item.title} ${index + 1}`}
                       className="w-full h-full object-cover"
+                      loading="lazy" // ✅ Egress Fix 4: Lazy load thumbnails
                     />
                   </button>
                 ))}
@@ -557,8 +580,9 @@ const ItemDetail = () => {
               <CardContent>
                 <div className="flex items-center gap-4">
                   <Avatar className="h-16 w-16 border-2 border-primary/20">
+                    {/* ✅ Egress Fix 5: Assume avatar_url is the direct URL (prepares for Cloudinary Avatar migration) */}
                     <AvatarImage 
-                      src={item.profiles?.avatar_url ? supabase.storage.from('avatars').getPublicUrl(item.profiles.avatar_url).data.publicUrl : undefined} 
+                      src={item.profiles?.avatar_url || undefined} 
                       alt={item.profiles?.full_name} 
                     />
                     <AvatarFallback className="bg-primary/10 text-primary text-xl">
