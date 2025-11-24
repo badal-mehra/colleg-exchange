@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -92,6 +92,9 @@ const MyChats = () => {
   const [loading, setLoading] = useState(true);
   // Centralized online users state
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set()); 
+  
+  // FIX 1: Controlled Tabs - State to manage the active tab
+  const [tab, setTab] = useState("buying");
 
   // Utility to format time for chat list
   const formatTime = (timestamp: string): string => {
@@ -207,8 +210,15 @@ const MyChats = () => {
       setLoading(false);
     }
   }, [user, toast]);
+  
+  // FIX 2: Optimized Data Fetching. Run fetchConversations ONLY once on mount.
+  useEffect(() => {
+    if (user) {
+        fetchConversations();
+    }
+  }, [user, fetchConversations]); // Note: fetchConversations is stable due to useCallback
 
-  // Presence Subscription with better cleanup
+  // FIX 3: Presence Subscription isolated. Runs only on mount for setup.
   useEffect(() => {
     if (!user) return;
 
@@ -238,7 +248,6 @@ const MyChats = () => {
     };
 
     setupPresence();
-    fetchConversations();
     
     return () => {
       mounted = false;
@@ -247,7 +256,8 @@ const MyChats = () => {
         supabase.removeChannel(presenceChannel).catch(console.error);
       }
     };
-  }, [user, fetchConversations]);
+  }, [user]); // Dependencies only include user, setup runs once per user login/load
+
 
   const handleConversationClick = (conversationId: string) => {
     navigate(`/chat/${conversationId}`);
@@ -405,7 +415,8 @@ const MyChats = () => {
             </Button>
           </div>
         ) : (
-          <Tabs defaultValue="buying" className="w-full">
+          // FIX 1: Controlled Tabs implementation
+          <Tabs value={tab} onValueChange={(value) => setTab(value as "buying" | "selling")} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6 h-12 p-1 bg-muted/70 rounded-lg">
               <TabsTrigger 
                 value="buying" 
