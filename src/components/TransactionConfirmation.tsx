@@ -1,13 +1,39 @@
-// TransactionConfirmation.tsx (Updated)
+// TransactionConfirmation.tsx
 
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CheckCircle2, Clock, AlertCircle, X } from "lucide-react"; // Import X for the cancel icon
+import { CheckCircle2, Clock, AlertCircle, X } from "lucide-react";
 import { toast } from "sonner";
 
-// ... (Interface definitions remain the same) ...
+interface Order {
+  id: string;
+  status: string;
+  seller_confirmed: boolean;
+  buyer_confirmed: boolean;
+  seller_id: string;
+  buyer_id: string;
+  items: {
+    title: string;
+    price: number;
+    images: string[];
+  };
+  seller_profiles?: {
+    full_name: string;
+    mck_id: string;
+  };
+  buyer_profiles?: {
+    full_name: string;
+    mck_id: string;
+  };
+}
+
+interface TransactionConfirmationProps {
+  order: Order;
+  userType: "seller" | "buyer";
+  onConfirm: () => void;
+}
 
 export function TransactionConfirmation({
   order,
@@ -15,19 +41,21 @@ export function TransactionConfirmation({
   onConfirm,
 }: TransactionConfirmationProps) {
   const [confirming, setConfirming] = useState(false);
-  const [cancelling, setCancelling] = useState(false); // New state for cancellation
+  const [cancelling, setCancelling] = useState(false); // State for cancellation
 
   const handleConfirm = async () => {
-    // ... (Your existing handleConfirm logic remains here) ...
-    // [CODE OMITTED FOR BREVITY]
     try {
       setConfirming(true);
-      const { data: { user } } = await supabase.auth.getUser();
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         toast.error("Please log in to confirm transaction");
         return;
       }
 
+      // RPC handles confirmation logic and conditional status update
       const { data, error } = await supabase.rpc(
         "complete_order_with_confirmation",
         {
@@ -41,7 +69,7 @@ export function TransactionConfirmation({
 
       if (data?.success) {
         toast.success(data.message);
-        onConfirm();
+        onConfirm(); // Refresh orders
       } else {
         toast.error(data?.error || "Failed to confirm transaction");
       }
@@ -54,7 +82,7 @@ export function TransactionConfirmation({
   };
 
   const handleCancel = async () => {
-    if (!window.confirm("Are you sure you want to cancel this order? This action cannot be undone.")) {
+    if (!window.confirm("Are you sure you want to cancel this order? This action is permanent.")) {
         return;
     }
 
@@ -66,12 +94,12 @@ export function TransactionConfirmation({
             return;
         }
 
-        // Call the new RPC function
+        // Call the new RPC function (Seller only)
         const { data, error } = await supabase.rpc(
             "cancel_order",
             {
                 order_id: order.id,
-                seller_id: user.id, // Only the seller can call this
+                seller_id: user.id, 
             }
         );
 
@@ -79,9 +107,8 @@ export function TransactionConfirmation({
 
         if (data?.success) {
             toast.success(data.message);
-            onConfirm(); // Refresh orders list
+            onConfirm(); // Refresh orders
         } else {
-            // Display the specific error from the RPC (e.g., "Cannot cancel")
             toast.error(data?.error || "Failed to cancel order");
         }
     } catch (error: any) {
@@ -91,6 +118,7 @@ export function TransactionConfirmation({
         setCancelling(false);
     }
   };
+
 
   const userConfirmed =
     userType === "seller" ? order.seller_confirmed : order.buyer_confirmed;
@@ -103,8 +131,6 @@ export function TransactionConfirmation({
 
   return (
     <Card className="p-6 bg-gradient-to-br from-background to-muted/20 border-2">
-      {/* ... (Existing Card content omitted for brevity) ... */}
-
       <div className="space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
@@ -114,16 +140,104 @@ export function TransactionConfirmation({
           </p>
         </div>
 
-        {/* Item - Omitted */}
-        {/* Status - Omitted */}
-        {/* Info - Omitted */}
+        {/* Item */}
+        <div className="flex items-center gap-4 p-4 bg-background rounded-lg border">
+          {order.items.images?.[0] && (
+            <img
+              src={order.items.images[0]}
+              alt={order.items.title}
+              className="w-20 h-20 object-cover rounded-lg"
+            />
+          )}
+          <div className="flex-1">
+            <h4 className="font-semibold">{order.items.title}</h4>
+            <p className="text-lg font-bold text-primary">
+              ₹{order.items.price}
+            </p>
+          </div>
+        </div>
+
+        {/* Status */}
+        <div className="space-y-3">
+          {/* Your Status */}
+          <div
+            className={`flex items-center justify-between p-4 rounded-lg border-2 ${
+              userConfirmed
+                ? "bg-success/10 border-success"
+                : "bg-muted/30 border-border"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              {userConfirmed ? (
+                <CheckCircle2 className="w-6 h-6 text-success" />
+              ) : (
+                <Clock className="w-6 h-6 text-muted-foreground" />
+              )}
+              <div>
+                <p className="font-semibold">Your Confirmation</p>
+                <p className="text-sm text-muted-foreground">
+                  {userType === "seller" ? "As Seller" : "As Buyer"}
+                </p>
+              </div>
+            </div>
+            {userConfirmed && (
+              <span className="text-xs font-medium text-success">Confirmed</span>
+            )}
+          </div>
+
+          {/* Other Party */}
+          <div
+            className={`flex items-center justify-between p-4 rounded-lg border-2 ${
+              otherConfirmed
+                ? "bg-success/10 border-success"
+                : "bg-muted/30 border-border"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              {otherConfirmed ? (
+                <CheckCircle2 className="w-6 h-6 text-success" />
+              ) : (
+                <Clock className="w-6 h-6 text-muted-foreground" />
+              )}
+              <div>
+                <p className="font-semibold">
+                  {otherParty?.full_name || "Other Party"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {userType === "seller" ? "Buyer" : "Seller"} •{" "}
+                  {otherParty?.mck_id}
+                </p>
+              </div>
+            </div>
+            {otherConfirmed ? (
+              <span className="text-xs font-medium text-success">Confirmed</span>
+            ) : (
+              <span className="text-xs font-medium text-muted-foreground">
+                Pending
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Info */}
+        {!userConfirmed && (
+          <div className="flex items-start gap-3 p-4 bg-info/10 border border-info rounded-lg">
+            <AlertCircle className="w-5 h-5 text-info flex-shrink-0 mt-0.5" />
+            <div className="text-sm space-y-1">
+              <p className="font-semibold text-info">Important:</p>
+              <p className="text-muted-foreground">
+                Only confirm after the item exchange has happened in person.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Button Section */}
         <div className="space-y-3">
             {!userConfirmed ? (
               <Button
                 onClick={handleConfirm}
-                disabled={confirming || cancelling} // Disable if cancelling is in progress
+                disabled={confirming || cancelling}
                 className="w-full h-12 text-base font-semibold"
                 size="lg"
               >
@@ -150,20 +264,13 @@ export function TransactionConfirmation({
             {userType === "seller" && order.status === "pending" && (
                 <Button
                     onClick={handleCancel}
-                    disabled={cancelling || confirming} // Disable if confirming is in progress
+                    disabled={cancelling || confirming}
                     variant="destructive"
                     className="w-full h-10 text-base font-semibold"
                 >
                     <X className="mr-2 h-4 w-4" />
                     {cancelling ? "Cancelling..." : "Cancel Order"}
                 </Button>
-            )}
-
-            {/* If buyer has confirmed but seller hasn't, buyer sees a message */}
-            {userType === "buyer" && !userConfirmed && otherConfirmed && (
-                <div className="text-center py-2 text-sm text-yellow-600 dark:text-yellow-400 font-medium">
-                    Seller has confirmed, awaiting your confirmation.
-                </div>
             )}
         </div>
       </div>
