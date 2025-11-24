@@ -99,6 +99,11 @@ const ItemDetail = () => {
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [bargainingDialogOpen, setBargainingDialogOpen] = useState(false);
 
+  // Existing state for current user's pending order
+  const [hasPendingOrder, setHasPendingOrder] = useState(false);
+  // State to check if item is reserved by *someone else*
+  const [isPendingBySomeoneElse, setIsPendingBySomeoneElse] = useState(false);
+
   // --- Data Fetching Hooks ---
 
   useEffect(() => {
@@ -116,6 +121,72 @@ const ItemDetail = () => {
       setIsFavorited(false);
     }
   }, [user, id]);
+
+  // Combined checkPendingOrder function (for both self and external reservations)
+  const checkPendingOrder = useCallback(async (itemId: string, currentUserId: string) => {
+    // Query for any pending order on this item
+    const { data: pendingOrder, error } = await supabase
+      .from("orders")
+      .select("buyer_id")
+      .eq("item_id", itemId)
+      .eq("status", "pending")
+      .maybeSingle();
+
+    if (error) {
+        console.error("Error checking pending orders:", error);
+        setHasPendingOrder(false);
+        setIsPendingBySomeoneElse(false);
+        return;
+    }
+    
+    if (pendingOrder) {
+        const buyerId = pendingOrder.buyer_id;
+        // Check if the pending order belongs to the current user
+        const isCurrentUser = buyerId === currentUserId;
+        
+        setHasPendingOrder(isCurrentUser);
+        setIsPendingBySomeoneElse(!isCurrentUser);
+    } else {
+        // No pending order found at all
+        setHasPendingOrder(false);
+        setIsPendingBySomeoneElse(false);
+    }
+  }, []);
+
+  // Use onSnapshot for real-time updates (reacts to status changes like cancellation)
+  useEffect(() => {
+      if (user?.id && item?.id) {
+          // Initial check
+          checkPendingOrder(item.id, user.id); 
+
+          // Set up real-time listener for any order related to this item
+          const ordersChannel = supabase
+            .channel(`item_${item.id}_orders`)
+            .on(
+              'postgres_changes',
+              { 
+                event: '*', 
+                schema: 'public', 
+                table: 'orders',
+                filter: `item_id=eq.${item.id}`
+              },
+              (payload) => {
+                // Re-run the check whenever an order for this item changes (created, updated/cancelled)
+                console.log('Realtime order update received:', payload.eventType);
+                checkPendingOrder(item.id, user.id);
+              }
+            )
+            .subscribe();
+
+          return () => {
+            supabase.removeChannel(ordersChannel);
+          };
+      } else {
+          setHasPendingOrder(false);
+          setIsPendingBySomeoneElse(false);
+      }
+  }, [user?.id, item?.id, checkPendingOrder]);
+
 
   // --- Helper Functions ---
   
@@ -241,7 +312,7 @@ const ItemDetail = () => {
   };
   
   // -------------------------------------------------------------------
-  // FINAL: HANDLE BUY NOW FUNCTION
+  // FINAL: HANDLE BUY NOW FUNCTION - Race condition error fixed
   // -------------------------------------------------------------------
   const handleBuyNow = async () => {
     if (!user) return navigate("/auth");
@@ -280,38 +351,48 @@ const ItemDetail = () => {
       return;
     }
 
-    // CREATE ORDER - Inserts into the fixed table schema
-    const { data, error } = await supabase
-      .from("orders")
-      .insert({
-        item_id: item.id, 
-        seller_id: item.seller_id,
-        buyer_id: user.id,
-        status: "pending",
-        seller_confirmed: false,
-        buyer_confirmed: false,
-        agreed_price: item.price 
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Order Failed:", error);
-      toast({
-        title: "Order Failed",
-        description: "Could not create order. (Check DB schema for missing columns: agreed_price, status, confirmed flags)",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    toast({
-      title: "Order Created",
-      description: "Go to My Orders to complete the transaction with the seller.",
-      icon: <Package className="h-4 w-4 text-primary" />
+    // CREATE ORDER using a hypothetical RPC for robust server-side validation
+    const { data: rpcResponse, error: rpcError } = await supabase.rpc("create_new_order", {
+      item_id_input: item.id,
+      buyer_id_input: user.id,
+      seller_id_input: item.seller_id,
+      agreed_price_input: item.price // Pass the necessary inputs
     });
 
+    if (rpcError) {
+      console.error("Order Failed (RPC Error):", rpcError);
+      
+      // ✅ FIX 1: Check for a database conflict/race condition error string
+      const errorText = JSON.stringify(rpcError).toLowerCase();
+
+      if (errorText.includes("duplicate pending order") || errorText.includes("already reserved")) {
+        // This handles the race condition where another buyer just reserved it
+        sonnerToast.error("This item has just been reserved by another buyer.");
+      } else {
+        // Generic network or unexpected DB error
+        sonnerToast.error("Could not process order due to a system error. Please try again.");
+      }
+      return;
+    }
+    
+    // Handle business logic failure (e.g., duplicate order check from RPC, for current user)
+    if (!rpcResponse?.success) {
+        sonnerToast.error(
+            rpcResponse?.error ||
+            "You already reserved this item. Go to My Orders to complete it."
+        );
+        // Redirect buyer to My Orders for smoother UX
+        navigate("/my-orders"); 
+        return;
+    }
+
+    // Success case
+    sonnerToast.success(rpcResponse.message || "Item reserved successfully! Complete the transaction in My Orders.");
     navigate("/my-orders");
+    
+    // Optimistic update: set state immediately, though the real-time listener will confirm it.
+    setHasPendingOrder(true);
+    setIsPendingBySomeoneElse(false);
   };
   // -------------------------------------------------------------------
   
@@ -457,6 +538,22 @@ const ItemDetail = () => {
   const isOwner = user?.id === item.seller_id;
   const isVerified = user && userProfile?.is_verified && userProfile?.verification_status === 'approved'; 
 
+  // Determine the disabled status and button text
+  const isDisabled = 
+    !user || 
+    (!isVerified && !isOwner) || 
+    item.is_sold || 
+    hasPendingOrder || 
+    isPendingBySomeoneElse;
+
+  const buttonText = item.is_sold
+    ? 'Sold Out'
+    : isPendingBySomeoneElse
+    ? 'Reserved by Another Buyer'
+    : hasPendingOrder
+    ? 'Already Reserved'
+    : 'Buy Now';
+    
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -653,40 +750,41 @@ const ItemDetail = () => {
               <div className="space-y-3">
                 {!isOwner && (
                   <>
-                    {/* BUY NOW BUTTON */}
+                    {/* BUY NOW BUTTON with full proactive check and labels */}
                     <Button
                       className="w-full h-12 text-lg font-semibold bg-primary hover:bg-primary/90 transition-colors"
                       size="lg"
                       onClick={handleBuyNow}
-                      disabled={!user || (!isVerified && !isOwner) || item.is_sold}
+                      disabled={isDisabled}
                     >
                       <Package className="h-5 w-5 mr-2 relative z-10" />
-                      <span className="relative z-10">
-                        {item.is_sold ? 'Sold Out' : 'Buy Now'}
-                      </span>
+                      <span className="relative z-10">{buttonText}</span>
                     </Button>
                     
-                    {/* MAKE AN OFFER BUTTON */}
+                    {/* MAKE AN OFFER BUTTON - Disabled when reserved by anyone */}
                     <Button 
                       className="w-full relative group overflow-hidden" 
                       size="lg"
                       variant="outline"
                       onClick={() => setBargainingDialogOpen(true)}
-                      disabled={!user || (!isVerified && !isOwner) || item.is_sold}
+                      disabled={isDisabled}
                     >
                       <DollarSign className="h-5 w-5 mr-2 relative z-10" />
                       <span className="relative z-10 font-semibold">
-                        {item.is_sold ? 'Already Sold' : 'Make an Offer'}
+                        {item.is_sold || isPendingBySomeoneElse
+                          ? 'Item Unavailable' 
+                          : 'Make an Offer'}
                       </span>
                     </Button>
                     
                     <div className="flex gap-3">
+                      {/* CHAT BUTTON - Disabled when reserved by anyone */}
                       <Button 
                         variant="outline"
                         className="flex-1" 
                         size="lg"
                         onClick={() => handleChatClick()}
-                        disabled={!user || (!isVerified && !isOwner) || item.is_sold}
+                        disabled={isDisabled}
                       >
                         <MessageCircle className="h-5 w-5 mr-2" />
                         <span className="font-semibold">Chat</span>
