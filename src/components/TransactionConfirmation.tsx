@@ -55,7 +55,7 @@ export function TransactionConfirmation({
         return;
       }
 
-      // Call RPC for confirmation (fixes stale data issue)
+      // Call RPC for confirmation (incorporates stale data and race condition fix)
       const { data, error } = await supabase.rpc(
         "complete_order_with_confirmation",
         {
@@ -69,7 +69,7 @@ export function TransactionConfirmation({
 
       if (data?.success) {
         toast.success(data.message);
-        onConfirm(); // Refresh orders
+        onConfirm(); // Refresh orders list
       } else {
         toast.error(data?.error || "Failed to confirm transaction");
       }
@@ -94,7 +94,7 @@ export function TransactionConfirmation({
             return;
         }
 
-        // Call the new RPC function (Seller only)
+        // Call the RPC function (Seller only)
         const { data, error } = await supabase.rpc(
             "cancel_order",
             {
@@ -107,7 +107,7 @@ export function TransactionConfirmation({
 
         if (data?.success) {
             toast.success(data.message);
-            onConfirm(); // Refresh orders
+            onConfirm(); // Refresh orders list
         } else {
             toast.error(data?.error || "Failed to cancel order");
         }
@@ -140,7 +140,7 @@ export function TransactionConfirmation({
           </p>
         </div>
 
-        {/* Item - Omitted for brevity */}
+        {/* Item */}
         <div className="flex items-center gap-4 p-4 bg-background rounded-lg border">
           {order.items.images?.[0] && (
             <img
