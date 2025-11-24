@@ -13,7 +13,7 @@ import { ArrowLeft, Upload, X, Image as ImageIcon, Star, Zap, Clock, Tag, Crown,
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
-// --- Interface Definitions (Kept from original) ---
+// --- Interface Definitions (Simplified to remove dead AdPackage) ---
 interface Category {
   id: string;
   name: string;
@@ -21,53 +21,43 @@ interface Category {
   icon: string;
 }
 
-interface AdPackage {
-  id: string;
-  name: string;
-  ad_type: string;
-  duration_days: number;
-  points_cost: number;
-  features: any;
-}
-
-// ✅ Cloudinary Upload Function
+// ✅ Cloudinary Upload Function with Hard Failure Catch
 const uploadToCloudinary = async (file: File) => {
   const formData = new FormData();
   formData.append("file", file);
+  // ⚠️ ASSUMPTION: Preset name is 'mycampuskart'
   formData.append("upload_preset", "mycampuskart");
 
+  // ⚠️ ASSUMPTION: Cloud name is 'dj6q4dvre'
+  const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dj6q4dvre/image/upload"; 
+  
   const res = await fetch(
-    "https://api.cloudinary.com/v1_1/dj6q4dvre/image/upload",
+    CLOUDINARY_URL,
     { method: "POST", body: formData }
   );
 
   const data = await res.json();
+  console.log("UPLOAD RESULT:", data);
+
+  if (!data.secure_url) {
+    throw new Error(data.error?.message || "Cloudinary upload failed: secure_url not returned. Check console log for details.");
+  }
+
   return data.secure_url; // CDN URL
 };
 // --- END Cloudinary Upload Function ---
 
-// --- Helper Functions (Kept from original) ---
-const getAdTypeIcon = (adType: string) => {
-  switch (adType) {
-    case 'featured': return <Star className="h-4 w-4 text-yellow-500" />;
-    case 'premium': return <Crown className="h-4 w-4 text-purple-600" />;
-    case 'urgent': return <Zap className="h-4 w-4 text-red-500" />;
-    default: return <Tag className="h-4 w-4 text-gray-500" />;
-  }
-};
-
-// --- New Component: Listing Summary (Kept from original) ---
+// --- New Component: Listing Summary (Simplified) ---
 interface ListingSummaryProps {
   userPoints: number;
-  selectedPackage: AdPackage | undefined;
   isLoading: boolean;
   onSubmit: (e: React.FormEvent) => void;
   isFormValid: boolean;
 }
 
-const ListingSummary: React.FC<ListingSummaryProps> = ({ userPoints, selectedPackage, isLoading, onSubmit, isFormValid }) => {
-  const cost = selectedPackage?.points_cost || 0;
-  const isAffordable = userPoints >= cost;
+// SUMMARY: Forced Basic Listing (Cost 0)
+const ListingSummary: React.FC<ListingSummaryProps> = ({ userPoints, isLoading, onSubmit, isFormValid }) => {
+  const cost = 0; // Cost is always 0 because Ad Packages are removed/disabled
 
   return (
     <Card className="sticky top-6">
@@ -80,19 +70,13 @@ const ListingSummary: React.FC<ListingSummaryProps> = ({ userPoints, selectedPac
         <div className="flex justify-between items-center border-b pb-2">
           <span className="text-muted-foreground">Ad Package:</span>
           <span className="font-semibold flex items-center gap-1">
-            {selectedPackage ? (
-              <>
-                {getAdTypeIcon(selectedPackage.ad_type)} {selectedPackage.name}
-              </>
-            ) : (
-              'Basic'
-            )}
+            <Tag className="h-4 w-4 text-gray-500" /> Basic (Free)
           </span>
         </div>
         <div className="flex justify-between items-center border-b pb-2">
           <span className="text-muted-foreground">Cost:</span>
-          <span className="font-bold text-primary flex items-center gap-1">
-            <Coins className="h-4 w-4" /> {cost} Points
+          <span className="font-bold text-green-600 flex items-center gap-1">
+            0 Points
           </span>
         </div>
         <div className="flex justify-between items-center">
@@ -100,20 +84,16 @@ const ListingSummary: React.FC<ListingSummaryProps> = ({ userPoints, selectedPac
           <span className="font-bold text-lg">{userPoints} Points</span>
         </div>
         
-        {cost > 0 && (
-          <div className={`text-sm p-3 rounded-lg ${isAffordable ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-            {isAffordable
-              ? `Remaining Balance: ${userPoints - cost} Points`
-              : `You need ${cost - userPoints} more points to proceed.`
-            }
-          </div>
-        )}
+        <div className={`text-sm p-3 rounded-lg bg-green-50 text-green-700`}>
+          Remaining Balance: {userPoints} Points
+        </div>
+        
 
         <Button 
           type="submit" 
           onClick={onSubmit}
           className="w-full text-lg h-12" 
-          disabled={isLoading || !isAffordable || !isFormValid}
+          disabled={isLoading || !isFormValid} // No more affordability check (cost is 0)
         >
           {isLoading ? (
             <Loader2 className="h-5 w-5 animate-spin mr-2" />
@@ -134,7 +114,7 @@ const SellItem = () => {
   const navigate = useNavigate();
 
   const [categories, setCategories] = useState<Category[]>([]);
-  const [adPackages, setAdPackages] = useState<AdPackage[]>([]);
+  // ❌ adPackages state removed
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
@@ -147,27 +127,22 @@ const SellItem = () => {
     condition: '',
     category_id: '',
     location: '',
-    ad_type: 'basic',
+    ad_type: 'basic', // Forced basic listing
     is_negotiable: true,
-    auto_repost: false,
+    auto_repost: false, // Auto-repost logic removed/disabled
     tag_input: ''
   });
 
-  // --- Data Fetching (Kept original logic) ---
+  // --- Data Fetching (Simplified) ---
   useEffect(() => {
     fetchCategories();
-    fetchAdPackages();
+    // ❌ fetchAdPackages removed
     fetchUserPoints();
   }, []);
 
   const fetchCategories = async () => {
     const { data } = await supabase.from('categories').select('*').order('name');
     setCategories(data || []);
-  };
-
-  const fetchAdPackages = async () => {
-    const { data } = await supabase.from('ad_packages').select('*').order('points_cost');
-    setAdPackages(data || []);
   };
 
   const fetchUserPoints = async () => {
@@ -192,23 +167,20 @@ const SellItem = () => {
     setLoading(true);
 
     for (const file of filesToProcess) {
-      // ✅ ✅ FIX 1: Correctly check for remaining image slots
       if (newImageUrls.length >= 5 - images.length) break;
 
-      // ✅ ✅ FIX 2: Add File Size Guard (5MB limit)
       if (file.size > 5 * 1024 * 1024) {
         toast({
           title: "Image Too Large",
           description: `"${file.name}" exceeds the 5MB limit and was skipped.`,
           variant: "destructive",
         });
-        continue; // Skip this file and proceed to the next one
+        continue;
       }
       
       try {
         let url = await uploadToCloudinary(file);
         
-        // Optimization
         const optimizedUrl = url.replace(
           "/upload/",
           "/upload/f_auto,q_auto,w_800/"
@@ -217,12 +189,17 @@ const SellItem = () => {
         newImageUrls.push(optimizedUrl);
       } catch (error) {
         console.error("Cloudinary upload error:", error);
-        toast({ title: "Upload Error", description: "Failed to upload image to Cloudinary.", variant: "destructive" });
-        // Continue to the next file
+        toast({ title: "Upload Error", description: error.message, variant: "destructive" });
       }
     }
     
-    setImages(prev => [...prev, ...newImageUrls]);
+    // ✅ FIX 2: Correctly log the state AFTER it has been updated
+    setImages(prev => {
+      const updated = [...prev, ...newImageUrls];
+      console.log("FINAL images[] state:", updated);
+      return updated;
+    });
+
     setLoading(false);
     e.target.value = ''; // Reset input
   };
@@ -243,69 +220,42 @@ const SellItem = () => {
     setTags(prev => prev.filter(tag => tag !== tagToRemove));
   };
 
-  const selectedPackage = useMemo(() => {
-    return adPackages.find(pkg => pkg.ad_type === formData.ad_type);
-  }, [adPackages, formData.ad_type]);
+  // ❌ selectedPackage logic removed
 
+  // ✅ FIX 2: Correct image check for isFormValid
   const isFormValid = useMemo(() => {
     return (
       formData.title.trim().length > 0 &&
       formData.description.trim().length > 0 &&
       parseFloat(formData.price) > 0 &&
-      formData.condition.length > 0
+      formData.condition.length > 0 &&
+      images.length > 0 // Required image validation re-added
     );
-  }, [formData]);
+  }, [formData, images]);
   
 
-  // --- Submission Logic (Kept from original) ---
+  // --- Submission Logic (Simplified) ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
-    // Basic Validation (now also checked by useMemo, but repeated for toast feedback)
     if (!isFormValid) {
-      return toast({ title: "Error", description: "Please fill in all required fields (Title, Description, Price, Condition).", variant: "destructive" });
-    }
-
-    const cost = selectedPackage?.points_cost || 0;
-
-    // Check Balance
-    if (userPoints < cost) {
-      toast({
-        title: "Not Enough Points",
-        description: `You need ${cost} points but only have ${userPoints}.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    // 1. Image URLs are already stored in the 'images' state from handleImageUpload.
-    let uploadedImageUrls: string[] = images; 
-
-
-    // 2. Deduct Points
-    const { error: deductError } = await supabase
-      .from('profiles')
-      .update({ campus_points: userPoints - cost })
-      .eq('user_id', user.id);
-
-    if (deductError) {
-      toast({
-        title: "Error",
-        description: "Failed to deduct points. Item was not listed.",
-        variant: "destructive",
-      });
-      setLoading(false);
-      return;
+        let description = "Please fill in all required fields (Title, Description, Price, Condition).";
+        if (images.length === 0) {
+            description = "Please upload at least one image for your listing.";
+        }
+        return toast({ title: "Error", description: description, variant: "destructive" });
     }
     
-    setUserPoints(userPoints - cost); 
+    // Cost is always 0, so no need to check balance or deduct points
+    const cost = 0;
+    setLoading(true);
+    let uploadedImageUrls: string[] = images; 
+    
+    // ❌ Points deduction/rollback logic removed (since cost is 0)
 
     // 3. Create Item
-    const durationDays = selectedPackage?.duration_days || 30;
-
+    const durationDays = 30; // Default to 30 days
     const { error: insertError } = await supabase
       .from('items')
       .insert({
@@ -315,9 +265,9 @@ const SellItem = () => {
         condition: formData.condition,
         category_id: formData.category_id || null,
         location: formData.location.trim() || null,
-        images: uploadedImageUrls, // Use uploaded Cloudinary URLs
+        images: uploadedImageUrls,
         seller_id: user.id,
-        ad_type: formData.ad_type,
+        ad_type: formData.ad_type, // "basic"
         ad_duration_days: durationDays,
         expires_at: new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString(),
         is_negotiable: formData.is_negotiable,
@@ -326,26 +276,15 @@ const SellItem = () => {
       });
 
     if (insertError) {
-      // Rollback logic (Crucial step for transactional integrity)
-      const { error: refundError } = await supabase
-        .from('profiles')
-        .update({ campus_points: userPoints }) // Refund the cost
-        .eq('user_id', user.id);
-
-      if (refundError) {
-        toast({ title: "Critical Error", description: "Item list failed AND refund failed. Contact support.", variant: "destructive" });
-      } else {
-        toast({ title: "Error", description: "Failed to list item. Points have been refunded.", variant: "destructive" });
-        setUserPoints(userPoints); // Update local state for refund
-      }
-      
+      // No rollback needed as no points were deducted
+      toast({ title: "Error", description: "Failed to list item. Please check item fields.", variant: "destructive" });
       setLoading(false);
       return;
     }
 
     toast({
       title: "Success",
-      description: "Item listed & points deducted!",
+      description: "Item listed!",
     });
 
     navigate('/dashboard');
@@ -500,7 +439,7 @@ const SellItem = () => {
                                 src={image}
                                 alt={`Preview ${index + 1}`}
                                 className="w-full h-full object-cover rounded-lg border shadow-sm"
-                                loading="lazy" {/* ✅ ✅ FIX 3: Added lazy loading */}
+                                loading="lazy"
                               />
                               <Button
                                 type="button"
@@ -573,42 +512,27 @@ const SellItem = () => {
                 </CardContent>
               </Card>
 
-              {/* --- SECTION 3: Ad Package (Kept from original) --- */}
+              {/* ❌ SECTION 3: Ad Package removed as the table does not exist. Feature is now hardcoded to Basic/Free. */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-2xl">3. Promote Your Listing</CardTitle>
+                  <CardTitle className="text-2xl">3. Promotion (Basic Listing)</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground">Select an ad package to boost your visibility on the marketplace.</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {adPackages.map((pkg) => (
-                      <div
-                        key={pkg.id}
-                        className={`p-4 border rounded-xl transition-all cursor-pointer shadow-sm 
-                          ${formData.ad_type === pkg.ad_type 
-                            ? 'ring-2 ring-primary border-primary bg-primary/5'
-                            : 'hover:border-primary/50'
-                          }`}
-                        onClick={() => setFormData({ ...formData, ad_type: pkg.ad_type })}
-                      >
+                  <p className="text-sm text-muted-foreground">Your listing will be **Basic** (free, 30 days duration).</p>
+                  <div className="p-4 border rounded-xl bg-gray-50 dark:bg-gray-800 shadow-sm">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            {getAdTypeIcon(pkg.ad_type)}
-                            <h4 className="font-bold text-lg">{pkg.name}</h4>
+                            <Tag className="h-4 w-4 text-gray-500" />
+                            <h4 className="font-bold text-lg">Basic Listing</h4>
                           </div>
-                          <div className={`text-lg font-extrabold ${pkg.points_cost > 0 ? 'text-primary' : 'text-green-600'}`}>
-                            {pkg.points_cost > 0 ? `${pkg.points_cost} pts` : 'Free'}
+                          <div className={`text-lg font-extrabold text-green-600`}>
+                            Free
                           </div>
                         </div>
                         <div className="text-sm text-muted-foreground flex items-center gap-2">
                           <Clock className="h-3 w-3" />
-                          <span className="font-medium">{pkg.duration_days} days</span>
-                          {/* Add a feature bullet point if available */}
-                          {pkg.features?.highlight && <Badge variant="outline" className="text-xs">Highlighted</Badge>}
-                          {pkg.features?.top_slot && <Badge variant="outline" className="text-xs">Top Slot</Badge>}
+                          <span className="font-medium">30 days duration</span>
                         </div>
-                      </div>
-                    ))}
                   </div>
                   
                   {/* Auto-repost option */}
@@ -619,17 +543,17 @@ const SellItem = () => {
                         onCheckedChange={(checked) => setFormData({ ...formData, auto_repost: !!checked })} 
                       />
                       <Label htmlFor="auto_repost">
-                        Auto-repost after expiration (deducts points again)
+                        Auto-repost after expiration (Manual update required now, logic disabled)
                       </Label>
                     </div>
                 </CardContent>
               </Card>
 
+
               {/* Mobile Submission Button (Hidden on Desktop) */}
               <div className="lg:hidden mt-8">
                 <ListingSummary
                   userPoints={userPoints}
-                  selectedPackage={selectedPackage}
                   isLoading={loading}
                   onSubmit={handleSubmit}
                   isFormValid={isFormValid}
@@ -643,7 +567,6 @@ const SellItem = () => {
           <div className="hidden lg:block lg:col-span-1">
             <ListingSummary
               userPoints={userPoints}
-              selectedPackage={selectedPackage}
               isLoading={loading}
               onSubmit={handleSubmit}
               isFormValid={isFormValid}
