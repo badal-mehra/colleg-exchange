@@ -17,7 +17,44 @@ import TypingIndicator from '@/components/TypingIndicator';
 const MESSAGES_PER_PAGE = 50;
 const TYPING_TIMEOUT = 2000; 
 
-// --- INTERFACES (Same) ---
+// --- CRITICAL FIX: ADDED MISSING INTERFACES ---
+interface Profile {
+  id?: string;
+  user_id: string;
+  full_name: string;
+  email?: string;
+  is_verified?: boolean;
+  verification_status?: string;
+  avatar_url?: string | null; 
+}
+
+interface Item {
+  id: string;
+  title: string;
+  price: number;
+  images: string[];
+}
+
+interface Conversation {
+  id: string;
+  buyer_id: string;
+  seller_id: string;
+  item_id: string;
+  created_at: string;
+  updated_at?: string; // Added for completeness, though not strictly used here
+  items: Item;
+  buyer_profile: Profile;
+  seller_profile: Profile;
+  last_message?: { // Only used in MyChats, but included for complete type definition
+    content: string;
+    created_at: string;
+    sender_id: string;
+  };
+  unread_count?: number; // Only used in MyChats, but included for complete type definition
+}
+// --- END CRITICAL FIX ---
+
+
 interface Message {
   id: string | number; // Updated to allow number for server ID
   content: string;
@@ -27,7 +64,6 @@ interface Message {
   is_optimistic?: boolean; // New flag for optimistic messages
 }
 
-// ... other interfaces Conversation, Profile (same as original) ...
 
 // --- UTILITY COMPONENTS (Same) ---
 const MessageStatus: React.FC<{ isRead: boolean, isSending: boolean }> = ({ isRead, isSending }) => {
@@ -319,6 +355,10 @@ const Chat = () => {
     if (conversationId && user) {
       fetchConversation();
       fetchMessages(1, true); 
+    } else if (!conversationId) {
+        // Handle case where conversationId is missing (should be prevented by the corrected route)
+        setConversationLoading(false);
+        setMessagesLoading(false);
     }
 
     // Cleanup typing timeout
@@ -469,11 +509,26 @@ const Chat = () => {
   // RENDER LOGIC (simplified where possible) --------------------------------------------------------
 
   if (conversationLoading) {
-    // ... loading UI (same)
+    return (
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="mt-3 text-muted-foreground font-medium">Loading conversation...</p>
+        </div>
+    );
   }
 
   if (!conversation || !otherUser) {
-    // ... not found UI (same)
+    // Navigate back if conversation data is missing (should be caught by the fetchConversation logic)
+    return (
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center text-center p-4">
+            <Info className="h-10 w-10 text-destructive mb-3" />
+            <h3 className="text-xl font-semibold mb-2">Conversation Not Found</h3>
+            <p className="text-muted-foreground">Please return to your chats list.</p>
+            <Button onClick={() => navigate('/my-chats')} className="mt-4">
+                Go to Chats
+            </Button>
+        </div>
+    );
   }
   
   return (
