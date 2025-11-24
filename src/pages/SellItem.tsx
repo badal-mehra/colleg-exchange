@@ -30,6 +30,22 @@ interface AdPackage {
   features: any;
 }
 
+// ✅ Cloudinary Upload Function
+const uploadToCloudinary = async (file: File) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", "mycampuskart");
+
+  const res = await fetch(
+    "https://api.cloudinary.com/v1_1/dj6q4dvre/image/upload",
+    { method: "POST", body: formData }
+  );
+
+  const data = await res.json();
+  return data.secure_url; // CDN URL
+};
+// --- END Cloudinary Upload Function ---
+
 // --- Helper Functions (Kept from original) ---
 const getAdTypeIcon = (adType: string) => {
   switch (adType) {
@@ -40,7 +56,7 @@ const getAdTypeIcon = (adType: string) => {
   }
 };
 
-// --- New Component: Listing Summary (For professional desktop view) ---
+// --- New Component: Listing Summary (Kept from original) ---
 interface ListingSummaryProps {
   userPoints: number;
   selectedPackage: AdPackage | undefined;
@@ -121,7 +137,6 @@ const SellItem = () => {
   const [adPackages, setAdPackages] = useState<AdPackage[]>([]);
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState<string[]>([]);
-  const [filesToUpload, setFilesToUpload] = useState<File[]>([]); // New state for actual files
   const [tags, setTags] = useState<string[]>([]);
   const [userPoints, setUserPoints] = useState<number>(0);
 
@@ -167,28 +182,53 @@ const SellItem = () => {
   };
 
   // --- Handlers ---
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
-    Array.from(files).forEach(file => {
-      if (images.length < 5) {
-        setFilesToUpload(prev => [...prev, file]);
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          if (event.target?.result) {
-            setImages(prev => [...prev, event.target!.result as string]);
-          }
-        };
-        reader.readAsDataURL(file);
+    const newImageUrls: string[] = [];
+    const filesToProcess = Array.from(files);
+
+    setLoading(true);
+
+    for (const file of filesToProcess) {
+      // ✅ ✅ FIX 1: Correctly check for remaining image slots
+      if (newImageUrls.length >= 5 - images.length) break;
+
+      // ✅ ✅ FIX 2: Add File Size Guard (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Image Too Large",
+          description: `"${file.name}" exceeds the 5MB limit and was skipped.`,
+          variant: "destructive",
+        });
+        continue; // Skip this file and proceed to the next one
       }
-    });
-    e.target.value = ''; // Reset input to allow re-uploading the same file
+      
+      try {
+        let url = await uploadToCloudinary(file);
+        
+        // Optimization
+        const optimizedUrl = url.replace(
+          "/upload/",
+          "/upload/f_auto,q_auto,w_800/"
+        );
+        
+        newImageUrls.push(optimizedUrl);
+      } catch (error) {
+        console.error("Cloudinary upload error:", error);
+        toast({ title: "Upload Error", description: "Failed to upload image to Cloudinary.", variant: "destructive" });
+        // Continue to the next file
+      }
+    }
+    
+    setImages(prev => [...prev, ...newImageUrls]);
+    setLoading(false);
+    e.target.value = ''; // Reset input
   };
 
   const removeImage = (index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index));
-    setFilesToUpload(prev => prev.filter((_, i) => i !== index));
   };
 
   const addTag = () => {
@@ -217,7 +257,7 @@ const SellItem = () => {
   }, [formData]);
   
 
-  // --- Submission Logic ---
+  // --- Submission Logic (Kept from original) ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -241,33 +281,8 @@ const SellItem = () => {
 
     setLoading(true);
 
-    // 1. Upload Images
-    let uploadedImageUrls: string[] = [];
-    if (filesToUpload.length > 0) {
-      try {
-        const uploadPromises = filesToUpload.map(async (file, index) => {
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${user.id}/${Date.now()}-${index}.${fileExt}`;
-          const { data, error } = await supabase.storage
-            .from('item_images')
-            .upload(fileName, file);
-            
-          if (error) throw error;
-          
-          // Get the public URL
-          const { data: publicUrlData } = supabase.storage
-            .from('item_images')
-            .getPublicUrl(fileName);
-          
-          return publicUrlData.publicUrl;
-        });
-        uploadedImageUrls = await Promise.all(uploadPromises);
-      } catch (uploadError) {
-        setLoading(false);
-        console.error('Image upload error:', uploadError);
-        return toast({ title: "Upload Error", description: "Failed to upload one or more images.", variant: "destructive" });
-      }
-    }
+    // 1. Image URLs are already stored in the 'images' state from handleImageUpload.
+    let uploadedImageUrls: string[] = images; 
 
 
     // 2. Deduct Points
@@ -300,7 +315,7 @@ const SellItem = () => {
         condition: formData.condition,
         category_id: formData.category_id || null,
         location: formData.location.trim() || null,
-        images: uploadedImageUrls, // Use uploaded URLs
+        images: uploadedImageUrls, // Use uploaded Cloudinary URLs
         seller_id: user.id,
         ad_type: formData.ad_type,
         ad_duration_days: durationDays,
@@ -312,7 +327,6 @@ const SellItem = () => {
 
     if (insertError) {
       // Rollback logic (Crucial step for transactional integrity)
-      // NOTE: In a real app, you MUST implement a proper rollback/refund mechanism here.
       const { error: refundError } = await supabase
         .from('profiles')
         .update({ campus_points: userPoints }) // Refund the cost
@@ -342,7 +356,7 @@ const SellItem = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         
-        {/* Header and Points */}
+        {/* Header and Points (Kept from original) */}
         <div className="flex items-center justify-between mb-8">
           <Button variant="ghost" onClick={() => navigate('/dashboard')} className="text-lg">
             <ArrowLeft className="h-5 w-5 mr-3" />
@@ -355,14 +369,14 @@ const SellItem = () => {
 
         <h1 className="text-3xl font-bold mb-6 border-b pb-2">Create New Listing</h1>
 
-        {/* Main Content Area: Two-Column Layout */}
+        {/* Main Content Area: Two-Column Layout (Kept from original) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Column 1: Listing Form */}
           <div className="lg:col-span-2">
             <form onSubmit={handleSubmit} className="space-y-8">
               
-              {/* --- SECTION 1: Item Details --- */}
+              {/* --- SECTION 1: Item Details (Kept from original) --- */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-2xl">1. Item Details</CardTitle>
@@ -486,6 +500,7 @@ const SellItem = () => {
                                 src={image}
                                 alt={`Preview ${index + 1}`}
                                 className="w-full h-full object-cover rounded-lg border shadow-sm"
+                                loading="lazy" {/* ✅ ✅ FIX 3: Added lazy loading */}
                               />
                               <Button
                                 type="button"
@@ -509,15 +524,20 @@ const SellItem = () => {
                             onChange={handleImageUpload}
                             className="hidden"
                             id="image-upload"
-                            disabled={images.length >= 5}
+                            disabled={images.length >= 5 || loading}
                           />
                           <label htmlFor="image-upload" className="cursor-pointer block">
-                            <ImageIcon className="h-8 w-8 text-primary mx-auto mb-2" />
+                            {loading ? (
+                                <Loader2 className="h-8 w-8 text-primary mx-auto mb-2 animate-spin" />
+                            ) : (
+                                <ImageIcon className="h-8 w-8 text-primary mx-auto mb-2" />
+                            )}
+                            
                             <p className="text-sm font-medium text-primary">
-                              Click to upload high-quality images
+                              {loading ? 'Uploading...' : 'Click to upload high-quality images'}
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">
-                              ({5 - images.length} remaining)
+                              ({5 - images.length} remaining, max 5MB/image)
                             </p>
                           </label>
                         </div>
@@ -525,7 +545,7 @@ const SellItem = () => {
                     </div>
                   </div>
 
-                  {/* Tags */}
+                  {/* Tags (Kept from original) */}
                   <div className="space-y-2">
                     <Label>Tags / Keywords (Max 5)</Label>
                     <div className="flex gap-2 mb-2 flex-wrap min-h-[30px]">
@@ -553,7 +573,7 @@ const SellItem = () => {
                 </CardContent>
               </Card>
 
-              {/* --- SECTION 3: Ad Package --- */}
+              {/* --- SECTION 3: Ad Package (Kept from original) --- */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-2xl">3. Promote Your Listing</CardTitle>
