@@ -13,7 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ImageCropModal from '@/components/ImageCropModal';
 import { Separator } from '@/components/ui/separator'; // Added Separator
-import { uploadToCloudinary } from "@/utils/cloudinaryUpload"; // ✅ 1️⃣ ADDED CLOUDINARY IMPORT
+import { uploadToCloudinary } from "@/utils/cloudinaryUpload";
+import { deleteFromCloudinary } from "@/utils/cloudinaryDelete"; // ✅ NEW IMPORT
 
 interface Profile {
   id: string;
@@ -171,34 +172,47 @@ const Profile = () => {
     reader.readAsDataURL(file);
   };
 
-  // ✅ 2️⃣ REPLACED handleCropComplete FOR CLOUDINARY
+  // ✅ REPLACED handleCropComplete FOR CLOUDINARY DELETE LOGIC
   const handleCropComplete = async (croppedImage: Blob) => {
     if (!user || !profile) return;
-
+  
     setUploadingAvatar(true);
-
+  
     try {
-      // ✅ Upload to Cloudinary in "avatars" folder
-      const avatarUrl = await uploadToCloudinary(
-        new File([croppedImage], `${user.id}-${Date.now()}.jpg`, { type: "image/jpeg" }),
-        "avatars"
+      // ✅ 1️⃣ Get OLD avatar URL before overwriting
+      const oldUrl = profile.avatar_url;
+  
+      // ✅ 2️⃣ Convert Blob → File
+      const file = new File(
+        [croppedImage],
+        `${user.id}-${Date.now()}.jpg`,
+        { type: "image/jpeg" }
       );
-
-      // ✅ Save Cloudinary URL in DB
+  
+      // ✅ 3️⃣ Upload NEW avatar
+      const avatarUrl = await uploadToCloudinary(file, "avatars");
+  
+      // ✅ 4️⃣ Update DB
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: avatarUrl })
         .eq('user_id', user.id);
-
+  
       if (updateError) throw updateError;
-
-      // ✅ Update UI
+  
+      // ✅ 5️⃣ Delete OLD Cloudinary avatar (ONLY if it was Cloudinary)
+      if (oldUrl && oldUrl.startsWith("https://res.cloudinary.com")) {
+        deleteFromCloudinary(oldUrl);
+      }
+  
+      // ✅ 6️⃣ Update UI
       setProfile({ ...profile, avatar_url: avatarUrl });
-
+  
       toast({
         title: "Success",
         description: "Profile picture updated successfully",
       });
+  
     } catch (error) {
       console.error('Error uploading avatar:', error);
       toast({
@@ -208,8 +222,8 @@ const Profile = () => {
       });
     } finally {
       setUploadingAvatar(false);
-      setCropModalOpen(false); // Close modal on complete/error
-      setImageToCrop(null); // Clear image
+      setCropModalOpen(false);
+      setImageToCrop(null);
     }
   };
 
