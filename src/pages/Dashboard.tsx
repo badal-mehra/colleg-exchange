@@ -1,4 +1,4 @@
-// Dashboard.tsx - ✅ FINAL POSITIONING FIX APPLIED (Top-Left, Top-Right, Bottom-Right)
+// Dashboard.tsx - ✅ FINAL, PRODUCTION-READY (Badge Hierarchy Fixed)
 
 import React, { useEffect, useState, memo, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -235,7 +235,7 @@ const ImageSliderSectionComponent = () => {
 const ImageSliderSection = memo(ImageSliderSectionComponent);
 
 
-// --- ITEM CARD (Refined Styling and Positioning) ---
+// --- ITEM CARD (Badge Hierarchy Corrected) ---
 interface ItemCardProps {
   item: EnrichedItem;
   user: any;
@@ -274,33 +274,34 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
       className="group hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 ease-in-out cursor-pointer border border-gray-200 hover:border-primary/50 overflow-hidden bg-white rounded-xl hover:-translate-y-1 w-full"
       onClick={() => navigate(`/item/${item.id}`)}
     >
-      <div className="relative">
-        <div className="aspect-square w-full rounded-t-xl overflow-hidden">
-          <ImageCarousel 
-            images={thumbnailImages} 
-            alt={item.title} 
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
-            loading="lazy" 
-          />
-        </div>
-
-        {/* 1. CONDITION BADGE (TOP LEFT - as requested) */}
+      {/* 🛑 FIX APPLIED: Combined outer div and image container properties */}
+      <div className="relative aspect-square w-full rounded-t-xl overflow-hidden">
+        
+        {/* Image Carousel is now a direct child of the relative box */}
+        <ImageCarousel 
+          images={thumbnailImages} 
+          alt={item.title} 
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
+          loading="lazy" 
+        />
+        
+        {/* 1. CONDITION BADGE (TOP LEFT) - Now correctly inside the relative box */}
         {item.condition && (
             <Badge 
                 variant={item.condition === 'new' ? 'default' : 'secondary'} 
-                className="absolute top-3 left-3 text-xs shadow-lg bg-white/90 text-gray-800 backdrop-blur-sm border border-gray-200 z-20"
+                className="absolute top-3 left-3 text-xs shadow-lg bg-white/90 text-gray-800 backdrop-blur-sm border border-gray-200 z-30"
             >
                 {item.condition}
             </Badge>
         )}
         
-        {/* 2. AD BADGE (TOP RIGHT - as requested) */}
+        {/* 2. AD BADGE (TOP RIGHT) - Now correctly inside the relative box */}
         {adBenefits && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge 
-                  className={`absolute top-3 right-3 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help z-20`}
+                  className={`absolute top-3 right-3 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help z-30`}
                 >
                   {adBenefits.icon}
                   {adBenefits.label}
@@ -314,14 +315,16 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         )}
 
         
-        {/* 3. VIEWS COUNTER (BOTTOM RIGHT - as requested) */}
+        {/* 3. VIEWS COUNTER (BOTTOM RIGHT) - Now correctly inside the relative box */}
         <div 
-          className="absolute bottom-3 right-3 bg-black/50 text-white rounded-full px-2.5 py-0.5 flex items-center gap-1 shadow-md backdrop-blur-sm z-10"
+          className="absolute bottom-3 right-3 bg-black/50 text-white rounded-full px-2.5 py-0.5 flex items-center gap-1 shadow-md backdrop-blur-sm z-30"
         >
           <Eye className="h-3 w-3" />
           <span className="text-xs font-medium">{item.views.toLocaleString()}</span>
         </div>
+        
       </div>
+      {/* 🛑 END OF FIXED IMAGE CONTAINER */}
 
       <CardContent className="p-4 space-y-3">
         {/* Title */}
