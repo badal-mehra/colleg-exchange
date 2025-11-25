@@ -1,4 +1,4 @@
-// Dashboard.tsx - ✅ FINAL, PRODUCTION-READY (Badge Hierarchy Fixed)
+// Dashboard.tsx - ✅ FINAL, PRODUCTION-READY (Aspect Ratio Fix Implemented)
 
 import React, { useEffect, useState, memo, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -235,7 +235,7 @@ const ImageSliderSectionComponent = () => {
 const ImageSliderSection = memo(ImageSliderSectionComponent);
 
 
-// --- ITEM CARD (Badge Hierarchy Corrected) ---
+// --- ITEM CARD (Final Structural Fix) ---
 interface ItemCardProps {
   item: EnrichedItem;
   user: any;
@@ -271,37 +271,40 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
 
   return (
     <Card
-      className="group hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 ease-in-out cursor-pointer border border-gray-200 hover:border-primary/50 overflow-hidden bg-white rounded-xl hover:-translate-y-1 w-full"
+      // 🛑 FIX 1: Set p-0 on the Card to ensure the container starts flush at the top.
+      className="group hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 ease-in-out cursor-pointer border border-gray-200 hover:border-primary/50 overflow-hidden bg-white rounded-xl hover:-translate-y-1 w-full p-0"
       onClick={() => navigate(`/item/${item.id}`)}
     >
-      {/* 🛑 FIX APPLIED: Combined outer div and image container properties */}
-      <div className="relative aspect-square w-full rounded-t-xl overflow-hidden">
+      
+      {/* 🛑 FIX 2: Replaced aspect-square with responsive fixed height (h-60 sm:h-64 md:h-72) */}
+      <div className="relative w-full h-60 sm:h-64 md:h-72 rounded-t-xl overflow-hidden p-0 m-0">
         
-        {/* Image Carousel is now a direct child of the relative box */}
+        {/* FIX 3: Image Carousel - Ensure object-cover fills the defined height */}
         <ImageCarousel 
           images={thumbnailImages} 
           alt={item.title} 
+          // Removed unnecessary p-0 m-0 here as it's often handled internally, focusing on h-full/w-full
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
           loading="lazy" 
         />
         
-        {/* 1. CONDITION BADGE (TOP LEFT) - Now correctly inside the relative box */}
+        {/* 1. CONDITION BADGE (TOP LEFT) - Anchors relative to the fixed height container */}
         {item.condition && (
             <Badge 
                 variant={item.condition === 'new' ? 'default' : 'secondary'} 
-                className="absolute top-3 left-3 text-xs shadow-lg bg-white/90 text-gray-800 backdrop-blur-sm border border-gray-200 z-30"
+                className="absolute top-2 left-2 text-xs shadow-lg bg-white/90 text-gray-800 backdrop-blur-sm border border-gray-200 z-30"
             >
                 {item.condition}
             </Badge>
         )}
         
-        {/* 2. AD BADGE (TOP RIGHT) - Now correctly inside the relative box */}
+        {/* 2. AD BADGE (TOP RIGHT) - Anchors relative to the fixed height container */}
         {adBenefits && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge 
-                  className={`absolute top-3 right-3 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help z-30`}
+                  className={`absolute top-2 right-2 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help z-30`}
                 >
                   {adBenefits.icon}
                   {adBenefits.label}
@@ -315,9 +318,9 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         )}
 
         
-        {/* 3. VIEWS COUNTER (BOTTOM RIGHT) - Now correctly inside the relative box */}
+        {/* 3. VIEWS COUNTER (BOTTOM RIGHT) - Anchors relative to the fixed height container */}
         <div 
-          className="absolute bottom-3 right-3 bg-black/50 text-white rounded-full px-2.5 py-0.5 flex items-center gap-1 shadow-md backdrop-blur-sm z-30"
+          className="absolute bottom-2 right-2 bg-black/50 text-white rounded-full px-2.5 py-0.5 flex items-center gap-1 shadow-md backdrop-blur-sm z-30"
         >
           <Eye className="h-3 w-3" />
           <span className="text-xs font-medium">{item.views.toLocaleString()}</span>
@@ -326,6 +329,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
       </div>
       {/* 🛑 END OF FIXED IMAGE CONTAINER */}
 
+      {/* CardContent retains padding for the text area */}
       <CardContent className="p-4 space-y-3">
         {/* Title */}
         <h3 className="font-extrabold text-xl leading-snug line-clamp-2 text-gray-900">
