@@ -103,10 +103,17 @@ const Header = () => {
             {user ? (
                 <>
                 <Button variant="outline" size="sm" onClick={() => navigate('/profile')} className="hover-scale gap-2 shrink-0">
-                    {profile?.avatar_url ? <Avatar className="h-4 w-4 lg:h-5 lg:w-5">
-                        <AvatarImage src={`${supabase.storage.from('avatars').getPublicUrl(profile.avatar_url).data.publicUrl}`} alt={profile.full_name} />
-                        <AvatarFallback className="text-xs">{profile.full_name?.charAt(0)}</AvatarFallback>
-                      </Avatar> : <User className="h-4 w-4" />}
+                    {profile?.avatar_url ? (
+  <Avatar className="h-4 w-4 lg:h-5 lg:w-5">
+    <AvatarImage src={profile.avatar_url} alt={profile.full_name} />
+    <AvatarFallback className="text-xs">
+      {profile.full_name?.charAt(0)}
+    </AvatarFallback>
+  </Avatar>
+) : (
+  <User className="h-4 w-4" />
+)}
+
                     <span className="hidden lg:inline">Profile</span>
                   </Button>
                   {isAdmin && <Button variant="outline" size="sm" onClick={() => navigate('/admin')} className="hover-scale border-primary/50 text-primary shrink-0">
