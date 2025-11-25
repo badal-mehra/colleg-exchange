@@ -284,21 +284,23 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
           />
         </div>
 
-        {/* 1. CONDITION BADGE (Top Left) */}
-        <Badge 
-          variant={item.condition === 'new' ? 'default' : 'secondary'} 
-          className="absolute top-3 left-3 text-xs shadow-lg bg-white/90 text-gray-800 backdrop-blur-sm border border-gray-200 z-10"
-        >
-          {item.condition}
-        </Badge>
+        {/* 1. CONDITION BADGE (TOP LEFT - as requested) */}
+        {item.condition && (
+            <Badge 
+                variant={item.condition === 'new' ? 'default' : 'secondary'} 
+                className="absolute top-3 left-3 text-xs shadow-lg bg-white/90 text-gray-800 backdrop-blur-sm border border-gray-200 z-20"
+            >
+                {item.condition}
+            </Badge>
+        )}
         
-        {/* 2. AD BADGE (Top Right) */}
+        {/* 2. AD BADGE (TOP RIGHT - as requested) */}
         {adBenefits && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge 
-                  className={`absolute top-3 right-3 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help z-10`}
+                  className={`absolute top-3 right-3 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help z-20`}
                 >
                   {adBenefits.icon}
                   {adBenefits.label}
@@ -312,7 +314,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         )}
 
         
-        {/* 3. VIEWS COUNTER (Bottom Right) */}
+        {/* 3. VIEWS COUNTER (BOTTOM RIGHT - as requested) */}
         <div 
           className="absolute bottom-3 right-3 bg-black/50 text-white rounded-full px-2.5 py-0.5 flex items-center gap-1 shadow-md backdrop-blur-sm z-10"
         >
