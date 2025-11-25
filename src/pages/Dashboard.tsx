@@ -1,4 +1,4 @@
-// Dashboard.tsx - ✅ REDESIGNED, PROFESSIONAL, MODERN, & OPTIMIZED (Positioning Fixed)
+// Dashboard.tsx - ✅ FINAL POSITIONING FIX APPLIED (Top-Left, Top-Right, Bottom-Right)
 
 import React, { useEffect, useState, memo, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -161,7 +161,6 @@ const ImageSliderSectionComponent = () => {
 
   if (sliderImages === null) {
     return (
-      // Smoother loading state
       <section className="py-12 bg-gray-50/50">
         <div className="container mx-auto px-4">
           <div className="h-60 sm:h-80 md:h-96 rounded-2xl overflow-hidden shadow-xl animate-pulse bg-gray-200"></div>
@@ -180,7 +179,6 @@ const ImageSliderSectionComponent = () => {
   };
 
   return (
-    // Cleaner background and shadow
     <section className="py-12 bg-white">
       <div className="container mx-auto px-4">
         <div className="relative carousel-container rounded-2xl overflow-hidden shadow-2xl h-60 sm:h-80 md:h-96 group">
@@ -194,7 +192,6 @@ const ImageSliderSectionComponent = () => {
               className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
               loading="lazy"
             />
-            {/* Darker, more professional overlay and text */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex items-end justify-center pb-8 sm:pb-12">
               <div className="text-center text-white space-y-3 max-w-4xl px-4">
                 {currentImage.title && <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight drop-shadow-lg">{currentImage.title}</h2>}
@@ -204,7 +201,6 @@ const ImageSliderSectionComponent = () => {
           </div>
           {sliderImages.length > 1 && (
             <>
-              {/* Refined navigation buttons */}
               <button
                 onClick={e => { e.stopPropagation(); prevSlide(); }}
                 className="absolute left-6 top-1/2 -translate-y-1/2 bg-white/20 backdrop-blur-sm hover:bg-white/50 text-white p-3 sm:p-4 rounded-full transition-all z-20 opacity-0 group-hover:opacity-100 hidden md:block border border-white/30"
@@ -221,7 +217,6 @@ const ImageSliderSectionComponent = () => {
               </button>
             </>
           )}
-          {/* Subtle bottom indicator */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 z-20">
             {sliderImages.map((_, index) => (
               <button
@@ -246,7 +241,6 @@ interface ItemCardProps {
   user: any;
   isVerified: boolean;
   navigate: (path: string) => void;
-  // Passing stable functions (useCallback) is vital for memo not to bust
   handleStartConversation: (item: EnrichedItem) => Promise<void>;
   handleFavoriteToggle: (e: React.MouseEvent, item: EnrichedItem) => Promise<void>;
 }
@@ -276,7 +270,6 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
   };
 
   return (
-    // Refined card hover effect and border
     <Card
       className="group hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 ease-in-out cursor-pointer border border-gray-200 hover:border-primary/50 overflow-hidden bg-white rounded-xl hover:-translate-y-1 w-full"
       onClick={() => navigate(`/item/${item.id}`)}
@@ -291,18 +284,22 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
           />
         </div>
 
-        {/* 🚀 Condition Badge (Top Left - as requested) */}
-        <Badge variant={item.condition === 'new' ? 'default' : 'secondary'} className="absolute top-3 left-3 text-xs shadow-lg bg-white/90 text-gray-800 backdrop-blur-sm border border-gray-200 z-10">
+        {/* 1. CONDITION BADGE (Top Left) */}
+        <Badge 
+          variant={item.condition === 'new' ? 'default' : 'secondary'} 
+          className="absolute top-3 left-3 text-xs shadow-lg bg-white/90 text-gray-800 backdrop-blur-sm border border-gray-200 z-10"
+        >
           {item.condition}
         </Badge>
         
-        {/* 🚀 Ad Badge (Top Right - as requested) */}
+        {/* 2. AD BADGE (Top Right) */}
         {adBenefits && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                {/* POSITIONING CHANGE: from left-3 to right-3 */}
-                <Badge className={`absolute top-3 right-3 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help z-10`}>
+                <Badge 
+                  className={`absolute top-3 right-3 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help z-10`}
+                >
                   {adBenefits.icon}
                   {adBenefits.label}
                 </Badge>
@@ -315,9 +312,10 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         )}
 
         
-        {/* 🚀 Views Counter (Bottom Right - as requested) */}
-        {/* POSITIONING CHANGE: from left-3 to right-3 */}
-        <div className="absolute bottom-3 right-3 bg-black/50 text-white rounded-full px-2.5 py-0.5 flex items-center gap-1 shadow-md backdrop-blur-sm">
+        {/* 3. VIEWS COUNTER (Bottom Right) */}
+        <div 
+          className="absolute bottom-3 right-3 bg-black/50 text-white rounded-full px-2.5 py-0.5 flex items-center gap-1 shadow-md backdrop-blur-sm z-10"
+        >
           <Eye className="h-3 w-3" />
           <span className="text-xs font-medium">{item.views.toLocaleString()}</span>
         </div>
@@ -335,14 +333,13 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
           {item.is_negotiable && <Badge variant="outline" className="text-xs border-green-500 text-green-700 font-medium">Negotiable</Badge>}
         </div>
 
-        {/* Seller Info and Location (Cleaner border separation) */}
+        {/* Seller Info and Location */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
           <TooltipProvider>
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-gray-500" />
               <Tooltip>
                 <TooltipTrigger asChild>
-                  {/* Truncate user name more aggressively if needed */}
                   <span className="text-sm text-gray-700 truncate max-w-[120px] font-medium hover:text-primary transition-colors">
                     {item.profiles?.full_name || 'Anonymous'}
                   </span>
@@ -362,7 +359,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         {/* Actions */}
         <div className="flex gap-3 pt-3">
           <Button
-            size="lg" // Slightly larger buttons feel more premium
+            size="lg" 
             className="flex-1 h-10 text-sm font-semibold shadow-md hover:shadow-lg transition-all"
             onClick={onChat}
             disabled={item.seller_id === user?.id || isChatting || !isVerified}
@@ -374,8 +371,6 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
             size="lg"
             variant="outline"
             className={`h-10 px-4 border-primary text-primary hover:bg-primary/10 transition-colors shadow-sm ${
-                // Optional: Highlight favorite button more clearly if item is favorited (requires state check outside this scope, but for styling, this is the refined look)
-                // Assuming it's not favorited for default style:
                 'hover:border-primary/80'
             }`}
             onClick={onFavorite}
@@ -642,7 +637,7 @@ const Dashboard = () => {
   return (
     <div className="flex-1 bg-gray-50 min-h-screen">
 
-      {/* 🚀 Verification Alert (Redesigned for Professionalism) */}
+      {/* Verification Alert */}
       {!isVerified && (
         <div className="bg-primary/10 border-b border-primary/20 text-primary-dark sticky top-0 z-40">
           <div className="container mx-auto px-4 py-3">
@@ -665,7 +660,7 @@ const Dashboard = () => {
       <ImageSliderSection />
 
       <div className="container mx-auto px-4 py-12">
-        {/* 🚀 Search and Filters (Redesigned: Clean, integrated into the flow) */}
+        {/* Search and Filters */}
         <div className="mb-12 space-y-4">
           <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
             <Search className="h-8 w-8 text-primary" />
@@ -673,7 +668,7 @@ const Dashboard = () => {
           </h2>
           <p className="text-lg text-gray-600">Find the best second-hand items posted by your verified peers.</p>
 
-          {/* Desktop Filters (Inline with a clean border) */}
+          {/* Desktop Filters */}
           <div className="hidden lg:flex gap-4 p-5 border border-gray-200 rounded-xl bg-white shadow-lg">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -688,7 +683,7 @@ const Dashboard = () => {
             <PriceRangeSelect className="lg:w-64" />
           </div>
 
-          {/* Mobile Filters (Unchanged sheet for functionality, but using new components) */}
+          {/* Mobile Filters */}
           <div className="lg:hidden flex gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -712,7 +707,6 @@ const Dashboard = () => {
                 <div className="flex flex-col gap-4 mt-6">
                   <CategorySelect />
                   <PriceRangeSelect />
-                  {/* Applied filter button is usually handled by closing the sheet, but keeping this for explicit action */}
                   <Button className="mt-4">Apply Filters</Button> 
                 </div>
               </SheetContent>
@@ -749,7 +743,6 @@ const Dashboard = () => {
           </div>
         ) : (
           <TooltipProvider>
-            {/* 🚀 NATIVE GRID REPLACEMENT: Fast and Build-Safe */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {items.map((item) => (
                 <ItemCard
