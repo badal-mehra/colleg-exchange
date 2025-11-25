@@ -1,4 +1,4 @@
-// Dashboard.tsx - ✅ FINAL, PRODUCTION-READY (Structural integrity and data matching ensured)
+// Dashboard.tsx - ✅ FINAL, PRODUCTION-READY (Data Normalization & Z-Index Fixed)
 
 import React, { useEffect, useState, memo, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -95,7 +95,7 @@ const getThumb = (url: string) => {
   return url; // Return original URL if it's not a Cloudinary link (e.g., local mock)
 };
 
-// 🚀 FIXED: Robust, fuzzy matching logic for ad types
+// 🚀 Robust, fuzzy matching logic for ad types (as previously fixed)
 const getAdTypeBenefits = (adType: string = "") => {
   const type = String(adType || "").trim().toLowerCase();
 
@@ -250,6 +250,13 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [isChatting, setIsChatting] = useState(false);
 
+  // 🚀 FIX #1: Normalize condition and use for rendering
+  const condition = (item.condition || "").trim().toLowerCase();
+
+  // 🚀 FIX #2: Ensure views is a number, defaulting to 0
+  const views = Number(item.views) || 0;
+
+
   const thumbnailImages = useMemo(() => {
     return item.images.map(getThumb);
   }, [item.images]);
@@ -269,42 +276,47 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
     setIsFavoriting(false);
   };
 
-  // 🐛 DEBUG LOG REMOVED: Assuming data issues are now confirmed/fixed in DB.
-
   return (
     <Card
-      // 🚀 FIX 1: Set p-0 on the Card for consistent top alignment.
+      // FIX: Set p-0 on the Card for consistent top alignment.
       className="group hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 ease-in-out cursor-pointer border border-gray-200 hover:border-primary/50 overflow-hidden bg-white rounded-xl hover:-translate-y-1 w-full p-0"
       onClick={() => navigate(`/item/${item.id}`)}
     >
       
-      {/* 🚀 FIX 2: Container: Standardized to aspect-[3/4] ratio for consistency */}
+      {/* Container: Standardized to aspect-[3/4] ratio */}
       <div className="relative w-full aspect-[3/4] rounded-t-xl overflow-hidden p-0 m-0">
         
-        <ImageCarousel 
-          images={thumbnailImages} 
-          alt={item.title} 
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
-          loading="lazy" 
-        />
+        {/* 🚀 FIX #3: Added z-0 wrapper for ImageCarousel */}
+        <div className="relative z-0">
+            <ImageCarousel 
+              images={thumbnailImages} 
+              alt={item.title} 
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
+              loading="lazy" 
+            />
+        </div>
         
-        {/* 1. CONDITION BADGE (TOP LEFT) - Anchored via aspect ratio */}
-        {item.condition && (
+        {/* 1. CONDITION BADGE (TOP LEFT) - Render if normalized condition is not empty */}
+        {condition && (
             <Badge 
-                variant={item.condition === 'new' ? 'default' : 'secondary'} 
-                className="absolute top-2 left-2 text-xs shadow-lg bg-white/90 text-gray-800 backdrop-blur-sm border border-gray-200 z-30"
+                // Using a slightly simplified version as per the patch for consistency
+                variant={condition === 'new' ? 'default' : 'secondary'} 
+                // 🚀 Z-INDEX FIX: z-[9999]
+                className="absolute top-2 left-2 text-xs shadow-lg bg-white/90 text-gray-800 backdrop-blur-sm border border-gray-200 z-[9999]"
             >
-                {item.condition}
+                {/* Display normalized condition, capitalizing 'New' if applicable */}
+                {condition === "new" ? "New" : condition}
             </Badge>
         )}
         
-        {/* 2. AD BADGE (TOP RIGHT) - Anchored via aspect ratio */}
+        {/* 2. AD BADGE (TOP RIGHT) */}
         {adBenefits && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge 
-                  className={`absolute top-2 right-2 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help z-30`}
+                  // 🚀 Z-INDEX FIX: z-[9999]
+                  className={`absolute top-2 right-2 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help z-[9999]`}
                 >
                   {adBenefits.icon}
                   {adBenefits.label}
@@ -318,13 +330,15 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         )}
 
         
-        {/* 3. VIEWS COUNTER (BOTTOM RIGHT) - Anchored via aspect ratio, with null fallback */}
+        {/* 3. VIEWS COUNTER (BOTTOM RIGHT) */}
         <div 
-          className="absolute bottom-2 right-2 bg-black/50 text-white rounded-full px-2.5 py-0.5 flex items-center gap-1 shadow-md backdrop-blur-sm z-30"
+          // 🚀 Z-INDEX FIX: z-[9999]
+          className="absolute bottom-2 right-2 bg-black/50 text-white rounded-full px-2.5 py-0.5 flex items-center gap-1 shadow-md backdrop-blur-sm z-[9999]"
         >
           <Eye className="h-3 w-3" />
           <span className="text-xs font-medium">
-            {(item.views || 0).toLocaleString()} views
+            {/* Using stabilized 'views' variable */}
+            {views.toLocaleString()} views
           </span>
         </div>
         
