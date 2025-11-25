@@ -1,4 +1,4 @@
-// Dashboard.tsx - ✅ REDESIGNED, PROFESSIONAL, MODERN, & OPTIMIZED
+// Dashboard.tsx - ✅ REDESIGNED, PROFESSIONAL, MODERN, & OPTIMIZED (Positioning Fixed)
 
 import React, { useEffect, useState, memo, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -240,7 +240,7 @@ const ImageSliderSectionComponent = () => {
 const ImageSliderSection = memo(ImageSliderSectionComponent);
 
 
-// --- ITEM CARD (Refined Styling) ---
+// --- ITEM CARD (Refined Styling and Positioning) ---
 interface ItemCardProps {
   item: EnrichedItem;
   user: any;
@@ -291,12 +291,18 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
           />
         </div>
 
-        {/* Ad Badge Positioning and Style */}
+        {/* 🚀 Condition Badge (Top Left - as requested) */}
+        <Badge variant={item.condition === 'new' ? 'default' : 'secondary'} className="absolute top-3 left-3 text-xs shadow-lg bg-white/90 text-gray-800 backdrop-blur-sm border border-gray-200 z-10">
+          {item.condition}
+        </Badge>
+        
+        {/* 🚀 Ad Badge (Top Right - as requested) */}
         {adBenefits && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge className={`absolute top-3 left-3 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help`}>
+                {/* POSITIONING CHANGE: from left-3 to right-3 */}
+                <Badge className={`absolute top-3 right-3 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help z-10`}>
                   {adBenefits.icon}
                   {adBenefits.label}
                 </Badge>
@@ -308,13 +314,10 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
           </TooltipProvider>
         )}
 
-        {/* Condition Badge (right side) */}
-        <Badge variant={item.condition === 'new' ? 'default' : 'secondary'} className="absolute top-3 right-3 text-xs shadow-lg bg-white/90 text-gray-800 backdrop-blur-sm border border-gray-200">
-          {item.condition}
-        </Badge>
         
-        {/* Views Counter (bottom left) */}
-        <div className="absolute bottom-3 left-3 bg-black/50 text-white rounded-full px-2.5 py-0.5 flex items-center gap-1 shadow-md backdrop-blur-sm">
+        {/* 🚀 Views Counter (Bottom Right - as requested) */}
+        {/* POSITIONING CHANGE: from left-3 to right-3 */}
+        <div className="absolute bottom-3 right-3 bg-black/50 text-white rounded-full px-2.5 py-0.5 flex items-center gap-1 shadow-md backdrop-blur-sm">
           <Eye className="h-3 w-3" />
           <span className="text-xs font-medium">{item.views.toLocaleString()}</span>
         </div>
