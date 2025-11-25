@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ImageCropModal from '@/components/ImageCropModal';
 import { Separator } from '@/components/ui/separator'; // Added Separator
+import { uploadToCloudinary } from "@/utils/cloudinaryUpload"; // ✅ 1️⃣ ADDED CLOUDINARY IMPORT
 
 interface Profile {
   id: string;
@@ -170,29 +171,30 @@ const Profile = () => {
     reader.readAsDataURL(file);
   };
 
+  // ✅ 2️⃣ REPLACED handleCropComplete FOR CLOUDINARY
   const handleCropComplete = async (croppedImage: Blob) => {
     if (!user || !profile) return;
 
     setUploadingAvatar(true);
 
     try {
-      const fileExt = 'jpg';
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      // ✅ Upload to Cloudinary in "avatars" folder
+      const avatarUrl = await uploadToCloudinary(
+        new File([croppedImage], `${user.id}-${Date.now()}.jpg`, { type: "image/jpeg" }),
+        "avatars"
+      );
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, croppedImage, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
+      // ✅ Save Cloudinary URL in DB
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: fileName })
+        .update({ avatar_url: avatarUrl })
         .eq('user_id', user.id);
 
       if (updateError) throw updateError;
 
-      setProfile({ ...profile, avatar_url: fileName });
+      // ✅ Update UI
+      setProfile({ ...profile, avatar_url: avatarUrl });
+
       toast({
         title: "Success",
         description: "Profile picture updated successfully",
@@ -206,6 +208,8 @@ const Profile = () => {
       });
     } finally {
       setUploadingAvatar(false);
+      setCropModalOpen(false); // Close modal on complete/error
+      setImageToCrop(null); // Clear image
     }
   };
 
@@ -246,11 +250,9 @@ const Profile = () => {
     }
   };
 
+  // ✅ 3️⃣ REPLACED getAvatarUrl TO RETURN FULL URL
   const getAvatarUrl = (avatarPath: string | null) => {
-    if (!avatarPath) return null;
-    if (avatarPath.startsWith('http')) return avatarPath;
-    const { data } = supabase.storage.from('avatars').getPublicUrl(avatarPath);
-    return data.publicUrl;
+    return avatarPath || null;
   };
 
   const getVerificationStatusInfo = (status: string) => {
