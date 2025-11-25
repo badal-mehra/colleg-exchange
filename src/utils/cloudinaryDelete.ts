@@ -11,7 +11,14 @@ export async function deleteFromCloudinary(url: string) {
 
     console.log("PUBLIC ID SENT:", publicId);
 
-    const token = (await supabase.auth.getSession()).data.session?.access_token;
+    // ✅ Get the current session token safely
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+
+    if (!token) {
+      console.error("No auth token found");
+      return;
+    }
 
     const res = await fetch(
       "https://mtaeqtmcixlrudjsxcew.supabase.co/functions/v1/cloudinary-delete",
@@ -19,14 +26,14 @@ export async function deleteFromCloudinary(url: string) {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          "Authorization": `Bearer ${token}` // ✅ FIXED
         },
         body: JSON.stringify({ public_id: publicId }),
       }
     );
 
-    const data = await res.json();
-    console.log("DELETE RESPONSE:", data);
+    const dataRes = await res.json();
+    console.log("DELETE RESPONSE:", dataRes);
 
   } catch (err) {
     console.error("Delete failed:", err);
