@@ -1,4 +1,4 @@
-// src/components/Header.tsx (Final Version)
+// src/components/Header.tsx (Final Version with Realtime)
 
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,14 +22,15 @@ const Header = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   
-  // 🔥 FIX 1: Fetch profile and admin status only once when user is available (on initial load)
+  // Refactored to separate initial fetch from subscription logic
   const fetchHeaderData = React.useCallback(async () => {
     if (!user) return;
     
-    // Fetch Profile
+    // 1. Initial Fetch
     const { data: profileData } = await supabase
+      // 🔥 FIX 1: Selecting updated_at here helps with initial cache bust (good practice)
       .from('profiles')
-      .select('full_name, avatar_url')
+      .select('full_name, avatar_url, updated_at') 
       .eq('user_id', user.id)
       .single();
     
@@ -37,7 +38,7 @@ const Header = () => {
       setProfile(profileData);
     }
 
-    // Check Admin Status
+    // 2. Check Admin Status
     const { data: adminData } = await supabase.rpc('is_admin', { user_id: user.id });
     if (adminData) {
       setIsAdmin(true);
@@ -45,10 +46,40 @@ const Header = () => {
   }, [user]);
 
   React.useEffect(() => {
-    if (user) {
-      fetchHeaderData();
+    if (!user) {
+      setProfile(null);
+      setIsAdmin(false);
+      return;
     }
-  }, [user, fetchHeaderData]); // user dependency ensures fetch happens after login/session resolve
+    
+    fetchHeaderData();
+
+    // ✅ FIX 2: REALTIME AUTO-REFRESH IMPLEMENTATION
+    const channel = supabase
+      .channel('profile-updates')
+      .on(
+        'postgres_changes',
+        // Monitor only 'UPDATE' events on 'profiles' table for the current user's ID
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'profiles', 
+          filter: `user_id=eq.${user.id}` 
+        },
+        (payload) => {
+          // Update the state immediately with the new profile data
+          console.log('Realtime profile update received:', payload.new);
+          setProfile(payload.new as Profile);
+        }
+      )
+      .subscribe();
+
+    // Cleanup function to unsubscribe when the component unmounts or user changes
+    return () => {
+      supabase.removeChannel(channel);
+    };
+
+  }, [user, fetchHeaderData]); 
 
   const handleLogout = async () => {
     await signOut();
