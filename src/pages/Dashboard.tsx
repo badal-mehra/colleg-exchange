@@ -1,4 +1,4 @@
-// Dashboard.tsx - ✅ FINAL, PRODUCTION-READY (Data Normalization & Z-Index Fixed)
+// Dashboard.tsx - ✅ FINAL, PRODUCTION-READY (Fixed Height, Z-Index, and Data Normalization)
 
 import React, { useEffect, useState, memo, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -95,7 +95,7 @@ const getThumb = (url: string) => {
   return url; // Return original URL if it's not a Cloudinary link (e.g., local mock)
 };
 
-// 🚀 Robust, fuzzy matching logic for ad types (as previously fixed)
+// Robust, fuzzy matching logic for ad types (as previously fixed)
 const getAdTypeBenefits = (adType: string = "") => {
   const type = String(adType || "").trim().toLowerCase();
 
@@ -250,7 +250,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [isChatting, setIsChatting] = useState(false);
 
-  // 🚀 FIX #1: Normalize condition and use for rendering
+  // 🚀 FIX #1: Normalize condition for stable rendering
   const condition = (item.condition || "").trim().toLowerCase();
 
   // 🚀 FIX #2: Ensure views is a number, defaulting to 0
@@ -283,11 +283,11 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
       onClick={() => navigate(`/item/${item.id}`)}
     >
       
-      {/* Container: Standardized to aspect-[3/4] ratio */}
-      <div className="relative w-full aspect-[3/4] rounded-t-xl overflow-hidden p-0 m-0">
+      {/* 🚀 FIX #3: Replaced Aspect Ratio with Fixed Height (H-280px) for layout stability */}
+      <div className="relative w-full h-[280px] rounded-t-xl overflow-hidden p-0 m-0">
         
-        {/* 🚀 FIX #3: Added z-0 wrapper for ImageCarousel */}
-        <div className="relative z-0">
+        {/* 🚀 FIX #4: Image Carousel wrapper set to absolute inset-0 z-0 to sit behind badges */}
+        <div className="absolute inset-0 z-0">
             <ImageCarousel 
               images={thumbnailImages} 
               alt={item.title} 
@@ -296,27 +296,26 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
             />
         </div>
         
-        {/* 1. CONDITION BADGE (TOP LEFT) - Render if normalized condition is not empty */}
+        {/* 1. CONDITION BADGE (TOP LEFT) - Z-index enforced */}
         {condition && (
             <Badge 
-                // Using a slightly simplified version as per the patch for consistency
                 variant={condition === 'new' ? 'default' : 'secondary'} 
-                // 🚀 Z-INDEX FIX: z-[9999]
-                className="absolute top-2 left-2 text-xs shadow-lg bg-white/90 text-gray-800 backdrop-blur-sm border border-gray-200 z-[9999]"
+                // 🚀 FIX #5: Z-50 used for reliable visibility
+                className="absolute top-2 left-2 text-xs shadow-lg bg-white/90 text-gray-800 backdrop-blur-sm border border-gray-200 z-50"
             >
-                {/* Display normalized condition, capitalizing 'New' if applicable */}
+                {/* Normalized text output */}
                 {condition === "new" ? "New" : condition}
             </Badge>
         )}
         
-        {/* 2. AD BADGE (TOP RIGHT) */}
+        {/* 2. AD BADGE (TOP RIGHT) - Z-index enforced */}
         {adBenefits && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge 
-                  // 🚀 Z-INDEX FIX: z-[9999]
-                  className={`absolute top-2 right-2 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help z-[9999]`}
+                  // 🚀 FIX #5: Z-50 used for reliable visibility
+                  className={`absolute top-2 right-2 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help z-50`}
                 >
                   {adBenefits.icon}
                   {adBenefits.label}
@@ -330,15 +329,15 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         )}
 
         
-        {/* 3. VIEWS COUNTER (BOTTOM RIGHT) */}
+        {/* 3. VIEWS COUNTER (BOTTOM RIGHT) - Z-index enforced */}
         <div 
-          // 🚀 Z-INDEX FIX: z-[9999]
-          className="absolute bottom-2 right-2 bg-black/50 text-white rounded-full px-2.5 py-0.5 flex items-center gap-1 shadow-md backdrop-blur-sm z-[9999]"
+          // 🚀 FIX #5: Z-50 used for reliable visibility
+          className="absolute bottom-2 right-2 bg-black/50 text-white rounded-full px-2.5 py-0.5 flex items-center gap-1 shadow-md backdrop-blur-sm z-50"
         >
           <Eye className="h-3 w-3" />
+          {/* Using stabilized 'views' variable and simplified text */}
           <span className="text-xs font-medium">
-            {/* Using stabilized 'views' variable */}
-            {views.toLocaleString()} views
+            {views.toLocaleString()}
           </span>
         </div>
         
