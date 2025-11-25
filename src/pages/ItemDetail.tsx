@@ -595,7 +595,7 @@ const ItemDetail = () => {
                   // ✅ Egress Fix 2: Lazy load for the main image (first image is usually already visible/preloaded)
                   loading={currentImageIndex === 0 ? 'eager' : 'lazy'} 
                   onError={(e) => {
-                    e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xNTAgMTUwSDI1MFYyNTBIMTUwVjE1MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+Cg==';
+                    e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy9wYXR0ZXJuLXF1YWRyYW50L3R5cG9ncmFwaGljLWdlb21ldHJ5LXR5cGUtaWQiIHN0eWxlPSJmbGlwLXk6c2NhbGUoLTEpOyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xNTAgMTUwSDI1MFYyNTBIMTUwVjE1MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+Cg==';
                   }}
                 />
               ) : (
@@ -606,7 +606,8 @@ const ItemDetail = () => {
                   </div>
                 </div>
               )}
-              <Badge className="absolute top-4 right-4">
+              {/* ✅ FIX FOR DETAIL PAGE: CONDITION BADGE PLACEMENT */}
+              <Badge className="absolute bottom-4 right-4 bg-primary text-white">
                 {item.condition}
               </Badge>
             </div>
