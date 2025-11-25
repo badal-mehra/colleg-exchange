@@ -1,6 +1,5 @@
 export async function deleteFromCloudinary(url: string) {
   try {
-    // ✅ Extract correct public_id from Cloudinary URL
     const uploadIndex = url.indexOf("/upload/");
     if (uploadIndex === -1) return;
 
@@ -10,8 +9,7 @@ export async function deleteFromCloudinary(url: string) {
     const path = withoutVersion.join("/");
     const publicId = path.replace(/\.[^/.]+$/, "");
 
-    // ✅ Call Supabase Edge Function (NOT Cloudinary directly)
-    await fetch(
+    const res = await fetch(
       "https://mtaeqtmcixlrudjsxcew.supabase.co/functions/v1/cloudinary-delete",
       {
         method: "POST",
@@ -19,6 +17,9 @@ export async function deleteFromCloudinary(url: string) {
         body: JSON.stringify({ public_id: publicId }),
       }
     );
+
+    const data = await res.json();
+    console.log("DELETE RESPONSE:", data);
 
   } catch (err) {
     console.error("Delete failed:", err);
