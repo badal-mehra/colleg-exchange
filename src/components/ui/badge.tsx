@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, Star, Info } from 'lucide-react';
+import { Check, Star, Info, Crown, Zap } from 'lucide-react';
 
 // --- UTILITIES (Mocking external libraries for single-file execution) ---
 
@@ -7,6 +7,12 @@ import { Check, Star, Info } from 'lucide-react';
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
 // Simplified cva (Class Variance Authority) implementation
+// Note: We use a simple interface mimic for VariantProps
+interface VariantProps<T extends (...args: any) => any> {
+    variant?: string;
+    size?: string;
+}
+
 const cva = (base, { variants, defaultVariants }) => {
   return (props) => {
     const { variant, size, ...rest } = { ...defaultVariants, ...props };
@@ -64,6 +70,8 @@ const TooltipTrigger = ({ children, tooltipText }) => {
   };
 
   // Clone element to inject mouse/focus handlers
+  if (!React.isValidElement(children)) return null;
+
   return React.cloneElement(children, {
     onMouseEnter: handleMouseEnter,
     onMouseLeave: handleMouseLeave,
@@ -118,14 +126,19 @@ const badgeVariants = cva(
         // Info: Professional Cyan/Sky Blue
         info: "bg-sky-500 text-white shadow-md shadow-sky-500/40 hover:bg-sky-600 focus:ring-sky-500/50",
 
-        // Premium: The "Gold Card" Gradient
+        // Premium: The "Gold Card" Gradient (Used for Premium User Status)
         premium: "bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-600 text-gray-900 font-bold shadow-2xl shadow-yellow-500/50 focus:ring-yellow-500/50",
 
         // Verified: Subtle, deep Teal
         verified: "bg-teal-600 text-white shadow-md hover:bg-teal-700 focus:ring-teal-500/50",
+        
+        // --- AD/LISTING VARIANTS (FIXED) ---
+        featured: "bg-yellow-500 text-black shadow-md hover:bg-yellow-600 focus:ring-yellow-500/50",
+        urgent: "bg-red-600 text-white shadow-md hover:bg-red-700 focus:ring-red-500/50",
+        premiumAd: "bg-purple-600 text-white shadow-md hover:bg-purple-700 focus:ring-purple-500/50",
+        // ------------------------------------
 
-        // Online/Status: Small, vibrant dot appearance (Note: Padded for margin, but h/w is tiny)
-        // This is styled as a separate small component, usually applied to an avatar container.
+        // Online/Status: Small, vibrant dot appearance
         online: "bg-emerald-500 h-3 w-3 p-0 rounded-full animate-ping-slow absolute top-0 right-0 border-2 border-white shadow-lg",
 
         // Ghost: Very minimal, text-only, strong hover
@@ -153,7 +166,6 @@ export interface BadgeProps
 }
 
 // NOTE: The 'online' variant is a specialized status dot. It should be applied to an external container.
-// Here we adapt the component to handle both regular badges and the specialized 'online' dot.
 function Badge({ className, variant, size, tooltip, showTooltip = true, children, ...props }: BadgeProps) {
 
   const isStatusDot = variant === 'online';
@@ -178,7 +190,8 @@ function Badge({ className, variant, size, tooltip, showTooltip = true, children
   
   // Tooltip logic
   const tooltipText = tooltip || (isStatusDot ? 'Online' : (typeof children === 'string' ? children : ''));
-  const needsTooltip = (showTooltip && tooltip) || isStatusDot || (React.isValidElement(children) && typeof tooltipText === 'string');
+  // Determine if a tooltip is needed (explicitly passed, is a status dot, or if children is complex and tooltip is provided)
+  const needsTooltip = showTooltip && (tooltipText || isStatusDot);
   
   if (needsTooltip) {
     return (
@@ -201,40 +214,61 @@ function Badge({ className, variant, size, tooltip, showTooltip = true, children
 const BadgeDemo = () => {
     return (
         <div className="p-8 space-y-8 bg-gray-50 min-h-screen">
-            <h1 className="text-3xl font-bold text-gray-800 border-b pb-2 mb-6">Professional Badge System</h1>
+            <h1 className="text-3xl font-bold text-gray-800 border-b pb-2 mb-6">Professional Badge System (Ad Variants Added)</h1>
             
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 items-start">
-                {/* Standard Badges */}
-                <div className="flex flex-col space-y-2 col-span-2">
-                    <h2 className="text-xl font-semibold mb-2 text-gray-700">Core Variants</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+                
+                {/* Core & Status Variants */}
+                <div className="flex flex-col space-y-3">
+                    <h2 className="text-xl font-semibold mb-2 text-gray-700">Core & Status</h2>
                     <Badge variant="default" size="default">Default Project</Badge>
                     <Badge variant="secondary" size="default">v1.2.5</Badge>
                     <Badge variant="destructive" size="default">Critical Error</Badge>
                     <Badge variant="outline" size="default">Draft Pending</Badge>
-                </div>
-                
-                {/* Semantic Badges */}
-                <div className="flex flex-col space-y-2 col-span-2">
-                    <h2 className="text-xl font-semibold mb-2 text-gray-700">Status & Semantic</h2>
                     <Badge variant="success" size="default">Deployment Successful</Badge>
                     <Badge variant="warning" size="default">Pending Review</Badge>
                     <Badge variant="info" size="default">New Feature</Badge>
-                    <Badge variant="ghost" size="default" tooltip="Click for details">Documentation</Badge>
                 </div>
 
-                {/* Premium & Verified Badges */}
-                <div className="flex flex-col space-y-2 col-span-2">
-                    <h2 className="text-xl font-semibold mb-2 text-gray-700">Special</h2>
-                    <Badge variant="premium" size="lg">
-                        <Star className="w-4 h-4 mr-1 fill-gray-900" />
+                {/* Marketing & Ad Variants (NEW) */}
+                <div className="flex flex-col space-y-3">
+                    <h2 className="text-xl font-semibold mb-2 text-gray-700">Ad & Marketing Tags</h2>
+                    
+                    {/* Featured Ad (using new variant) */}
+                    <Badge variant="featured" size="lg">
+                        <Star className="w-4 h-4 mr-1 fill-black" />
+                        FEATURED LISTING
+                    </Badge>
+                    
+                    {/* Urgent Ad (using new variant) */}
+                    <Badge variant="urgent" size="lg">
+                        <Zap className="w-4 h-4 mr-1" />
+                        URGENT SALE
+                    </Badge>
+                    
+                    {/* Premium Ad (using new variant) */}
+                    <Badge variant="premiumAd" size="lg">
+                        <Crown className="w-4 h-4 mr-1" />
+                        PREMIUM AD
+                    </Badge>
+                    
+                    {/* Existing Premium User (Gold Card) */}
+                    <Badge variant="premium" size="default" tooltip="User has active subscription">
+                        <Star className="w-3 h-3 mr-1 fill-gray-900" />
                         PREMIUM USER
                     </Badge>
+                </div>
+
+                {/* Utility & Sizes */}
+                <div className="flex flex-col space-y-3">
+                    <h2 className="text-xl font-semibold mb-2 text-gray-700">Utility & Sizes</h2>
                     <Badge variant="verified" size="default" tooltip="Account is Verified">
                         <Check className="w-3 h-3 mr-1" />
                         Verified
                     </Badge>
+                    <Badge variant="ghost" size="default" tooltip="Click for details">Documentation</Badge>
                     <Badge variant="default" size="sm">Small Tag</Badge>
-                    <Badge variant="info" size="lg">LARGE INFO TICKET</Badge>
+                    <Badge variant="info" size="lg">LARGE TICKET</Badge>
                 </div>
             </div>
 
@@ -276,6 +310,7 @@ const App = () => (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <style>
             {`
+            /* Added shimmer for premium effects if needed, though not directly used on new badges */
             @keyframes shimmer {
                 0% { background-position: -200% 0; }
                 100% { background-position: 200% 0; }
@@ -290,6 +325,7 @@ const App = () => (
                     #fcd34d 100%
                 );
             }
+            /* Slow pulse/ping for online status */
             @keyframes ping-slow {
                 0%, 100% { opacity: 1; transform: scale(1); }
                 50% { opacity: 0.5; transform: scale(1.1); }
