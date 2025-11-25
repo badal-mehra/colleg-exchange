@@ -9,8 +9,12 @@ export async function uploadToCloudinary(
   file: File,
   folder: CloudinaryFolder = "avatars"
 ): Promise<string> {
-  // 1️⃣ Get signature from Supabase Edge Function
-  const sigRes = await fetch(CLOUDINARY_SIGN_URL);
+  // 1️⃣ Get signature from Supabase Edge Function (with auth)
+  const sigRes = await fetch(CLOUDINARY_SIGN_URL, {
+    headers: {
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    },
+  });
 
   if (!sigRes.ok) {
     throw new Error("Failed to get Cloudinary signature");
