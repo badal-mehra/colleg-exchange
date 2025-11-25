@@ -1,14 +1,16 @@
 export async function deleteFromCloudinary(url: string) {
   try {
-    const uploadIndex = url.indexOf("/upload/");
-    if (uploadIndex === -1) return;
+    if (!url.startsWith("https://res.cloudinary.com")) return;
 
-    const pathWithVersion = url.substring(uploadIndex + 8);
-    const parts = pathWithVersion.split("/");
-    const withoutVersion = parts.slice(1);
-    const path = withoutVersion.join("/");
-    const publicId = path.replace(/\.[^/.]+$/, "");
+    // ✅ Extract public_id correctly
+    const match = url.match(/upload\/v\d+\/(.+)\./);
+    if (!match || !match[1]) return;
 
+    const publicId = match[1]; // ✅ Example: avatars/abc123
+
+    console.log("PUBLIC ID SENT:", publicId);
+
+    // ✅ Call Supabase Edge Function
     const res = await fetch(
       "https://mtaeqtmcixlrudjsxcew.supabase.co/functions/v1/cloudinary-delete",
       {
