@@ -1,4 +1,4 @@
-// Dashboard.tsx - ✅ FINAL, PRODUCTION-READY (Aspect Ratio Fix Implemented)
+// Dashboard.tsx - ✅ FINAL, PRODUCTION-READY (Ad Type Matching Fixed)
 
 import React, { useEffect, useState, memo, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -95,32 +95,33 @@ const getThumb = (url: string) => {
   return url; // Return original URL if it's not a Cloudinary link (e.g., local mock)
 };
 
-const getAdTypeBenefits = (adType: string) => {
-  switch (adType) {
-    case 'featured':
-      return {
-        icon: <Star className="h-3 w-3" />,
-        label: 'Featured',
-        color: 'bg-gradient-to-r from-yellow-400 to-amber-300 text-black border border-yellow-500/50',
-        benefits: 'Top placement • 3x visibility • Highlighted border'
-      };
-    case 'premium':
-      return {
-        icon: <Crown className="h-3 w-3" />,
-        label: 'Premium',
-        color: 'bg-gradient-to-r from-purple-600 to-indigo-500 text-white border border-purple-300/50',
-        benefits: 'Priority listing • Boost button • Extended duration'
-      };
-    case 'urgent':
-      return {
-        icon: <Zap className="h-3 w-3" />,
-        label: 'Urgent',
-        color: 'bg-gradient-to-r from-red-600 to-pink-500 text-white border border-red-300/50',
-        benefits: 'Flash indicator • Quick sell price • 48hr highlight'
-      };
-    default:
-      return null;
-  }
+// 🚀 FIX: Replace strict switch with robust, fuzzy matching logic
+const getAdTypeBenefits = (adType: string = "") => {
+  // Defensive check for non-string types and normalize to lower case
+  const type = String(adType || "").trim().toLowerCase();
+
+  if (type.includes("feature")) return {
+    icon: <Star className="h-3 w-3" />,
+    label: 'Featured',
+    color: 'bg-gradient-to-r from-yellow-400 to-amber-300 text-black border border-yellow-500/50',
+    benefits: 'Top placement • 3x visibility • Highlighted border'
+  };
+
+  if (type.includes("prem")) return {
+    icon: <Crown className="h-3 w-3" />,
+    label: 'Premium',
+    color: 'bg-gradient-to-r from-purple-600 to-indigo-500 text-white border border-purple-300/50',
+    benefits: 'Priority listing • Boost button • Extended duration'
+  };
+
+  if (type.includes("urgent")) return {
+    icon: <Zap className="h-3 w-3" />,
+    label: 'Urgent',
+    color: 'bg-gradient-to-r from-red-600 to-pink-500 text-white border border-red-300/50',
+    benefits: 'Flash indicator • Quick sell price • 48hr highlight'
+  };
+
+  return null;
 };
 
 
@@ -269,26 +270,28 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
     setIsFavoriting(false);
   };
 
+  // 🐛 Temporary Debugging Line: Check the raw value from the database
+  useEffect(() => {
+    console.log(`AD TYPE for item ${item.id}:`, item.ad_type);
+  }, [item.ad_type, item.id]);
+
   return (
     <Card
-      // 🛑 FIX 1: Set p-0 on the Card to ensure the container starts flush at the top.
       className="group hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 ease-in-out cursor-pointer border border-gray-200 hover:border-primary/50 overflow-hidden bg-white rounded-xl hover:-translate-y-1 w-full p-0"
       onClick={() => navigate(`/item/${item.id}`)}
     >
       
-      {/* 🛑 FIX 2: Replaced aspect-square with responsive fixed height (h-60 sm:h-64 md:h-72) */}
-      <div className="relative w-full h-60 sm:h-64 md:h-72 rounded-t-xl overflow-hidden p-0 m-0">
+      {/* Container: Standardized to aspect-[3/4] ratio */}
+      <div className="relative w-full aspect-[3/4] rounded-t-xl overflow-hidden p-0 m-0">
         
-        {/* FIX 3: Image Carousel - Ensure object-cover fills the defined height */}
         <ImageCarousel 
           images={thumbnailImages} 
           alt={item.title} 
-          // Removed unnecessary p-0 m-0 here as it's often handled internally, focusing on h-full/w-full
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
           loading="lazy" 
         />
         
-        {/* 1. CONDITION BADGE (TOP LEFT) - Anchors relative to the fixed height container */}
+        {/* 1. CONDITION BADGE (TOP LEFT) */}
         {item.condition && (
             <Badge 
                 variant={item.condition === 'new' ? 'default' : 'secondary'} 
@@ -298,7 +301,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
             </Badge>
         )}
         
-        {/* 2. AD BADGE (TOP RIGHT) - Anchors relative to the fixed height container */}
+        {/* 2. AD BADGE (TOP RIGHT) - Now renders correctly due to robust matching */}
         {adBenefits && (
           <TooltipProvider>
             <Tooltip>
@@ -318,7 +321,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         )}
 
         
-        {/* 3. VIEWS COUNTER (BOTTOM RIGHT) - Anchors relative to the fixed height container */}
+        {/* 3. VIEWS COUNTER (BOTTOM RIGHT) */}
         <div 
           className="absolute bottom-2 right-2 bg-black/50 text-white rounded-full px-2.5 py-0.5 flex items-center gap-1 shadow-md backdrop-blur-sm z-30"
         >
@@ -327,7 +330,6 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         </div>
         
       </div>
-      {/* 🛑 END OF FIXED IMAGE CONTAINER */}
 
       {/* CardContent retains padding for the text area */}
       <CardContent className="p-4 space-y-3">
