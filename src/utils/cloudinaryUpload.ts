@@ -10,7 +10,7 @@ export async function uploadToCloudinary(
   folder: CloudinaryFolder = "avatars"
 ): Promise<string> {
   // ✅ 1️⃣ Get signature from Supabase Edge Function (with auth header)
-  const sigRes = await fetch(CLOUDINARY_SIGN_URL, {
+  const sigRes = await fetch(`${CLOUDINARY_SIGN_URL}?folder=${folder}`, {
     headers: {
       Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
     },
