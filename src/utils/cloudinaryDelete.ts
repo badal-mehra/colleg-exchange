@@ -2,25 +2,44 @@
 
 export async function deleteFromCloudinary(url: string) {
   try {
-    // Extract public ID from the Cloudinary URL
-    // e.g., from https://res.cloudinary.com/.../avatars/user-id-12345.jpg 
-    const parts = url.split("/");
-    const fileName = parts[parts.length - 1];
-    // We only need the file name without the extension
-    const publicId = fileName.split(".")[0];
+    // Extract everything AFTER /upload/
+    const uploadIndex = url.indexOf("/upload/");
+    if (uploadIndex === -1) {
+        console.warn("URL does not contain '/upload/' segment, skipping deletion:", url);
+        return;
+    }
+
+    // Skip "/upload/" (8 characters)
+    const pathWithVersion = url.substring(uploadIndex + 8); 
+    const parts = pathWithVersion.split("/");
+
+    // The first part is usually the version number (e.g., v1738348234). Remove it.
+    const withoutVersion = parts.slice(1);
+
+    // Join remaining parts to get the path (folder/filename.ext)
+    const path = withoutVersion.join("/");
+
+    // Remove file extension (e.g., .jpg, .png, .webp)
+    // The public ID is the full path minus the extension.
+    const publicId = path.replace(/\.[^/.]+$/, ""); 
+
+    if (!publicId) {
+        console.error("Failed to extract publicId from URL:", url);
+        return;
+    }
 
     const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
     const apiKey = import.meta.env.VITE_CLOUDINARY_API_KEY;
     const apiSecret = import.meta.env.VITE_CLOUDINARY_API_SECRET;
 
-    // Cloudinary uses basic auth for the deletion API
+    // Use Basic Authentication
     const auth = btoa(`${apiKey}:${apiSecret}`);
 
     const deleteUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`;
 
-    // The public_id must include the folder name (e.g., 'avatars/user-id-12345')
     const formData = new FormData();
-    formData.append("public_id", `avatars/${publicId}`);
+    // ✅ Use the correct full path (e.g., "avatars/userid-12345")
+    formData.append("public_id", publicId); 
 
     await fetch(deleteUrl, {
       method: "POST",
@@ -29,9 +48,10 @@ export async function deleteFromCloudinary(url: string) {
         Authorization: `Basic ${auth}`,
       },
     });
+    
+    console.log(`Successfully triggered Cloudinary deletion for public ID: ${publicId}`);
 
   } catch (err) {
-    // Log error but do not throw, so upload isn't broken if delete fails
     console.error("Cloudinary delete failed:", err);
   }
 }
