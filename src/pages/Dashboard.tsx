@@ -97,9 +97,7 @@ const getThumb = (url: string) => {
 
 // Robust, fuzzy matching logic for ad types (as previously fixed)
 const getAdTypeBenefits = (adType: string = "") => {
-  const type = String(adType || "").trim().toLowerCase();
-
-  // 3. Badge Flattening: Removed background (bg-gray-100), used text-gray-500, font size reduced
+  // Badge Flattening: Text-only, low contrast
   const baseStyle = 'text-[10px] flex items-center gap-1 font-medium text-gray-500 px-0 py-0 z-20';
 
   if (type.includes("feature")) return {
@@ -201,24 +199,24 @@ const ImageSliderSectionComponent = () => {
             <div className="absolute inset-x-0 bottom-0 bg-black/40 flex items-end justify-center py-4 sm:py-6">
               <div className="text-center text-white space-y-2 max-w-4xl px-4">
                 {currentImage.title && <h2 className="text-xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight drop-shadow-sm">{currentImage.title}</h2>}
-                {/* 5. Slider CTA Flattening: Removed shadow-sm */}
+                {/* Flat CTA Button */}
                 {currentImage.link_url && <Button variant="default" className="mt-2 text-sm font-semibold px-4 py-2 bg-primary text-white hover:bg-primary/90">Explore Now</Button>}
               </div>
             </div>
           </div>
           {sliderImages.length > 1 && (
             <>
-              {/* Flat arrows */}
+              {/* 2. Slider Arrow Rounding: Changed rounded-full to rounded-sm */}
               <button
                 onClick={e => { e.stopPropagation(); prevSlide(); }}
-                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full transition-colors z-20 hidden md:block"
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-sm transition-colors z-20 hidden md:block"
                 aria-label="Previous slide"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <button
                 onClick={e => { e.stopPropagation(); nextSlide(); }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full transition-colors z-20 hidden md:block"
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-sm transition-colors z-20 hidden md:block"
                 aria-label="Next slide"
               >
                 <ChevronRight className="h-5 w-5" />
@@ -282,7 +280,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
   };
 
   return (
-    // 1. Hover Removal: Removed hover:border-primary/50 transition-colors. DEAD FLAT
+    // Card: Dead flat, no hover
     <Card
       className="flex flex-col cursor-pointer border border-gray-200 bg-white rounded-md w-full h-full p-0"
       onClick={() => navigate(`/item/${item.id}`)}
@@ -299,17 +297,18 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
             />
         </div>
         
-        {/* CONDITION BADGE (TOP LEFT) - Simple styling */}
+        {/* 1. Condition Badge: Text-only, low contrast (text-[10px] text-gray-600) */}
         {condition && (
             <Badge 
-                variant={condition === 'new' ? 'default' : 'secondary'} 
-                className="absolute top-2 left-2 text-xs bg-white/90 text-gray-800 border border-gray-200 px-2 py-0.5 z-20"
+                // Removed variant, background, and border
+                className="absolute top-2 left-2 text-[10px] text-gray-600 px-0 py-0 z-20"
             >
-                {condition === "new" ? "New" : condition}
+                {/* Normalized text output, slightly more aggressive visual reduction */}
+                {condition === "new" ? "NEW" : condition.toUpperCase()}
             </Badge>
         )}
         
-        {/* 3. AD BADGE (TOP RIGHT) - Text-only, low contrast */}
+        {/* AD BADGE: Text-only, low contrast */}
         {adBenefits && (
           <Badge 
             className={`absolute top-2 right-2 ${adBenefits.color} cursor-default`}
@@ -320,7 +319,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         )}
 
         
-        {/* VIEWS COUNTER (BOTTOM LEFT) - Plain number */}
+        {/* VIEWS COUNTER: Plain number */}
         <div 
           className="absolute bottom-2 left-2 text-[11px] text-gray-600 flex items-center gap-1 z-20"
         >
@@ -332,7 +331,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         
       </div>
 
-      {/* CardContent: Alignment fixes. Price on top, title fixed height, mt-auto for actions */}
+      {/* CardContent: Price on top, pixel-correct title height, mt-auto for actions */}
       <CardContent className="p-3 flex flex-col gap-2 flex-1">
         
         {/* Price and Negotiable Badge (TOP PRIORITY) */}
@@ -345,7 +344,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
             )}
         </div>
 
-        {/* 4. Title - Correct pixel-aligned 2-line height (text-[13px] leading-5 h-10) */}
+        {/* Title: Correct pixel-aligned 2-line height */}
         <h3 className="font-medium text-[13px] leading-5 line-clamp-2 text-gray-900 h-10">
             {item.title}
         </h3>
@@ -369,11 +368,11 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
           </div>
         </div>
 
-        {/* 2. Actions - Removed hover state from chat button and heart icon */}
+        {/* Actions: No hover states */}
         <div className="flex gap-2 pt-2">
           <Button
             size="sm"
-            // 2. Removed hover:bg-primary/90 transition-colors. DEAD FLAT
+            // Dead flat styling
             className="flex-1 h-8 text-xs font-semibold bg-primary text-white" 
             onClick={onChat}
             disabled={item.seller_id === user?.id || isChatting || !isVerified}
@@ -384,7 +383,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
           <Button
             size="icon"
             variant="ghost"
-            // Removed hover from Heart button
+            // Dead flat styling
             className="h-8 w-8 text-primary" 
             onClick={onFavorite}
             disabled={isFavoriting || !user || !isVerified}
@@ -681,7 +680,7 @@ const Dashboard = () => {
           </h2>
           <p className="text-lg text-gray-600">Find the best second-hand items posted by your verified peers.</p>
 
-          {/* Desktop Filters: 6. Rounded-xl changed to rounded-md. No shadow */}
+          {/* Desktop Filters: rounded-md. No shadow */}
           <div className="hidden lg:flex gap-4 p-5 border border-gray-200 rounded-md bg-white">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -755,7 +754,7 @@ const Dashboard = () => {
             </Button>
           </div>
         ) : (
-          // 7. Grid Gap Tightened to gap-4
+          // Grid Gap Tightened to gap-4
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-stretch">
             {items.map((item) => (
               <ItemCard
