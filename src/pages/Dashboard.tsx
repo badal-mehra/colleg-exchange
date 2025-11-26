@@ -1,4 +1,4 @@
-// Dashboard.tsx - ✅ FINAL, PRODUCTION-READY (Horizontal Offset Applied)
+// Dashboard.tsx - ✅ FINAL, PRODUCTION-READY (Marketplace-Authentic Standard)
 
 import React, { useEffect, useState, memo, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -95,36 +95,39 @@ const getThumb = (url: string) => {
   return url; // Return original URL if it's not a Cloudinary link (e.g., local mock)
 };
 
-// Robust, fuzzy matching logic for ad types
+// Robust, fuzzy matching logic for ad types (as previously fixed)
 const getAdTypeBenefits = (adType: string = "") => {
   const type = String(adType || "").trim().toLowerCase();
 
+  // 3. Badge Flattening: Removed background (bg-gray-100), used text-gray-500, font size reduced
+  const baseStyle = 'text-[10px] flex items-center gap-1 font-medium text-gray-500 px-0 py-0 z-20';
+
   if (type.includes("feature")) return {
-    icon: <Star className="h-3 w-3" />,
-    label: 'Featured',
-    color: 'bg-gradient-to-r from-yellow-400 to-amber-300 text-black border border-yellow-500/50',
-    benefits: 'Top placement • 3x visibility • Highlighted border'
+    icon: <Star className="h-3 w-3 text-yellow-500" />,
+    label: 'FEATURED',
+    color: baseStyle, 
+    benefits: 'Top placement • 3x visibility'
   };
 
   if (type.includes("prem")) return {
-    icon: <Crown className="h-3 w-3" />,
-    label: 'Premium',
-    color: 'bg-gradient-to-r from-purple-600 to-indigo-500 text-white border border-purple-300/50',
-    benefits: 'Priority listing • Boost button • Extended duration'
+    icon: <Crown className="h-3 w-3 text-purple-500" />,
+    label: 'PREMIUM',
+    color: baseStyle, 
+    benefits: 'Priority listing • Extended duration'
   };
 
   if (type.includes("urgent")) return {
-    icon: <Zap className="h-3 w-3" />,
-    label: 'Urgent',
-    color: 'bg-gradient-to-r from-red-600 to-pink-500 text-white border border-red-300/50',
-    benefits: 'Flash indicator • Quick sell price • 48hr highlight'
+    icon: <Zap className="h-3 w-3 text-red-500" />,
+    label: 'URGENT',
+    color: baseStyle, 
+    benefits: 'Flash indicator • 48hr highlight'
   };
 
   return null;
 };
 
 
-// --- IMAGE SLIDER (Refined Styling) ---
+// --- IMAGE SLIDER (Final Flat Aesthetic) ---
 const ImageSliderSectionComponent = () => {
   const [sliderImages, setSliderImages] = useState<SliderImage[] | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -152,18 +155,19 @@ const ImageSliderSectionComponent = () => {
     }
   }, [sliderImages]);
 
+  // Slider Auto-Play Speed 3000ms
   useEffect(() => {
     if (sliderImages && sliderImages.length > 1) {
-      const interval = setInterval(nextSlide, 5000);
+      const interval = setInterval(nextSlide, 3000);
       return () => clearInterval(interval);
     }
   }, [sliderImages, nextSlide]);
 
   if (sliderImages === null) {
     return (
-      <section className="py-12 bg-gray-50/50">
+      <section className="py-12 bg-white">
         <div className="container mx-auto px-4">
-          <div className="h-60 sm:h-80 md:h-96 rounded-2xl overflow-hidden shadow-xl animate-pulse bg-gray-200"></div>
+          <div className="h-60 sm:h-80 md:h-96 rounded-md overflow-hidden animate-pulse bg-gray-200"></div>
         </div>
       </section>
     );
@@ -181,48 +185,53 @@ const ImageSliderSectionComponent = () => {
   return (
     <section className="py-12 bg-white">
       <div className="container mx-auto px-4">
-        <div className="relative carousel-container rounded-2xl overflow-hidden shadow-2xl h-60 sm:h-80 md:h-96 group">
+        {/* Flat style, rounded-md */}
+        <div className="relative carousel-container rounded-md overflow-hidden h-60 sm:h-80 md:h-96">
           <div
-            className={`absolute inset-0 transition-opacity duration-500 opacity-100 z-10 ${currentImage.link_url ? 'cursor-pointer' : ''}`}
+            className={`absolute inset-0 z-10 ${currentImage.link_url ? 'cursor-pointer' : ''}`}
             onClick={handleSlideClick}
           >
             <img
               src={currentImage.image_url}
               alt={currentImage.title || `Slide ${currentSlide + 1}`}
-              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+              className="w-full h-full object-cover"
               loading="lazy"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex items-end justify-center pb-8 sm:pb-12">
-              <div className="text-center text-white space-y-3 max-w-4xl px-4">
-                {currentImage.title && <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight drop-shadow-lg">{currentImage.title}</h2>}
-                {currentImage.link_url && <Button variant="secondary" className="mt-4 text-base font-semibold px-6 py-3 shadow-lg hover:shadow-xl transition-all">Explore Now</Button>}
+            {/* Simple semi-transparent bottom bar for text/CTA */}
+            <div className="absolute inset-x-0 bottom-0 bg-black/40 flex items-end justify-center py-4 sm:py-6">
+              <div className="text-center text-white space-y-2 max-w-4xl px-4">
+                {currentImage.title && <h2 className="text-xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight drop-shadow-sm">{currentImage.title}</h2>}
+                {/* 5. Slider CTA Flattening: Removed shadow-sm */}
+                {currentImage.link_url && <Button variant="default" className="mt-2 text-sm font-semibold px-4 py-2 bg-primary text-white hover:bg-primary/90">Explore Now</Button>}
               </div>
             </div>
           </div>
           {sliderImages.length > 1 && (
             <>
+              {/* Flat arrows */}
               <button
                 onClick={e => { e.stopPropagation(); prevSlide(); }}
-                className="absolute left-6 top-1/2 -translate-y-1/2 bg-white/20 backdrop-blur-sm hover:bg-white/50 text-white p-3 sm:p-4 rounded-full transition-all z-20 opacity-0 group-hover:opacity-100 hidden md:block border border-white/30"
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full transition-colors z-20 hidden md:block"
                 aria-label="Previous slide"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <button
                 onClick={e => { e.stopPropagation(); nextSlide(); }}
-                className="absolute right-6 top-1/2 -translate-y-1/2 bg-white/20 backdrop-blur-sm hover:bg-white/50 text-white p-3 sm:p-4 rounded-full transition-all z-20 opacity-0 group-hover:opacity-100 hidden md:block border border-white/30"
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full transition-colors z-20 hidden md:block"
                 aria-label="Next slide"
               >
                 <ChevronRight className="h-5 w-5" />
               </button>
             </>
           )}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 z-20">
+          {/* Neutral indicators */}
+          <div className="absolute top-4 right-4 flex space-x-1.5 z-20">
             {sliderImages.map((_, index) => (
               <button
                 key={index}
                 onClick={e => { e.stopPropagation(); setCurrentSlide(index); }}
-                className={`h-2 rounded-full transition-all duration-300 ${index === currentSlide ? 'bg-primary w-6 shadow-md' : 'bg-white/50 w-2'}`}
+                className={`h-1.5 rounded-full transition-all duration-300 ${index === currentSlide ? 'bg-primary w-4' : 'bg-white/70 w-1.5'}`}
                 aria-label={`Go to slide ${index + 1}`}
               />
             ))}
@@ -235,7 +244,7 @@ const ImageSliderSectionComponent = () => {
 const ImageSliderSection = memo(ImageSliderSectionComponent);
 
 
-// --- ITEM CARD (Final Structural Fix) ---
+// --- ITEM CARD (Final Flat Aesthetic & Alignment) ---
 interface ItemCardProps {
   item: EnrichedItem;
   user: any;
@@ -250,10 +259,8 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [isChatting, setIsChatting] = useState(false);
 
-  // Normalize condition and views for stable rendering
   const condition = (item.condition || "").trim().toLowerCase();
   const views = Number(item.views) || 0;
-
 
   const thumbnailImages = useMemo(() => {
     return item.images.map(getThumb);
@@ -275,121 +282,110 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
   };
 
   return (
+    // 1. Hover Removal: Removed hover:border-primary/50 transition-colors. DEAD FLAT
     <Card
-      // FIX: Set p-0 on the Card for consistent top alignment.
-      className="group hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 ease-in-out cursor-pointer border border-gray-200 hover:border-primary/50 overflow-hidden bg-white rounded-xl hover:-translate-y-1 w-full p-0"
+      className="flex flex-col cursor-pointer border border-gray-200 bg-white rounded-md w-full h-full p-0"
       onClick={() => navigate(`/item/${item.id}`)}
     >
       
-      {/* Container: Fixed Height (H-280px) for layout stability */}
-      <div className="relative w-full h-[280px] rounded-t-xl overflow-hidden p-0 m-0">
+      <div className="relative w-full aspect-[4/3] rounded-t-md overflow-hidden bg-gray-50">
         
-        {/* Image Carousel wrapper set to absolute inset-0 z-0 to sit behind badges */}
         <div className="absolute inset-0 z-0">
-            <ImageCarousel 
-              images={thumbnailImages} 
-              alt={item.title} 
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
-              loading="lazy" 
+            <ImageCarousel
+              images={thumbnailImages}
+              alt={item.title}
+              className="h-full w-full object-cover"
+              loading="lazy"
             />
         </div>
         
-        {/* 1. CONDITION BADGE (TOP LEFT) */}
+        {/* CONDITION BADGE (TOP LEFT) - Simple styling */}
         {condition && (
             <Badge 
                 variant={condition === 'new' ? 'default' : 'secondary'} 
-                className="absolute top-2 left-2 text-xs shadow-lg bg-white/90 text-gray-800 backdrop-blur-sm border border-gray-200 z-50"
+                className="absolute top-2 left-2 text-xs bg-white/90 text-gray-800 border border-gray-200 px-2 py-0.5 z-20"
             >
                 {condition === "new" ? "New" : condition}
             </Badge>
         )}
         
-        {/* 2. AD BADGE (TOP RIGHT) */}
+        {/* 3. AD BADGE (TOP RIGHT) - Text-only, low contrast */}
         {adBenefits && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge 
-                  // 🚀 FIX: right-4 applied for a medium shift inward
-                  className={`absolute top-2 right-4 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help z-50`}
-                >
-                  {adBenefits.icon}
-                  {adBenefits.label}
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent className="text-xs font-medium bg-black text-white border-none">
-                <p>{adBenefits.benefits}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Badge 
+            className={`absolute top-2 right-2 ${adBenefits.color} cursor-default`}
+          >
+            {adBenefits.icon}
+            {adBenefits.label}
+          </Badge>
         )}
 
         
-        {/* 3. VIEWS COUNTER (BOTTOM RIGHT) */}
+        {/* VIEWS COUNTER (BOTTOM LEFT) - Plain number */}
         <div 
-          className="absolute bottom-2 right-2 bg-black/50 text-white rounded-full px-2.5 py-0.5 flex items-center gap-1 shadow-md backdrop-blur-sm z-50"
+          className="absolute bottom-2 left-2 text-[11px] text-gray-600 flex items-center gap-1 z-20"
         >
           <Eye className="h-3 w-3" />
-          <span className="text-xs font-medium">
-            {views.toLocaleString()}
+          <span className="font-medium">
+            {views.toLocaleString()} 
           </span>
         </div>
         
       </div>
 
-      {/* CardContent retains padding for the text area */}
-      <CardContent className="p-4 space-y-3">
-        {/* Title */}
-        <h3 className="font-extrabold text-xl leading-snug line-clamp-2 text-gray-900">
-          {item.title}
+      {/* CardContent: Alignment fixes. Price on top, title fixed height, mt-auto for actions */}
+      <CardContent className="p-3 flex flex-col gap-2 flex-1">
+        
+        {/* Price and Negotiable Badge (TOP PRIORITY) */}
+        <div className="flex items-baseline gap-2">
+            <span className="text-lg font-semibold text-gray-900">₹{item.price.toLocaleString()}</span>
+            {item.is_negotiable && (
+                <Badge variant="outline" className="text-[11px] border-green-500 text-green-700">
+                    Negotiable
+                </Badge>
+            )}
+        </div>
+
+        {/* 4. Title - Correct pixel-aligned 2-line height (text-[13px] leading-5 h-10) */}
+        <h3 className="font-medium text-[13px] leading-5 line-clamp-2 text-gray-900 h-10">
+            {item.title}
         </h3>
 
-        {/* Price and Negotiable Badge */}
-        <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-extrabold text-primary tracking-tight">₹{item.price.toLocaleString()}</span>
-          {item.is_negotiable && <Badge variant="outline" className="text-xs border-green-500 text-green-700 font-medium">Negotiable</Badge>}
+
+        {/* Seller Info and Location (Pushed to bottom using mt-auto) */}
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-auto">
+          {/* Seller Name */}
+          <div className="flex items-center gap-1.5">
+            <User className="h-3.5 w-3.5 text-gray-400" />
+            <span className="text-xs text-gray-700 truncate max-w-[100px] font-medium">
+              {item.profiles?.full_name || 'Anonymous'}
+            </span>
+          </div>
+          {/* Location */}
+          <div className="flex items-center gap-1.5">
+            <MapPin className="h-3.5 w-3.5 text-gray-400" />
+            <span className="text-xs text-gray-700 truncate font-medium">
+              {item.location || 'Campus'}
+            </span>
+          </div>
         </div>
 
-        {/* Seller Info and Location */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-          <TooltipProvider>
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-gray-500" />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="text-sm text-gray-700 truncate max-w-[120px] font-medium hover:text-primary transition-colors">
-                    {item.profiles?.full_name || 'Anonymous'}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>{item.profiles?.full_name || 'Anonymous'}</TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-gray-500" />
-              <span className="text-sm text-gray-700 truncate font-medium">
-                {item.location || 'Campus'}
-              </span>
-            </div>
-          </TooltipProvider>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-3 pt-3">
+        {/* 2. Actions - Removed hover state from chat button and heart icon */}
+        <div className="flex gap-2 pt-2">
           <Button
-            size="lg" 
-            className="flex-1 h-10 text-sm font-semibold shadow-md hover:shadow-lg transition-all"
+            size="sm"
+            // 2. Removed hover:bg-primary/90 transition-colors. DEAD FLAT
+            className="flex-1 h-8 text-xs font-semibold bg-primary text-white" 
             onClick={onChat}
             disabled={item.seller_id === user?.id || isChatting || !isVerified}
           >
             {isChatting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MessageCircle className="h-4 w-4 mr-2" />}
-            {item.seller_id === user?.id ? 'Your Item' : isChatting ? 'Starting Chat...' : 'Chat Seller'}
+            {item.seller_id === user?.id ? 'Your Item' : isChatting ? 'Starting...' : 'Chat Seller'}
           </Button>
           <Button
-            size="lg"
-            variant="outline"
-            className={`h-10 px-4 border-primary text-primary hover:bg-primary/10 transition-colors shadow-sm ${
-                'hover:border-primary/80'
-            }`}
+            size="icon"
+            variant="ghost"
+            // Removed hover from Heart button
+            className="h-8 w-8 text-primary" 
             onClick={onFavorite}
             disabled={isFavoriting || !user || !isVerified}
           >
@@ -685,8 +681,8 @@ const Dashboard = () => {
           </h2>
           <p className="text-lg text-gray-600">Find the best second-hand items posted by your verified peers.</p>
 
-          {/* Desktop Filters */}
-          <div className="hidden lg:flex gap-4 p-5 border border-gray-200 rounded-xl bg-white shadow-lg">
+          {/* Desktop Filters: 6. Rounded-xl changed to rounded-md. No shadow */}
+          <div className="hidden lg:flex gap-4 p-5 border border-gray-200 rounded-md bg-white">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <Input
@@ -733,21 +729,21 @@ const Dashboard = () => {
 
         {/* Items Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-stretch">
             {[...Array(8)].map((_, i) => (
-              <Card key={i} className="animate-pulse overflow-hidden rounded-xl h-[350px] border border-gray-100 shadow-sm">
-                <div className="aspect-square w-full bg-gray-200"></div>
-                <CardContent className="p-4 space-y-3">
-                  <div className="h-5 bg-gray-300 rounded mb-2 w-3/4"></div>
-                  <div className="h-7 bg-primary/30 rounded w-1/3"></div>
-                  <div className="h-3 bg-gray-300 rounded w-1/2"></div>
-                  <div className="h-10 bg-gray-200 rounded mt-4"></div>
+              <Card key={i} className="animate-pulse overflow-hidden rounded-md h-[350px] border border-gray-100">
+                <div className="aspect-[4/3] w-full bg-gray-200"></div>
+                <CardContent className="p-3 space-y-3">
+                  <div className="h-4 bg-gray-300 rounded mb-2 w-1/3"></div>
+                  <div className="h-10 bg-gray-300 rounded w-full"></div>
+                  <div className="h-3 bg-gray-300 rounded w-1/2 mt-4"></div>
+                  <div className="h-8 bg-gray-200 rounded mt-4"></div>
                 </CardContent>
               </Card>
             ))}
           </div>
         ) : items.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl shadow-xl border border-dashed border-gray-300">
+          <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-300">
             <ShoppingBag className="h-16 w-16 text-primary/70 mx-auto mb-6" />
             <h3 className="text-2xl font-bold mb-3 text-gray-800">No matching items found</h3>
             <p className="text-gray-500 text-lg mb-6">
@@ -759,21 +755,20 @@ const Dashboard = () => {
             </Button>
           </div>
         ) : (
-          <TooltipProvider>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {items.map((item) => (
-                <ItemCard
-                  key={item.id}
-                  item={item}
-                  user={user}
-                  isVerified={isVerified}
-                  navigate={navigate}
-                  handleStartConversation={handleStartConversation}
-                  handleFavoriteToggle={handleFavoriteToggle}
-                />
-              ))}
-            </div>
-          </TooltipProvider>
+          // 7. Grid Gap Tightened to gap-4
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-stretch">
+            {items.map((item) => (
+              <ItemCard
+                key={item.id}
+                item={item}
+                user={user}
+                isVerified={isVerified}
+                navigate={navigate}
+                handleStartConversation={handleStartConversation}
+                handleFavoriteToggle={handleFavoriteToggle}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>
