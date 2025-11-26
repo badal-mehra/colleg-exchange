@@ -15,7 +15,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ImageCarousel from '@/components/ImageCarousel';
-// Tooltips are correctly removed
+// Tooltips removed from imports as they are not used in ItemCard anymore
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 
@@ -200,14 +200,14 @@ const ImageSliderSectionComponent = () => {
             <div className="absolute inset-x-0 bottom-0 bg-black/40 flex items-end justify-center py-4 sm:py-6">
               <div className="text-center text-white space-y-2 max-w-4xl px-4">
                 {currentImage.title && <h2 className="text-xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight drop-shadow-sm">{currentImage.title}</h2>}
-                {/* 2. Slider CTA Hover Fix: Removed hover:bg-primary/90 */}
+                {/* Slider CTA Hover Fix: Removed hover:bg-primary/90 */}
                 {currentImage.link_url && <Button variant="default" className="mt-2 text-sm font-semibold px-4 py-2 bg-primary text-white">Explore Now</Button>}
               </div>
             </div>
           </div>
           {sliderImages.length > 1 && (
             <>
-              {/* 4. Slider Arrow Visual Fix: Removed transition-colors and hover:bg-black/50 */}
+              {/* Slider Arrow Visual Fix: Removed transition-colors and hover:bg-black/50 */}
               <button
                 onClick={e => { e.stopPropagation(); prevSlide(); }}
                 className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 text-white p-2 rounded-sm z-20 hidden md:block"
@@ -299,13 +299,11 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
             />
         </div>
         
-        {/* Condition Badge: Text-only, low contrast. ADDED pointer-events-none */}
+        {/* Condition Badge: Added background, shadow, and border for OLX/Amazon look + pointer-events-none */}
         {condition && (
             <Badge 
-                // Added pointer-events-none
-                className="absolute top-2 left-2 text-[10px] text-gray-600 px-0 py-0 z-20 pointer-events-none"
+                className="absolute top-2 left-2 text-[10px] bg-white text-gray-800 px-2 py-1 rounded shadow-sm z-20 pointer-events-none"
             >
-                {/* Normalized text output, slightly more aggressive visual reduction */}
                 {condition === "new" ? "NEW" : condition.toUpperCase()}
             </Badge>
         )}
@@ -313,8 +311,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         {/* AD BADGE: Top right. ADDED pointer-events-none */}
         {adBenefits && (
           <Badge 
-            // Added pointer-events-none
-            className={`absolute top-2 right-2 ${adBenefits.color} cursor-default pointer-events-none`}
+            className={`absolute top-2 right-2 bg-yellow-100 text-yellow-800 px-2 py-1 rounded shadow-sm z-20 pointer-events-none`}
           >
             {adBenefits.icon}
             {adBenefits.label}
@@ -322,10 +319,9 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         )}
 
         
-        {/* 3. Views Counter Position Fix: Moved to bottom-right */}
+        {/* Views Counter Position Fix: Moved to bottom-right. ADDED pointer-events-none */}
         <div 
-          // Changed left-2 to right-2. Added pointer-events-none
-          className="absolute bottom-2 right-2 text-[11px] text-gray-600 flex items-center gap-1 z-20 pointer-events-none"
+          className="absolute bottom-2 right-2 bg-black/70 text-white text-[11px] px-2 py-1 rounded z-20 pointer-events-none"
         >
           <Eye className="h-3 w-3" />
           <span className="font-medium">
@@ -527,7 +523,8 @@ const Dashboard = () => {
   // Debounced Item Fetch on Filter/Search Change (Waits for categories to load)
   // Dependency on categoriesLoaded ensures fetchItems is correctly called after back navigation.
   useEffect(() => {
-    // We rely on the fetchItems logic (if (!categoriesLoaded) return;) to prevent running the fetch prematurely.
+    if (!categoriesLoaded) return;
+
     const debounceTimer = setTimeout(() => {
       fetchItems();
     }, 300);
@@ -560,16 +557,20 @@ const Dashboard = () => {
         .eq('seller_id', item.seller_id)
         .maybeSingle();
 
-      if (!existingConversation) {
-        const { data: newConversation, error } = await supabase
-          .from('conversations')
-          .insert({ item_id: item.id, buyer_id: user.id, seller_id: item.seller_id })
-          .select('id')
-          .single();
-        if (error) throw error;
-        existingConversation = newConversation;
+      if (existingConversation) {
+        navigate(`/chat/${existingConversation.id}`);
+        return;
       }
-      navigate(`/chat/${existingConversation.id}`);
+
+      // Create new conversation
+      const { data: newConversation, error } = await supabase
+        .from('conversations')
+        .insert({ item_id: item.id, buyer_id: user.id, seller_id: item.seller_id })
+        .select('id')
+        .single();
+      if (error) throw error;
+      
+      navigate(`/chat/${newConversation.id}`);
     } catch (error) {
       console.error('Error handling conversation:', error);
       toast({ title: "Error", description: "Failed to start conversation. Please try again.", variant: "destructive" });
@@ -666,7 +667,7 @@ const Dashboard = () => {
                   **Action Required:** Please verify your student identity to **unlock all buying/selling features**.
                 </span>
               </div>
-              {/* 2. Hover Removed from Verify Now Button */}
+              {/* Hover Removed from Verify Now Button */}
               <Button size="sm" variant="default" className="bg-primary text-white font-semibold shadow-md" onClick={() => navigate('/kyc')}>
                 Verify Now &rarr;
               </Button>
@@ -755,7 +756,7 @@ const Dashboard = () => {
             <p className="text-gray-500 text-lg mb-6">
               Try adjusting your search terms or filters for better results.
             </p>
-            {/* 2. Hover Removed from List Item Now Button */}
+            {/* Hover Removed from List Item Now Button */}
             <Button size="lg" className="mt-4 bg-primary shadow-lg" onClick={() => navigate('/list-item')}>
               <Plus className="h-5 w-5 mr-2" />
               List an Item Now
