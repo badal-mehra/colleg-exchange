@@ -1,4 +1,4 @@
-// Dashboard.tsx - ✅ FINAL, PRODUCTION-READY (Marketplace-Authentic Standard)
+// Dashboard.tsx - ✅ FINAL, PRODUCTION-READY (Marketplace-Authentic Standard + Logic Fixes)
 
 import React, { useEffect, useState, memo, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,7 +15,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ImageCarousel from '@/components/ImageCarousel';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+// Tooltips are correctly removed
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 
@@ -97,8 +97,9 @@ const getThumb = (url: string) => {
 
 // Robust, fuzzy matching logic for ad types (as previously fixed)
 const getAdTypeBenefits = (adType: string = "") => {
-  // Badge Flattening: Text-only, low contrast
-  const baseStyle = 'text-[10px] flex items-center gap-1 font-medium text-gray-500 px-0 py-0 z-20';
+  const type = String(adType || "").trim().toLowerCase();
+  // Badge Flattening: Text-only, low contrast + pointer-events-none
+  const baseStyle = 'text-[10px] flex items-center gap-1 font-medium text-gray-500 px-0 py-0 z-20 pointer-events-none'; 
 
   if (type.includes("feature")) return {
     icon: <Star className="h-3 w-3 text-yellow-500" />,
@@ -199,24 +200,24 @@ const ImageSliderSectionComponent = () => {
             <div className="absolute inset-x-0 bottom-0 bg-black/40 flex items-end justify-center py-4 sm:py-6">
               <div className="text-center text-white space-y-2 max-w-4xl px-4">
                 {currentImage.title && <h2 className="text-xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight drop-shadow-sm">{currentImage.title}</h2>}
-                {/* Flat CTA Button */}
-                {currentImage.link_url && <Button variant="default" className="mt-2 text-sm font-semibold px-4 py-2 bg-primary text-white hover:bg-primary/90">Explore Now</Button>}
+                {/* 2. Slider CTA Hover Fix: Removed hover:bg-primary/90 */}
+                {currentImage.link_url && <Button variant="default" className="mt-2 text-sm font-semibold px-4 py-2 bg-primary text-white">Explore Now</Button>}
               </div>
             </div>
           </div>
           {sliderImages.length > 1 && (
             <>
-              {/* 2. Slider Arrow Rounding: Changed rounded-full to rounded-sm */}
+              {/* 4. Slider Arrow Visual Fix: Removed transition-colors and hover:bg-black/50 */}
               <button
                 onClick={e => { e.stopPropagation(); prevSlide(); }}
-                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-sm transition-colors z-20 hidden md:block"
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 text-white p-2 rounded-sm z-20 hidden md:block"
                 aria-label="Previous slide"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <button
                 onClick={e => { e.stopPropagation(); nextSlide(); }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-sm transition-colors z-20 hidden md:block"
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 text-white p-2 rounded-sm z-20 hidden md:block"
                 aria-label="Next slide"
               >
                 <ChevronRight className="h-5 w-5" />
@@ -288,30 +289,32 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
       
       <div className="relative w-full aspect-[4/3] rounded-t-md overflow-hidden bg-gray-50">
         
-        <div className="absolute inset-0 z-0">
+        {/* FIX: Add pointer-events-none to image wrapper and carousel to allow card click */}
+        <div className="absolute inset-0 z-0 pointer-events-none">
             <ImageCarousel
               images={thumbnailImages}
               alt={item.title}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover pointer-events-none"
               loading="lazy"
             />
         </div>
         
-        {/* 1. Condition Badge: Text-only, low contrast (text-[10px] text-gray-600) */}
+        {/* Condition Badge: Text-only, low contrast. ADDED pointer-events-none */}
         {condition && (
             <Badge 
-                // Removed variant, background, and border
-                className="absolute top-2 left-2 text-[10px] text-gray-600 px-0 py-0 z-20"
+                // Added pointer-events-none
+                className="absolute top-2 left-2 text-[10px] text-gray-600 px-0 py-0 z-20 pointer-events-none"
             >
                 {/* Normalized text output, slightly more aggressive visual reduction */}
                 {condition === "new" ? "NEW" : condition.toUpperCase()}
             </Badge>
         )}
         
-        {/* AD BADGE: Text-only, low contrast */}
+        {/* AD BADGE: Top right. ADDED pointer-events-none */}
         {adBenefits && (
           <Badge 
-            className={`absolute top-2 right-2 ${adBenefits.color} cursor-default`}
+            // Added pointer-events-none
+            className={`absolute top-2 right-2 ${adBenefits.color} cursor-default pointer-events-none`}
           >
             {adBenefits.icon}
             {adBenefits.label}
@@ -319,9 +322,10 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         )}
 
         
-        {/* VIEWS COUNTER: Plain number */}
+        {/* 3. Views Counter Position Fix: Moved to bottom-right */}
         <div 
-          className="absolute bottom-2 left-2 text-[11px] text-gray-600 flex items-center gap-1 z-20"
+          // Changed left-2 to right-2. Added pointer-events-none
+          className="absolute bottom-2 right-2 text-[11px] text-gray-600 flex items-center gap-1 z-20 pointer-events-none"
         >
           <Eye className="h-3 w-3" />
           <span className="font-medium">
@@ -455,13 +459,15 @@ const Dashboard = () => {
 
 
   const fetchItems = useCallback(async () => {
+    // 1. FINAL FIX for Back Navigation Blank Screen: Only check categoriesLoaded status first.
     if (!categoriesLoaded) {
-      setLoading(true);
-      return;
+      // If categories aren't loaded, exit immediately, relying on useEffect to call us when they are ready.
+      return; 
     }
-
-    setLoading(true);
     
+    // Once categories are ready, set loading and proceed to fetch.
+    setLoading(true);
+
     // Pagination (Limit to first 20 items for the initial load)
     const PAGE_LIMIT = 20;
 
@@ -519,9 +525,9 @@ const Dashboard = () => {
   }, [user, fetchProfile, fetchAllCategories]);
 
   // Debounced Item Fetch on Filter/Search Change (Waits for categories to load)
+  // Dependency on categoriesLoaded ensures fetchItems is correctly called after back navigation.
   useEffect(() => {
-    if (!categoriesLoaded) return;
-
+    // We rely on the fetchItems logic (if (!categoriesLoaded) return;) to prevent running the fetch prematurely.
     const debounceTimer = setTimeout(() => {
       fetchItems();
     }, 300);
@@ -660,7 +666,8 @@ const Dashboard = () => {
                   **Action Required:** Please verify your student identity to **unlock all buying/selling features**.
                 </span>
               </div>
-              <Button size="sm" variant="default" className="bg-primary hover:bg-primary/90 text-white font-semibold shadow-md" onClick={() => navigate('/kyc')}>
+              {/* 2. Hover Removed from Verify Now Button */}
+              <Button size="sm" variant="default" className="bg-primary text-white font-semibold shadow-md" onClick={() => navigate('/kyc')}>
                 Verify Now &rarr;
               </Button>
             </div>
@@ -748,7 +755,8 @@ const Dashboard = () => {
             <p className="text-gray-500 text-lg mb-6">
               Try adjusting your search terms or filters for better results.
             </p>
-            <Button size="lg" className="mt-4 bg-primary hover:bg-primary/90 shadow-lg" onClick={() => navigate('/list-item')}>
+            {/* 2. Hover Removed from List Item Now Button */}
+            <Button size="lg" className="mt-4 bg-primary shadow-lg" onClick={() => navigate('/list-item')}>
               <Plus className="h-5 w-5 mr-2" />
               List an Item Now
             </Button>
