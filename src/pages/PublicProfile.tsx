@@ -2,13 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // Added CardDescription
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Award, Star, Trophy, Package, User as UserIcon, AlertTriangle, Shield, CheckCircle } from 'lucide-react'; // Added Shield, CheckCircle
+import { ArrowLeft, Award, Star, Trophy, Package, User as UserIcon, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ReportModal } from '@/components/ReportModal';
-import { Separator } from '@/components/ui/separator'; // Added Separator
 
 interface Profile {
   id: string;
@@ -34,24 +33,6 @@ interface Item {
   condition: string;
 }
 
-// ⭐ ADDED: Fetch Rating Utility - Common Function
-const fetchUserRating = async (userId: string) => {
-  const { data, error } = await supabase
-    .from("ratings")
-    .select("rating")
-    .eq("to_user_id", userId);
-
-  if (error || !data) return { avg: 0, count: 0 };
-
-  const count = data.length;
-  const avg =
-    count === 0
-      ? 0
-      : data.reduce((sum, item) => sum + item.rating, 0) / count;
-
-  return { avg: parseFloat(avg.toFixed(1)), count };
-};
-
 const PublicProfile = () => {
   const { mckId } = useParams();
   const navigate = useNavigate();
@@ -60,9 +41,6 @@ const PublicProfile = () => {
   const [listings, setListings] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [reportModalOpen, setReportModalOpen] = useState(false);
-  
-  // ADDED: State for Seller Rating
-  const [sellerRating, setSellerRating] = useState({ avg: 0, count: 0 });
 
   useEffect(() => {
     fetchProfileAndListings();
@@ -91,14 +69,7 @@ const PublicProfile = () => {
     }
 
     setProfile(profileData);
-    
-    // ADDED: Fetch Rating
-    if (profileData.user_id) {
-      const rating = await fetchUserRating(profileData.user_id);
-      setSellerRating(rating);
-    }
-    // END ADDED: Fetch Rating
-    
+
     // Fetch user's listings
     const { data: itemsData, error: itemsError } = await supabase
       .from('items')
@@ -148,147 +119,98 @@ const PublicProfile = () => {
   }
 
   const avatarUrl = getAvatarUrl(profile.avatar_url);
-  const activeListings = listings.filter(item => !item.is_sold);
 
   return (
-    <div className="min-h-screen bg-background"> {/* Cleaned up background */}
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="flex justify-between items-center mb-6">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-muted-foreground hover:bg-muted">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setReportModalOpen(true)}
-            className="flex items-center gap-2 text-destructive border-destructive hover:bg-destructive/10"
-          >
-            <AlertTriangle className="h-4 w-4" />
-            Report User
-          </Button>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-6 hover-scale">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
 
-        {/* Profile Header Card */}
-        <Card className="mb-10 p-6 shadow-xl border-t-4 border-primary">
-          <CardContent className="p-0">
-            <div className="flex flex-col items-center text-center">
-              
-              <div className="relative mb-4">
-                <Avatar className="h-36 w-36 border-4 border-primary/20">
-                  <AvatarImage src={avatarUrl || undefined} alt={profile.full_name} />
-                  <AvatarFallback className="text-5xl bg-primary text-primary-foreground">
-                    {profile.full_name?.charAt(0) || <UserIcon className="h-20 w-20" />}
-                  </AvatarFallback>
-                </Avatar>
-                {profile.verification_status === 'approved' && (
-                  <div className="absolute bottom-0 right-0">
-                    <div className="w-10 h-10 bg-success rounded-full flex items-center justify-center border-2 border-white">
-                      <Shield className="h-5 w-5 text-white fill-success" />
-                    </div>
+        {/* Profile Header */}
+        <Card className="mb-8 glass-effect">
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+              <Avatar className="h-32 w-32 border-4 border-primary/20">
+                <AvatarImage src={avatarUrl || undefined} alt={profile.full_name} />
+                <AvatarFallback className="text-3xl bg-gradient-to-br from-primary to-primary/60 text-white">
+                  {profile.full_name?.charAt(0) || <UserIcon className="h-16 w-16" />}
+                </AvatarFallback>
+              </Avatar>
+
+              <div className="flex-1 text-center md:text-left">
+                <div className="flex flex-col md:flex-row md:items-center gap-3 mb-2">
+                  <h1 className="text-3xl font-bold gradient-text">{profile.full_name || 'Anonymous User'}</h1>
+                  {profile.verification_status === 'approved' && (
+                    <Badge className="bg-success/10 text-success border-success/20 w-fit mx-auto md:mx-0">
+                      ✓ Verified Student
+                    </Badge>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <p className="text-lg font-mono text-primary">{profile.mck_id}</p>
+                  {profile.university && (
+                    <p className="text-muted-foreground">{profile.university}</p>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-3 mt-4 justify-center md:justify-start">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg">
+                    <Trophy className="h-5 w-5 text-primary" />
+                    <span className="font-semibold">{profile.campus_points}</span>
+                    <span className="text-sm text-muted-foreground">Points</span>
                   </div>
-                )}
+                  
+                  <div className="flex items-center gap-2 px-4 py-2 bg-accent/10 rounded-lg">
+                    <Star className="h-5 w-5 text-accent" />
+                    <span className="font-semibold">{profile.deals_completed}</span>
+                    <span className="text-sm text-muted-foreground">Deals</span>
+                  </div>
+
+                  {profile.trust_seller_badge && (
+                    <Badge className="bg-warning/10 text-warning border-warning/20 flex items-center gap-1">
+                      <Award className="h-4 w-4" />
+                      Trusted Seller
+                    </Badge>
+                  )}
+                </div>
               </div>
 
-              <h1 className="text-4xl font-extrabold text-foreground mb-1">
-                {profile.full_name || 'Anonymous Seller'}
-              </h1>
-              
-              <p className="text-md text-muted-foreground font-mono mb-4">
-                {profile.mck_id}
-              </p>
-              
-              {profile.university && (
-                <p className="text-lg text-secondary-foreground mb-4">
-                  {profile.university}
-                </p>
-              )}
-
-              {/* Status and Badges Section */}
-              <div className="flex flex-wrap gap-4 mt-2 justify-center">
-                
-                {/* Verification Badge */}
-                {profile.verification_status === 'approved' && (
-                  <Badge className="bg-success text-success-foreground px-4 py-1 text-sm flex items-center gap-1">
-                    <CheckCircle className="h-4 w-4" />
-                    Verified Student
-                  </Badge>
-                )}
-
-                {/* Trusted Seller Badge */}
-                {profile.trust_seller_badge && (
-                  <Badge variant="outline" className="text-warning border-warning px-4 py-1 text-sm flex items-center gap-1">
-                    <Award className="h-4 w-4 fill-warning" />
-                    Trusted Seller
-                  </Badge>
-                )}
-
-              </div>
-              
-              <Separator className="my-6 w-full max-w-md" />
-
-              {/* Metric Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-xl">
-                
-                {/* Seller Rating */}
-                <div className="flex flex-col items-center p-3 border rounded-lg bg-yellow-500/5">
-                  <Star className="h-6 w-6 text-yellow-500 fill-yellow-500 mb-1" />
-                  <span className="text-2xl font-bold text-yellow-500">
-                    {sellerRating.avg.toFixed(1)}
-                  </span>
-                  <span className="text-xs text-muted-foreground mt-1">
-                    ({sellerRating.count} Reviews)
-                  </span>
-                </div>
-                
-                {/* Deals Completed */}
-                <div className="flex flex-col items-center p-3 border rounded-lg bg-primary/5">
-                  <Package className="h-6 w-6 text-primary mb-1" />
-                  <span className="text-2xl font-bold text-primary">
-                    {profile.deals_completed}
-                  </span>
-                  <span className="text-xs text-muted-foreground mt-1">
-                    Deals Completed
-                  </span>
-                </div>
-                
-                {/* Campus Points */}
-                <div className="flex flex-col items-center p-3 border rounded-lg bg-secondary/5">
-                  <Trophy className="h-6 w-6 text-secondary mb-1" />
-                  <span className="text-2xl font-bold text-secondary-foreground">
-                    {profile.campus_points}
-                  </span>
-                  <span className="text-xs text-muted-foreground mt-1">
-                    Campus Points
-                  </span>
-                </div>
-                
-              </div>
-              
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setReportModalOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <AlertTriangle className="h-4 w-4" />
+                Report User
+              </Button>
             </div>
           </CardContent>
         </Card>
 
         {/* Listings Section */}
-        <Card className="shadow-lg">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl">
+            <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5 text-primary" />
-              Active Listings <Badge variant="secondary">{activeListings.length}</Badge>
+              Active Listings ({listings.filter(item => !item.is_sold).length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             {listings.length === 0 ? (
               <div className="text-center py-12">
                 <Package className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
-                <p className="text-muted-foreground text-lg font-medium">This seller has no active listings yet.</p>
+                <p className="text-muted-foreground">No listings yet</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"> {/* Increased grid to 4 columns */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {listings.map((item) => (
                   <Card
                     key={item.id}
-                    className={`cursor-pointer transition-all duration-300 hover:shadow-lg ${item.is_sold ? 'opacity-60 border-dashed hover:opacity-100 hover:shadow-none' : 'hover:scale-[1.02]'}`}
+                    className="cursor-pointer hover-scale transition-all"
                     onClick={() => navigate(`/item/${item.id}`)}
                   >
                     <div className="aspect-square relative overflow-hidden rounded-t-lg bg-muted">
@@ -305,14 +227,14 @@ const PublicProfile = () => {
                       )}
                       {item.is_sold && (
                         <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                          <Badge variant="secondary" className="text-lg font-bold">SOLD</Badge>
+                          <Badge variant="secondary">SOLD</Badge>
                         </div>
                       )}
                     </div>
                     <CardContent className="p-4">
-                      <h3 className="font-semibold line-clamp-2 mb-2 text-base">{item.title}</h3>
+                      <h3 className="font-semibold line-clamp-2 mb-2">{item.title}</h3>
                       <div className="flex items-center justify-between">
-                        <span className="text-xl font-bold text-primary">₹{item.price}</span>
+                        <span className="text-lg font-bold text-primary">₹{item.price}</span>
                         {item.condition && (
                           <Badge variant="outline" className="text-xs">{item.condition}</Badge>
                         )}

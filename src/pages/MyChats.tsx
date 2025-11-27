@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -63,11 +63,7 @@ const OnlineIndicator: React.FC = () => (
 );
 
 const UserAvatar: React.FC<{ userProfile: Profile, isOnline: boolean }> = ({ userProfile, isOnline }) => {
-    const avatarUrl = useMemo(() => {
-        return userProfile.avatar_url 
-            ? supabase.storage.from('avatars').getPublicUrl(userProfile.avatar_url).data.publicUrl 
-            : undefined;
-    }, [userProfile.avatar_url]);
+    const avatarUrl = userProfile.avatar_url ? supabase.storage.from('avatars').getPublicUrl(userProfile.avatar_url).data.publicUrl : undefined;
 
     return (
         <div className="relative">
@@ -90,10 +86,7 @@ const MyChats = () => {
   const { toast } = useToast();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set()); 
-  
-  // Tab state initialization
-  const [tab, setTab] = useState<string>("buying");
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
 
   // Utility to format time for chat list
   const formatTime = (timestamp: string): string => {
@@ -118,88 +111,67 @@ const MyChats = () => {
     return conversation.buyer_id === user?.id ? conversation.seller_id : conversation.buyer_id;
   }, [user]);
   
-  // Optimized Fetch Conversations logic (Dependencies are stable: user and toast)
+  // Fetch Conversations logic
   const fetchConversations = useCallback(async () => {
-    if (!user) {
-        setConversations([]);
-        setLoading(false);
-        return;
-    }
+    if (!user) return;
 
     setLoading(true);
     
     try {
-      // 1. Fetch conversations and item details
+      // 1. Fetch conversations
       const { data: conversationsData, error: convError } = await supabase
         .from('conversations')
         .select(`
-          id, buyer_id, seller_id, item_id, created_at, updated_at,
+          *,
           items (id, title, price, images)
         `)
         .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
         .order('updated_at', { ascending: false });
 
-      if (convError || !conversationsData || conversationsData.length === 0) {
-        setConversations([]);
+      if (convError) {
+        console.error('Error fetching conversations:', convError);
+        toast({ title: "Error", description: "Failed to load conversations", variant: "destructive" });
         setLoading(false);
         return;
       }
-      
-      const allUserIds = new Set(
-          conversationsData.flatMap(c => [c.buyer_id, c.seller_id])
-      );
-      const conversationIds = conversationsData.map(c => c.id);
 
-      // 2. BATCH FETCH PROFILES: Fetch all related profiles in a single query
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, is_verified, verification_status, avatar_url')
-        .in('user_id', Array.from(allUserIds));
-      
-      const profileMap = new Map(
-          (profilesData || []).map(p => [p.user_id, p])
-      );
+      // 2. Fetch related data (profiles, last message, unread count)
+      const conversationsWithData = await Promise.all(
+        (conversationsData || []).map(async (conversation) => {
+          
+          const [{ data: buyerProfile }, { data: sellerProfile }, { data: lastMessage }, { data: unreadCount }] = await Promise.all([
+            supabase
+              .from('profiles')
+              .select('user_id, full_name, is_verified, verification_status, avatar_url')
+              .eq('user_id', conversation.buyer_id)
+              .maybeSingle(),
+            supabase
+              .from('profiles')
+              .select('user_id, full_name, is_verified, verification_status, avatar_url')
+              .eq('user_id', conversation.seller_id)
+              .maybeSingle(),
+            supabase
+                .from('messages')
+                .select('content, created_at, sender_id')
+                .eq('conversation_id', conversation.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+            supabase.rpc('get_unread_count', {
+                conv_id: conversation.id,
+                uid: user.id
+            }),
+          ]);
 
-      // 3. BATCH FETCH LAST MESSAGE & UNREAD COUNT
-      const lastMessagePromises = conversationIds.map(id => 
-        supabase
-            .from('messages')
-            .select('content, created_at, sender_id')
-            .eq('conversation_id', id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-      );
-
-      const unreadCountPromises = conversationIds.map(id => 
-        supabase.rpc('get_unread_count', {
-            conv_id: id,
-            uid: user.id
+          return {
+            ...conversation,
+            buyer_profile: (buyerProfile as Profile) || { user_id: conversation.buyer_id, full_name: 'Unknown User' },
+            seller_profile: (sellerProfile as Profile) || { user_id: conversation.seller_id, full_name: 'Unknown User' },
+            last_message: lastMessage || undefined,
+            unread_count: unreadCount || 0
+          };
         })
       );
-      
-      const [lastMessagesResults, unreadCountsResults] = await Promise.all([
-          Promise.all(lastMessagePromises),
-          Promise.all(unreadCountPromises)
-      ]);
-
-
-      // 4. Combine all data
-      const conversationsWithData: Conversation[] = conversationsData.map((conversation, index) => {
-        const buyerProfile = profileMap.get(conversation.buyer_id) || { user_id: conversation.buyer_id, full_name: 'Unknown User' };
-        const sellerProfile = profileMap.get(conversation.seller_id) || { user_id: conversation.seller_id, full_name: 'Unknown User' };
-        const lastMessage = lastMessagesResults[index].data;
-        const unreadCount = unreadCountsResults[index].data as number || 0; 
-
-        return {
-          ...conversation,
-          items: conversation.items as Item, 
-          buyer_profile: buyerProfile as Profile,
-          seller_profile: sellerProfile as Profile,
-          last_message: lastMessage || undefined,
-          unread_count: unreadCount
-        } as Conversation;
-      });
       
       setConversations(conversationsWithData);
     } catch (error) {
@@ -209,26 +181,8 @@ const MyChats = () => {
       setLoading(false);
     }
   }, [user, toast]);
-  
-  // FIX 1: Fetch Conversations ONLY once on mount
-  useEffect(() => {
-    fetchConversations();
-  }, [fetchConversations]); 
 
-  // FIX 2a: Load saved tab state from localStorage on mount
-  useEffect(() => {
-      const savedTab = localStorage.getItem("mychats-tab");
-      if (savedTab === "buying" || savedTab === "selling") {
-        setTab(savedTab);
-      }
-  }, []);
-
-  // FIX 2b: Save current tab state to localStorage whenever the tab changes
-  useEffect(() => {
-      localStorage.setItem("mychats-tab", tab);
-  }, [tab]);
-
-  // Presence Subscription (Isolated for stable behavior)
+  // Presence Subscription with better cleanup
   useEffect(() => {
     if (!user) return;
 
@@ -258,15 +212,15 @@ const MyChats = () => {
     };
 
     setupPresence();
+    fetchConversations();
     
     return () => {
       mounted = false;
       if (presenceChannel) {
-        supabase.removeChannel(presenceChannel).catch(console.error);
+        supabase.removeChannel(presenceChannel);
       }
     };
-  }, [user]);
-
+  }, [user, fetchConversations]);
 
   const handleConversationClick = (conversationId: string) => {
     navigate(`/chat/${conversationId}`);
@@ -286,7 +240,7 @@ const MyChats = () => {
         lastMessageContent = `You: ${lastMessageContent}`;
     }
 
-    // Determine the border style based on unread status for enhanced visual cue
+    // Determine the border style based on unread status
     const cardBorderClass = unreadCount > 0 
       ? 'border-l-4 border-primary/80 bg-primary/5 hover:bg-primary/10' 
       : 'border-l-4 border-transparent hover:bg-accent/5';
@@ -424,7 +378,7 @@ const MyChats = () => {
             </Button>
           </div>
         ) : (
-          <Tabs value={tab} onValueChange={setTab} className="w-full">
+          <Tabs defaultValue="buying" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6 h-12 p-1 bg-muted/70 rounded-lg">
               <TabsTrigger 
                 value="buying" 
@@ -448,13 +402,7 @@ const MyChats = () => {
               </TabsTrigger>
             </TabsList>
 
-            {/* FIX 3: forceMount and INLINE style visibility control to prevent flicker/overlap without external CSS */}
-            <TabsContent 
-              value="buying" 
-              forceMount 
-              className="space-y-3"
-              style={{ display: tab === "buying" ? "block" : "none" }}
-            >
+            <TabsContent value="buying" className="space-y-3">
               {buyingConversations.length === 0 ? (
                 <div className="text-center py-12 border-2 border-dashed border-border rounded-lg bg-card/50">
                   <ShoppingBag className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
@@ -465,13 +413,7 @@ const MyChats = () => {
               )}
             </TabsContent>
 
-            {/* FIX 3: forceMount and INLINE style visibility control to prevent flicker/overlap without external CSS */}
-            <TabsContent 
-              value="selling" 
-              forceMount 
-              className="space-y-3"
-              style={{ display: tab === "selling" ? "block" : "none" }}
-            >
+            <TabsContent value="selling" className="space-y-3">
               {sellingConversations.length === 0 ? (
                 <div className="text-center py-12 border-2 border-dashed border-border rounded-lg bg-card/50">
                   <Store className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />

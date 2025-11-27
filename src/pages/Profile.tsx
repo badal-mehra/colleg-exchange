@@ -2,19 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // Added CardDescription
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, CheckCircle, Clock, XCircle, User, Edit3, Save, X, Shield, Zap, Star, Settings, Award, Trophy, Target, Camera, Copy, AlertTriangle, Package } from 'lucide-react'; // Added Package
+import { ArrowLeft, CheckCircle, Clock, XCircle, User, Edit3, Save, X, Shield, Zap, Star, Settings, Award, Trophy, Target, Upload, Camera, Copy, AlertTriangle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ImageCropModal from '@/components/ImageCropModal';
-import { Separator } from '@/components/ui/separator'; // Added Separator
-import { uploadToCloudinary } from "@/utils/cloudinaryUpload";
-import { deleteFromCloudinary } from "@/utils/cloudinaryDelete"; // ✅ NEW IMPORT
 
 interface Profile {
   id: string;
@@ -36,25 +33,6 @@ interface Profile {
   mck_id: string;
   avatar_url: string | null;
 }
-
-// ⭐ ADDED: Fetch Rating Utility - Common Function (STEP 2)
-const fetchUserRating = async (userId: string) => {
-  const { data, error } = await supabase
-    .from("ratings")
-    .select("rating")
-    .eq("to_user_id", userId);
-
-  if (error || !data) return { avg: 0, count: 0 };
-
-  const count = data.length;
-  const avg =
-    count === 0
-      ? 0
-      : data.reduce((sum, item) => sum + item.rating, 0) / count;
-
-  // Rounding to one decimal place for clean display
-  return { avg: parseFloat(avg.toFixed(1)), count };
-};
 
 const Profile = () => {
   const { user } = useAuth();
@@ -78,9 +56,6 @@ const Profile = () => {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
-  
-  // ADDED: State for My Rating (STEP 1)
-  const [myRating, setMyRating] = useState({ avg: 0, count: 0 });
 
   useEffect(() => {
     fetchProfile();
@@ -120,11 +95,6 @@ const Profile = () => {
       });
     } else {
       setProfile(data);
-      
-      // ADDED: Fetch Rating after profile loads (STEP 3)
-      const rating = await fetchUserRating(data.user_id);
-      setMyRating(rating);
-      
       setFormData({
         full_name: data.full_name || '',
         phone: data.phone || '',
@@ -172,47 +142,33 @@ const Profile = () => {
     reader.readAsDataURL(file);
   };
 
-  // ✅ REPLACED handleCropComplete FOR CLOUDINARY DELETE LOGIC
   const handleCropComplete = async (croppedImage: Blob) => {
     if (!user || !profile) return;
-  
+
     setUploadingAvatar(true);
-  
+
     try {
-      // ✅ 1️⃣ Get OLD avatar URL before overwriting
-      const oldUrl = profile.avatar_url;
-  
-      // ✅ 2️⃣ Convert Blob → File
-      const file = new File(
-        [croppedImage],
-        `${user.id}-${Date.now()}.jpg`,
-        { type: "image/jpeg" }
-      );
-  
-      // ✅ 3️⃣ Upload NEW avatar
-      const avatarUrl = await uploadToCloudinary(file, "avatars");
-  
-      // ✅ 4️⃣ Update DB
+      const fileExt = 'jpg';
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, croppedImage, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: avatarUrl })
+        .update({ avatar_url: fileName })
         .eq('user_id', user.id);
-  
+
       if (updateError) throw updateError;
-  
-      // ✅ 5️⃣ Delete OLD Cloudinary avatar (ONLY if it was Cloudinary)
-      if (oldUrl && oldUrl.startsWith("https://res.cloudinary.com")) {
-        deleteFromCloudinary(oldUrl);
-      }
-  
-      // ✅ 6️⃣ Update UI
-      setProfile({ ...profile, avatar_url: avatarUrl });
-  
+
+      setProfile({ ...profile, avatar_url: fileName });
       toast({
         title: "Success",
         description: "Profile picture updated successfully",
       });
-  
     } catch (error) {
       console.error('Error uploading avatar:', error);
       toast({
@@ -222,8 +178,6 @@ const Profile = () => {
       });
     } finally {
       setUploadingAvatar(false);
-      setCropModalOpen(false);
-      setImageToCrop(null);
     }
   };
 
@@ -264,9 +218,11 @@ const Profile = () => {
     }
   };
 
-  // ✅ 3️⃣ REPLACED getAvatarUrl TO RETURN FULL URL
   const getAvatarUrl = (avatarPath: string | null) => {
-    return avatarPath || null;
+    if (!avatarPath) return null;
+    if (avatarPath.startsWith('http')) return avatarPath;
+    const { data } = supabase.storage.from('avatars').getPublicUrl(avatarPath);
+    return data.publicUrl;
   };
 
   const getVerificationStatusInfo = (status: string) => {
@@ -275,33 +231,29 @@ const Profile = () => {
         return {
           icon: <CheckCircle className="h-5 w-5 text-success" />,
           text: 'Verified',
-          variant: 'success' as const, // Changed to 'success' for explicit styling
-          color: 'text-success',
-          description: '🎉 Your student identity has been verified. You can now buy and sell items.'
+          variant: 'default' as const,
+          bgColor: 'bg-success/10 border-success/20'
         };
       case 'pending':
         return {
           icon: <Clock className="h-5 w-5 text-warning" />,
           text: 'Pending Review',
-          variant: 'warning' as const, // Custom 'warning' for better color control
-          color: 'text-warning',
-          description: '⏳ Your verification is under review. We\'ll notify you once it\'s complete.'
+          variant: 'secondary' as const,
+          bgColor: 'bg-warning/10 border-warning/20'
         };
       case 'rejected':
         return {
           icon: <XCircle className="h-5 w-5 text-destructive" />,
           text: 'Rejected',
           variant: 'destructive' as const,
-          color: 'text-destructive',
-          description: '❌ Your verification was rejected. Please check your documents and resubmit.'
+          bgColor: 'bg-destructive/10 border-destructive/20'
         };
       default:
         return {
-          icon: <Shield className="h-5 w-5 text-muted-foreground" />,
-          text: 'Not Verified',
+          icon: <Clock className="h-5 w-5 text-muted-foreground" />,
+          text: 'Not Submitted',
           variant: 'outline' as const,
-          color: 'text-muted-foreground',
-          description: '🚀 Complete your student verification to start buying and selling.'
+          bgColor: 'bg-muted/10 border-border'
         };
     }
   };
@@ -309,12 +261,10 @@ const Profile = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse space-y-4 w-full max-w-4xl px-4">
-          <div className="h-24 bg-muted rounded-lg"></div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="h-96 bg-muted rounded-lg lg:col-span-1"></div>
-            <div className="h-96 bg-muted rounded-lg lg:col-span-2"></div>
-          </div>
+        <div className="animate-pulse space-y-4 w-full max-w-md">
+          <div className="h-8 bg-muted rounded"></div>
+          <div className="h-32 bg-muted rounded"></div>
+          <div className="h-48 bg-muted rounded"></div>
         </div>
       </div>
     );
@@ -324,250 +274,233 @@ const Profile = () => {
   const avatarUrl = getAvatarUrl(profile?.avatar_url);
 
   return (
-    <div className="min-h-screen bg-background"> {/* Removed background gradient */}
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="flex items-center justify-between mb-8">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="text-muted-foreground hover:bg-muted">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      <div className="container mx-auto px-4 py-6 max-w-4xl">
+        <div className="flex items-center gap-4 mb-8">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="hover-scale">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
-          <div className="flex gap-2">
-            {!editMode ? (
-              <Button variant="outline" size="sm" onClick={() => setEditMode(true)} className="text-primary border-primary hover:bg-primary/10">
-                <Edit3 className="h-4 w-4 mr-2" />
-                Edit Profile
-              </Button>
-            ) : (
-              <>
-                <Button variant="outline" size="sm" onClick={() => { setEditMode(false); fetchProfile(); }} disabled={saving}> {/* Re-fetch profile on cancel for reset */}
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel
-                </Button>
-                <Button size="sm" onClick={handleSave} disabled={saving}>
-                  <Save className="h-4 w-4 mr-2" />
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </>
-            )}
-          </div>
         </div>
 
-        {/* Profile Header (Avatar and Name) */}
-        <Card className="mb-8 border shadow-sm">
-          <CardContent className="pt-6 flex flex-col md:flex-row items-center md:items-start gap-6">
-            <div className="relative group">
-              <Avatar className="h-32 w-32 border-4 border-primary/10">
-                <AvatarImage src={avatarUrl || undefined} alt={profile?.full_name} />
-                <AvatarFallback className="text-4xl bg-primary text-primary-foreground">
-                  {profile?.full_name?.charAt(0) || <User className="h-16 w-16" />}
-                </AvatarFallback>
-              </Avatar>
-              <label className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer rounded-full">
-                <Camera className="h-8 w-8 text-white" />
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarUpload}
-                  disabled={uploadingAvatar}
-                />
-              </label>
-              {uploadingAvatar && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full">
-                  <div className="animate-spin h-8 w-8 border-4 border-white border-t-transparent rounded-full" />
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 text-center md:text-left">
-              <h1 className="text-3xl font-bold text-foreground mb-1">
-                {profile?.full_name || 'Set Up Your Profile'}
-              </h1>
-              <p className="text-lg text-primary font-mono mb-2 flex items-center justify-center md:justify-start">
-                <Zap className="h-4 w-4 mr-2 text-primary/80" />
-                {profile?.email}
-              </p>
-              
-              <div className="flex flex-wrap items-center gap-3 justify-center md:justify-start">
-                {profile?.mck_id && (
-                  <>
-                    <Badge variant="secondary" className="text-sm font-semibold">
-                      MCK-ID: {profile.mck_id}
-                    </Badge>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={copyMckId}
-                      className="h-8 p-1 text-muted-foreground hover:text-primary"
-                      aria-label="Copy MCK-ID"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/profile/${profile.mck_id}`)}
-                      className="text-sm"
-                    >
-                      View Public Profile
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column: Stats and Actions */}
-          <div className="space-y-6 lg:col-span-1">
+          {/* Profile Header with Avatar */}
+          <div className="lg:col-span-3">
+            <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-primary/20 shadow-lg">
+              <CardHeader>
+                <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+                  <div className="relative group">
+                    <Avatar className="h-32 w-32 border-4 border-primary/20">
+                      <AvatarImage src={avatarUrl || undefined} alt={profile?.full_name} />
+                      <AvatarFallback className="text-4xl bg-gradient-to-br from-primary to-primary/60 text-white">
+                        {profile?.full_name?.charAt(0) || <User className="h-16 w-16" />}
+                      </AvatarFallback>
+                    </Avatar>
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-full">
+                      <Camera className="h-8 w-8 text-white" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleAvatarUpload}
+                        disabled={uploadingAvatar}
+                      />
+                    </label>
+                    {uploadingAvatar && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full">
+                        <div className="animate-spin h-8 w-8 border-4 border-white border-t-transparent rounded-full" />
+                      </div>
+                    )}
+                    {profile?.verification_status === 'approved' && (
+                      <div className="absolute top-0 right-0">
+                        <div className="w-8 h-8 bg-success rounded-full flex items-center justify-center border-2 border-background">
+                          <Shield className="h-4 w-4 text-white" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-            {/* Verification Status */}
-            <Card className={`border ${statusInfo.color.replace('text', 'border')} shadow-md`}>
-              <CardHeader className="pb-3">
-                <CardTitle className={`flex items-center gap-2 text-lg ${statusInfo.color}`}>
-                  {statusInfo.icon}
-                  Student Verification
-                </CardTitle>
+                  <div className="flex-1 text-center md:text-left">
+                    <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
+                      <CardTitle className="text-2xl gradient-text">
+                        {profile?.full_name || 'Complete your profile'}
+                      </CardTitle>
+                      {!editMode ? (
+                        <Button variant="outline" size="sm" onClick={() => setEditMode(true)} className="hover-scale w-fit mx-auto md:mx-0">
+                          <Edit3 className="h-4 w-4 mr-2" />
+                          Edit Profile
+                        </Button>
+                      ) : (
+                        <div className="flex gap-2 mx-auto md:mx-0">
+                          <Button variant="outline" size="sm" onClick={() => setEditMode(false)}>
+                            <X className="h-4 w-4 mr-2" />
+                            Cancel
+                          </Button>
+                          <Button size="sm" onClick={handleSave} disabled={saving} className="bg-gradient-to-r from-primary to-primary/80">
+                            <Save className="h-4 w-4 mr-2" />
+                            {saving ? 'Saving...' : 'Save'}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 mb-4">
+                      <p className="text-muted-foreground flex items-center gap-2 justify-center md:justify-start">
+                        <Zap className="h-4 w-4" />
+                        {profile?.email}
+                      </p>
+                      {profile?.mck_id && (
+                        <div className="flex items-center gap-2 justify-center md:justify-start">
+                          <code className="px-3 py-1 bg-primary/10 rounded-lg font-mono text-primary font-semibold">
+                            {profile.mck_id}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={copyMckId}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/profile/${profile.mck_id}`)}
+                          >
+                            View Public Profile
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <Badge variant={statusInfo.variant} className="text-sm px-3 py-1">
-                  {statusInfo.text}
-                </Badge>
-                <p className="text-sm text-muted-foreground">{statusInfo.description}</p>
-                {profile?.verification_status !== 'approved' && (
-                  <Button 
-                    variant="default" 
-                    size="sm"
-                    onClick={() => navigate('/kyc')}
-                    className="w-full"
-                  >
-                    <Shield className="h-4 w-4 mr-2" />
-                    {profile?.verification_status ? 'Update/Resubmit KYC' : 'Complete KYC Now'}
-                  </Button>
-                )}
-              </CardContent>
             </Card>
+          </div>
 
-            {/* Campus Stats & Ratings */}
-            <Card className="shadow-md">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg text-foreground">
-                  <Trophy className="h-5 w-5 text-yellow-500" />
-                  Seller Performance & Campus Stats
+          {/* Verification Status - Left Column */}
+          <div className="space-y-6">
+            <Card className={`${statusInfo.bgColor} hover-scale`}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  {statusInfo.icon}
+                  <span className="bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
+                    Verification Status
+                  </span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  
-                  {/* Rating Block */}
-                  <div className="p-4 bg-muted rounded-lg flex justify-between items-center border border-yellow-500/20">
-                    <div>
-                      <CardDescription className="mb-1 flex items-center gap-1 text-yellow-600">
-                        <Star className="h-4 w-4 fill-yellow-500" />
-                        My Seller Rating
-                      </CardDescription>
-                      <div className="text-3xl font-bold text-yellow-500">
-                        {myRating.avg.toFixed(1)}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm text-muted-foreground">{myRating.count} Reviews</div>
-                      {myRating.count === 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          No ratings yet. Start selling!
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Other Stats */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="text-center p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="text-xl font-bold text-primary">{profile?.deals_completed || 0}</div>
-                      <div className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-1">
-                        <Package className="h-3 w-3" /> Deals Done
-                      </div>
-                    </div>
-                    <div className="text-center p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="text-xl font-bold text-success">
-                        {profile?.trust_seller_badge ? 'YES' : 'NO'}
-                      </div>
-                      <div className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-1">
-                        <Award className="h-3 w-3 text-warning" /> Trust Badge
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Separator />
-                  
-                  {/* Campus Points */}
-                  <div className="p-4 bg-primary/10 rounded-lg text-center border border-primary/20">
-                    <div className="text-3xl font-bold text-primary">{profile?.campus_points || 0}</div>
-                    <div className="text-sm text-primary/80 flex items-center justify-center gap-1 mt-1">
-                      <Target className="h-4 w-4" /> Campus Points
-                    </div>
-                  </div>
-                  
+                  <Badge variant={statusInfo.variant} className="text-sm px-3 py-1">
+                    {statusInfo.text}
+                  </Badge>
+                  <p className="text-sm text-muted-foreground">
+                    {profile?.verification_status === 'approved' && '🎉 Your student identity has been verified. You can now buy and sell items.'}
+                    {profile?.verification_status === 'pending' && '⏳ Your verification is under review. We\'ll notify you once it\'s complete.'}
+                    {profile?.verification_status === 'rejected' && '❌ Your verification was rejected. Please check your documents and resubmit.'}
+                    {!profile?.verification_status && '🚀 Complete your student verification to start buying and selling.'}
+                  </p>
+                  {profile?.verification_status !== 'approved' && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate('/kyc')}
+                      className="w-full hover-scale"
+                    >
+                      <Shield className="h-4 w-4 mr-2" />
+                      {profile?.verification_status ? 'Update KYC' : 'Complete KYC'}
+                    </Button>
+                  )}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => navigate('/my-reports')}
+                    className="w-full hover-scale"
+                  >
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    My Reports
+                  </Button>
                 </div>
               </CardContent>
             </Card>
-            
-            {/* Reports Button */}
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => navigate('/my-reports')}
-              className="w-full text-destructive border-destructive hover:bg-destructive/10"
-            >
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              View My Reports & Appeals
-            </Button>
+
+            {/* Campus Stats & Gamification */}
+            <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-background hover-scale">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-warning" />
+                  Campus Stats
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="text-center p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg">
+                    <div className="text-3xl font-bold text-primary">{profile?.campus_points || 0}</div>
+                    <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+                      <Target className="h-4 w-4" />
+                      Campus Points
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="text-center p-3 bg-background/50 rounded-lg">
+                      <div className="text-xl font-bold text-primary">{profile?.deals_completed || 0}</div>
+                      <div className="text-xs text-muted-foreground">Deals Done</div>
+                    </div>
+                    <div className="text-center p-3 bg-background/50 rounded-lg">
+                      <div className="text-xl font-bold text-success">{profile?.trust_seller_badge ? '✓' : '✗'}</div>
+                      <div className="text-xs text-muted-foreground">Trust Badge</div>
+                    </div>
+                  </div>
+                  {profile?.trust_seller_badge && (
+                    <Badge className="w-full justify-center bg-gradient-to-r from-warning to-warning/80">
+                      <Award className="h-3 w-3 mr-1" />
+                      Trusted Seller
+                    </Badge>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Right Column: Personal Information Form */}
+          {/* Personal Information - Right Column */}
           <div className="lg:col-span-2">
-            <Card className="shadow-md">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg text-foreground">
+            <Card className="h-fit hover-scale">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
                   <Settings className="h-5 w-5 text-primary" />
-                  Contact & Academic Information
+                  Personal Information
                 </CardTitle>
-                <CardDescription>
-                  Update your details. These fields are used for verification and deal coordination.
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="full_name">Full Name</Label>
+                    <Label htmlFor="full_name" className="text-sm font-medium">Full Name</Label>
                     <Input
                       id="full_name"
                       value={formData.full_name}
                       onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                       disabled={!editMode}
-                      className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
+                      className={`transition-all duration-200 ${!editMode ? 'bg-muted/50' : 'focus:ring-2 focus:ring-primary/20'}`}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
+                    <Label htmlFor="phone" className="text-sm font-medium">Phone Number</Label>
                     <Input
                       id="phone"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       disabled={!editMode}
-                      className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
+                      className={`transition-all duration-200 ${!editMode ? 'bg-muted/50' : 'focus:ring-2 focus:ring-primary/20'}`}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="university">University</Label>
+                    <Label htmlFor="university" className="text-sm font-medium">University</Label>
                     {editMode ? (
                       <Select
                         value={formData.university}
                         onValueChange={(value) => setFormData({ ...formData, university: value })}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="focus:ring-2 focus:ring-primary/20">
                           <SelectValue placeholder="Select University" />
                         </SelectTrigger>
                         <SelectContent>
@@ -579,60 +512,65 @@ const Profile = () => {
                         </SelectContent>
                       </Select>
                     ) : (
-                      <Input id="university" value={formData.university} disabled={true} className="bg-muted/50 cursor-not-allowed" />
+                      <Input
+                        id="university"
+                        value={formData.university}
+                        disabled={true}
+                        className="bg-muted/50"
+                      />
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="college_name">College/Department</Label>
+                    <Label htmlFor="college_name" className="text-sm font-medium">College/Department</Label>
                     <Input
                       id="college_name"
                       value={formData.college_name}
                       onChange={(e) => setFormData({ ...formData, college_name: e.target.value })}
                       disabled={!editMode}
-                      className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
+                      className={`transition-all duration-200 ${!editMode ? 'bg-muted/50' : 'focus:ring-2 focus:ring-primary/20'}`}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="student_id">Student ID</Label>
+                    <Label htmlFor="student_id" className="text-sm font-medium">Student ID</Label>
                     <Input
                       id="student_id"
                       value={formData.student_id}
                       onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
                       disabled={!editMode}
-                      className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
+                      className={`transition-all duration-200 ${!editMode ? 'bg-muted/50' : 'focus:ring-2 focus:ring-primary/20'}`}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="course">Course</Label>
+                    <Label htmlFor="course" className="text-sm font-medium">Course</Label>
                     <Input
                       id="course"
                       placeholder="e.g., B.Tech CSE"
                       value={formData.course}
                       onChange={(e) => setFormData({ ...formData, course: e.target.value })}
                       disabled={!editMode}
-                      className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
+                      className={`transition-all duration-200 ${!editMode ? 'bg-muted/50' : 'focus:ring-2 focus:ring-primary/20'}`}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="batch">Batch</Label>
+                    <Label htmlFor="batch" className="text-sm font-medium">Batch</Label>
                     <Input
                       id="batch"
                       placeholder="e.g., 2021-2025"
                       value={formData.batch}
                       onChange={(e) => setFormData({ ...formData, batch: e.target.value })}
                       disabled={!editMode}
-                      className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
+                      className={`transition-all duration-200 ${!editMode ? 'bg-muted/50' : 'focus:ring-2 focus:ring-primary/20'}`}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="hostel">Hostel/Residence</Label>
+                    <Label htmlFor="hostel" className="text-sm font-medium">Hostel</Label>
                     <Input
                       id="hostel"
                       placeholder="e.g., Block A-1"
                       value={formData.hostel}
                       onChange={(e) => setFormData({ ...formData, hostel: e.target.value })}
                       disabled={!editMode}
-                      className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
+                      className={`transition-all duration-200 ${!editMode ? 'bg-muted/50' : 'focus:ring-2 focus:ring-primary/20'}`}
                     />
                   </div>
                 </div>

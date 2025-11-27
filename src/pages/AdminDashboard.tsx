@@ -13,7 +13,6 @@ import { useNavigate } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Footer } from '@/components/Footer'; // Import Footer for consistent styling (optional)
-import { uploadToCloudinary } from "@/utils/cloudinaryUpload"; // 1️⃣ ADDED CLOUDINARY IMPORT
 
 // ------------------- Interfaces (Unchanged) -------------------
 interface Profile {
@@ -820,9 +819,33 @@ const AdminDashboard = () => {
                           try {
                             let imageUrl = newSliderImage.url;
 
-                            // 🔥 Upload file to Cloudinary (REPLACED SUPABASE LOGIC)
+                            // Upload file if provided
                             if (imageFile) {
-                              imageUrl = await uploadToCloudinary(imageFile, "slider");
+                              const fileExt = imageFile.name.split('.').pop();
+                              const fileName = `slider/${Date.now()}.${fileExt}`;
+
+                              console.log('Uploading slider image:', fileName);
+
+                              const { data: uploadData, error: uploadError } = await supabase.storage
+                                .from('avatars')
+                                .upload(fileName, imageFile, { 
+                                  upsert: true,
+                                  contentType: imageFile.type
+                                });
+
+                              if (uploadError) {
+                                console.error('Upload error:', uploadError);
+                                throw uploadError;
+                              }
+
+                              console.log('Upload success:', uploadData);
+
+                              const { data: publicUrlData } = supabase.storage
+                                .from('avatars')
+                                .getPublicUrl(fileName);
+
+                              imageUrl = publicUrlData.publicUrl;
+                              console.log('Public URL:', imageUrl);
                             }
 
                             console.log('Inserting into database with URL:', imageUrl);
