@@ -66,6 +66,11 @@ interface SliderImage {
 }
 
 // --- UTILITY FUNCTIONS ---
+<<<<<<< HEAD
+=======
+const unique = (arr: (string | null | undefined)[]) => Array.from(new Set(arr)).filter((i): i is string => !!i);
+
+>>>>>>> parent of 3717d37 (Enhance Dashboard with image optimization and pagination)
 const getAdTypeBenefits = (adType: string) => {
   switch (adType) {
     case 'featured':
@@ -202,6 +207,127 @@ const ImageSliderSectionComponent = () => {
 };
 const ImageSliderSection = memo(ImageSliderSectionComponent);
 
+<<<<<<< HEAD
+=======
+
+// --- ITEM CARD (Memoized) ---
+interface ItemCardProps {
+  item: EnrichedItem;
+  user: any;
+  isVerified: boolean;
+  navigate: (path: string) => void;
+  // Passing stable functions (useCallback) is vital for memo not to bust
+  handleStartConversation: (item: EnrichedItem) => Promise<void>;
+  handleFavoriteToggle: (e: React.MouseEvent, item: EnrichedItem) => Promise<void>;
+}
+
+const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, navigate, handleStartConversation, handleFavoriteToggle }) => {
+  const adBenefits = getAdTypeBenefits(item.ad_type);
+  const [isFavoriting, setIsFavoriting] = useState(false);
+  const [isChatting, setIsChatting] = useState(false);
+
+  const onChat = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsChatting(true);
+    await handleStartConversation(item);
+    setIsChatting(false);
+  };
+
+  const onFavorite = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsFavoriting(true);
+    await handleFavoriteToggle(e, item);
+    setIsFavoriting(false);
+  };
+
+  return (
+    <Card
+      className="group hover:shadow-2xl hover:shadow-primary/20 transition-transform duration-300 ease-in-out cursor-pointer border border-border hover:border-primary/50 overflow-hidden bg-white rounded-xl hover:-translate-y-1 w-full"
+      onClick={() => navigate(`/item/${item.id}`)}
+    >
+      <div className="relative">
+        <div className="aspect-square w-full rounded-t-xl overflow-hidden">
+          <ImageCarousel images={item.images} alt={item.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+        </div>
+
+        {adBenefits && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge className={`absolute top-3 left-3 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help`}>
+                {adBenefits.icon}
+                {adBenefits.label}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs font-medium">{adBenefits.benefits}</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+
+        <Badge variant={item.condition === 'new' ? 'default' : 'secondary'} className="absolute top-3 right-3 text-xs shadow-lg">
+          {item.condition}
+        </Badge>
+        <div className="absolute bottom-2 left-2 bg-black/60 text-white rounded-lg px-2 py-1 flex items-center gap-1 shadow-md">
+          <Eye className="h-3 w-3" />
+          <span className="text-xs font-medium">{item.views.toLocaleString()} views</span>
+        </div>
+      </div>
+
+      <CardContent className="p-4 space-y-2">
+        <h3 className="font-bold text-lg leading-snug line-clamp-2 text-gray-900">
+          {item.title}
+        </h3>
+        <div className="flex items-baseline gap-1">
+          <span className="text-3xl font-extrabold text-primary">₹{item.price.toLocaleString()}</span>
+          {item.is_negotiable && <Badge variant="outline" className="text-xs border-primary/50 text-primary/80">Negotiable</Badge>}
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-border/70">
+          <div className="flex items-center gap-1">
+            <User className="h-4 w-4 text-muted-foreground" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-sm text-gray-600 truncate max-w-[100px] font-medium">
+                  {item.profiles?.full_name || 'Anonymous'}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{item.profiles?.full_name || 'Anonymous'}</TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="flex items-center gap-1">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-gray-600 truncate font-medium">
+              {item.location || 'Campus'}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-3">
+          <Button
+            size="sm"
+            className="flex-1 h-9 text-sm font-semibold"
+            onClick={onChat}
+            disabled={item.seller_id === user?.id || isChatting || !isVerified}
+          >
+            {isChatting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MessageCircle className="h-4 w-4 mr-2" />}
+            {item.seller_id === user?.id ? 'Your Item' : isChatting ? 'Starting Chat...' : 'Chat'}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 px-3 border-primary text-primary hover:bg-primary/10"
+            onClick={onFavorite}
+            disabled={isFavoriting || !user || !isVerified}
+          >
+            {isFavoriting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Heart className="h-4 w-4" />}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
+>>>>>>> parent of 3717d37 (Enhance Dashboard with image optimization and pagination)
 // --- MAIN DASHBOARD COMPONENT ---
 const Dashboard = () => {
   const { user } = useAuth();
@@ -220,9 +346,88 @@ const Dashboard = () => {
   
   const isVerified = profile?.is_verified && profile?.verification_status === 'approved';
 
+<<<<<<< HEAD
   // --- DATA FETCHING FUNCTIONS ---
   
   const fetchProfile = async (userId: string) => {
+=======
+  const { searchTerm, selectedCategory, priceRange } = filters;
+  const isVerified = useMemo(() => profile?.is_verified && profile?.verification_status === 'approved', [profile]);
+
+
+  const categoriesLoaded = allCategories !== null;
+  const categoryMap = useMemo(() => {
+    if (!allCategories) return new Map();
+    return new Map(allCategories.map(c => [c.id, c]));
+  }, [allCategories]);
+
+
+  // Data Enrichment Function
+  const enrichItemsWithDetails = useCallback(async (rawItems: RawItem[]): Promise<EnrichedItem[]> => {
+    if (rawItems.length === 0 || !allCategories) return []; // Guard against race condition
+
+    const sellerIds = unique(rawItems.map(i => i.seller_id));
+
+    // Batch Fetch Profiles
+    const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, trust_seller_badge, avatar_url')
+        .in('user_id', sellerIds);
+
+    const profileMap = new Map(profilesData?.map(p => [p.user_id, p as MinimalProfile]));
+
+    return rawItems.map(item => {
+      const safeCategoryId = item.category_id || 'unassigned';
+
+      const profileDetails = profileMap.get(item.seller_id) || { user_id: item.seller_id, full_name: 'Unknown Seller', trust_seller_badge: false, avatar_url: null };
+
+      const categoryDetails = categoryMap.get(safeCategoryId) || { id: safeCategoryId, name: 'Other', icon: '❓' };
+
+      return {
+        ...item,
+        profiles: profileDetails,
+        categories: categoryDetails,
+      } as EnrichedItem;
+    });
+  }, [allCategories, categoryMap]);
+
+
+  const fetchItems = useCallback(async () => {
+    if (!categoriesLoaded) {
+      setLoading(true);
+      return;
+    }
+
+    setLoading(true);
+
+    let query = supabase.from('items').select(`*`)
+      .eq('is_sold', false).order('created_at', { ascending: false });
+
+    if (selectedCategory !== 'all') {
+      query = query.eq('category_id', selectedCategory);
+    }
+    if (searchTerm) {
+      query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+    }
+    if (priceRange !== 'all') {
+      const [min, max] = priceRange.split('-').map(Number);
+      query = max ? query.gte('price', min).lte('price', max) : query.gte('price', min);
+    }
+
+    const { data: rawItems, error } = await query;
+    if (error) {
+      console.error('Error fetching raw items:', error);
+      toast({ title: "Error", description: "Failed to load items", variant: "destructive" });
+    } else {
+      const enrichedItems = await enrichItemsWithDetails(rawItems as RawItem[]);
+      setItems(enrichedItems);
+    }
+    setLoading(false);
+  }, [searchTerm, selectedCategory, priceRange, enrichItemsWithDetails, toast, categoriesLoaded]);
+
+
+  const fetchProfile = useCallback(async (userId: string) => {
+>>>>>>> parent of 3717d37 (Enhance Dashboard with image optimization and pagination)
     const { data, error } = await supabase.from('profiles').select('*').eq('user_id', userId).single();
     if (!error) setProfile(data);
     else console.error('Error fetching profile:', error);
