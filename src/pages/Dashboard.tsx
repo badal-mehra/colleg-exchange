@@ -304,7 +304,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
             </TooltipContent>
           </Tooltip>
         )}
-// ... (rest of ItemCard component)
+
         <Badge variant={item.condition === 'new' ? 'default' : 'secondary'} className="absolute top-3 right-3 text-xs shadow-lg">
           {item.condition}
         </Badge>
