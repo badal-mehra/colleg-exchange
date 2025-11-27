@@ -2,7 +2,8 @@
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import MainLayout from "@/components/MainLayout";
+import MainLayout from "@/layouts/MainLayout";
+// import MainLayout from "@/components/MainLayout";
 
 // Public Pages
 import Landing from "@/pages/Landing";
