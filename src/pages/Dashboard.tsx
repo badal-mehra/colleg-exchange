@@ -1,6 +1,6 @@
-// Dashboard.tsx - ✅ FINAL, PRODUCTION-READY (Marketplace-Authentic Standard + Logic Fixes)
+// Dashboard.tsx - ✅ FINAL, PRODUCTION-READY (Battle-Ready Fixes Applied)
 
-import React, { useEffect, useState, memo, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, memo, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ImageCarousel from '@/components/ImageCarousel';
-// Tooltips removed from imports as they are not used in ItemCard anymore
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 
@@ -83,7 +82,18 @@ interface FilterState {
   priceRange: string;
 }
 
-// --- UTILITY FUNCTIONS ---
+// --- UTILITY DATA & FUNCTIONS ---
+
+// FIX: Move priceRangeMap outside the component to prevent recalculation on every render (Issue 3)
+const PRICE_RANGE_MAP: { [key: string]: string } = {
+  'all': 'All Prices',
+  '0-500': '₹0 - ₹500',
+  '500-1000': '₹500 - ₹1,000',
+  '1000-5000': '₹1,000 - ₹5,000',
+  '5000-10000': '₹5,000 - ₹10,000',
+  '10000': '₹10,000+',
+};
+
 const unique = (arr: (string | null | undefined)[]) => Array.from(new Set(arr)).filter((i): i is string => !!i);
 
 // Cloudinary Thumbnail Helper
@@ -95,38 +105,44 @@ const getThumb = (url: string) => {
   return url; // Return original URL if it's not a Cloudinary link (e.g., local mock)
 };
 
-// Robust, fuzzy matching logic for ad types (as previously fixed)
+// Robust Ad Type Matching Logic
 const getAdTypeBenefits = (adType: string = "") => {
   const type = String(adType || "").trim().toLowerCase();
-  // Badge Flattening: Text-only, low contrast + pointer-events-none
   const baseStyle = 'text-[10px] flex items-center gap-1 font-medium text-gray-500 px-0 py-0 z-20 pointer-events-none'; 
 
-  if (type.includes("feature")) return {
-    icon: <Star className="h-3 w-3 text-yellow-500" />,
-    label: 'FEATURED',
-    color: baseStyle, 
-    benefits: 'Top placement • 3x visibility'
-  };
-
-  if (type.includes("prem")) return {
-    icon: <Crown className="h-3 w-3 text-purple-500" />,
-    label: 'PREMIUM',
-    color: baseStyle, 
-    benefits: 'Priority listing • Extended duration'
-  };
-
-  if (type.includes("urgent")) return {
-    icon: <Zap className="h-3 w-3 text-red-500" />,
-    label: 'URGENT',
-    color: baseStyle, 
-    benefits: 'Flash indicator • 48hr highlight'
-  };
-
-  return null;
+  switch (type) {
+    case "featured":
+    case "feature":
+    case "featured_ad":
+      return {
+        icon: <Star className="h-3 w-3 text-yellow-500" />,
+        label: 'FEATURED',
+        color: baseStyle, 
+        benefits: 'Top placement • 3x visibility'
+      };
+    case "premium":
+    case "premium_ad":
+      return {
+        icon: <Crown className="h-3 w-3 text-purple-500" />,
+        label: 'PREMIUM',
+        color: baseStyle, 
+        benefits: 'Priority listing • Extended duration'
+      };
+    case "urgent":
+    case "urgent_ad":
+      return {
+        icon: <Zap className="h-3 w-3 text-red-500" />,
+        label: 'URGENT',
+        color: baseStyle, 
+        benefits: 'Flash indicator • 48hr highlight'
+      };
+    default:
+      return null;
+  }
 };
 
 
-// --- IMAGE SLIDER (Final Flat Aesthetic) ---
+// --- IMAGE SLIDER (Unchanged) ---
 const ImageSliderSectionComponent = () => {
   const [sliderImages, setSliderImages] = useState<SliderImage[] | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -243,7 +259,7 @@ const ImageSliderSectionComponent = () => {
 const ImageSliderSection = memo(ImageSliderSectionComponent);
 
 
-// --- ITEM CARD (Final Flat Aesthetic & Alignment) ---
+// --- ITEM CARD (Unchanged) ---
 interface ItemCardProps {
   item: EnrichedItem;
   user: any;
@@ -262,7 +278,8 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
   const views = Number(item.views) || 0;
 
   const thumbnailImages = useMemo(() => {
-    return item.images.map(getThumb);
+    // Guard against null/undefined item.images
+    return (item.images || []).map(getThumb);
   }, [item.images]);
 
 
@@ -289,17 +306,17 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
       
       <div className="relative w-full aspect-[4/3] rounded-t-md overflow-hidden bg-gray-50">
         
-        {/* FIX: Add pointer-events-none to image wrapper and carousel to allow card click */}
-        <div className="absolute inset-0 z-0 pointer-events-none">
+        {/* Fix: Use inline style for pointer-events-none */}
+        <div className="absolute inset-0 z-0" style={{ pointerEvents: 'none' }}>
             <ImageCarousel
               images={thumbnailImages}
               alt={item.title}
-              className="h-full w-full object-cover pointer-events-none"
+              className="h-full w-full object-cover"
               loading="lazy"
             />
         </div>
         
-        {/* Condition Badge: Added background, shadow, and border for OLX/Amazon look + pointer-events-none */}
+        {/* Condition Badge */}
         {condition && (
             <Badge 
                 className="absolute top-2 left-2 text-[10px] bg-white text-gray-800 px-2 py-1 rounded shadow-sm z-20 pointer-events-none"
@@ -308,7 +325,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
             </Badge>
         )}
         
-        {/* AD BADGE: Top right. ADDED pointer-events-none */}
+        {/* AD BADGE */}
         {adBenefits && (
           <Badge 
             className={`absolute top-2 right-2 bg-yellow-100 text-yellow-800 px-2 py-1 rounded shadow-sm z-20 pointer-events-none`}
@@ -319,9 +336,9 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         )}
 
         
-        {/* Views Counter Position Fix: Moved to bottom-right. ADDED pointer-events-none */}
+        {/* Views Counter */}
         <div 
-          className="absolute bottom-2 right-2 bg-black/70 text-white text-[11px] px-2 py-1 rounded z-20 pointer-events-none"
+          className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/70 text-white text-[11px] px-2 py-1 rounded z-20 pointer-events-none"
         >
           <Eye className="h-3 w-3" />
           <span className="font-medium">
@@ -331,7 +348,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         
       </div>
 
-      {/* CardContent: Price on top, pixel-correct title height, mt-auto for actions */}
+      {/* CardContent */}
       <CardContent className="p-3 flex flex-col gap-2 flex-1">
         
         {/* Price and Negotiable Badge (TOP PRIORITY) */}
@@ -344,7 +361,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
             )}
         </div>
 
-        {/* Title: Correct pixel-aligned 2-line height */}
+        {/* Title */}
         <h3 className="font-medium text-[13px] leading-5 line-clamp-2 text-gray-900 h-10">
             {item.title}
         </h3>
@@ -401,6 +418,9 @@ const Dashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  // FIX: Ref for preventing double fetch on initial mount (Issue 2)
+  const isInitialMount = useRef(true); 
 
   // States
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -424,7 +444,7 @@ const Dashboard = () => {
   }, [allCategories]);
 
 
-  // Data Enrichment Function (Unchanged logic)
+  // Data Enrichment Function
   const enrichItemsWithDetails = useCallback(async (rawItems: RawItem[]): Promise<EnrichedItem[]> => {
     if (rawItems.length === 0 || !allCategories) return []; 
 
@@ -436,7 +456,10 @@ const Dashboard = () => {
         .select('user_id, full_name, trust_seller_badge, avatar_url')
         .in('user_id', sellerIds);
 
-    const profileMap = new Map(profilesData?.map(p => [p.user_id, p as MinimalProfile]));
+    // Guard against null profilesData
+    const profileMap = new Map(
+      (profilesData || []).map(p => [p.user_id, p as MinimalProfile])
+    );
 
     return rawItems.map(item => {
       const safeCategoryId = item.category_id || 'unassigned';
@@ -455,13 +478,10 @@ const Dashboard = () => {
 
 
   const fetchItems = useCallback(async () => {
-    // 1. FINAL FIX for Back Navigation Blank Screen: Only check categoriesLoaded status first.
     if (!categoriesLoaded) {
-      // If categories aren't loaded, exit immediately, relying on useEffect to call us when they are ready.
-      return; 
+      return;
     }
     
-    // Once categories are ready, set loading and proceed to fetch.
     setLoading(true);
 
     // Pagination (Limit to first 20 items for the initial load)
@@ -500,37 +520,50 @@ const Dashboard = () => {
     else console.error('Error fetching profile:', error);
   }, []);
 
-  // Single Category Fetch
+  // Critical fix: Guard data from Supabase to prevent TypeError if null is returned.
   const fetchAllCategories = useCallback(async () => {
     const { data, error } = await supabase.from('categories').select('id, name, icon').order('name');
     if (!error) {
-      const defaultCategory = { id: 'unassigned', name: 'Other', icon: '❓' }; // Renamed from 'Unassigned'
-      setAllCategories([...data as MinimalCategory[], defaultCategory]);
+      const categories = (data || []) as MinimalCategory[];
+      const defaultCategory = { id: 'unassigned', name: 'Other', icon: '❓' }; // 'unassigned' needed for null item categories
+      setAllCategories([...categories, defaultCategory]);
     }
     else console.error('Error fetching categories:', error);
   }, []);
 
 
-  // --- EFFECTS (Unchanged logic) ---
+  // --- EFFECTS ---
 
-  // Initial Data Load (Profile and Categories)
+  // 1. Initial Data Load (Profile and Categories)
   useEffect(() => {
     if (!user) return;
     fetchProfile(user.id);
     fetchAllCategories();
   }, [user, fetchProfile, fetchAllCategories]);
 
-  // Debounced Item Fetch on Filter/Search Change (Waits for categories to load)
-  // Dependency on categoriesLoaded ensures fetchItems is correctly called after back navigation.
+  // 2. Immediate fetch upon categories load (back-navigation fix)
+  useEffect(() => {
+    if (categoriesLoaded) {
+      fetchItems();
+    }
+  }, [categoriesLoaded, fetchItems]);
+
+  // 3. Debounced Item Fetch on Filter/Search Change (Prevents double fetch on mount)
   useEffect(() => {
     if (!categoriesLoaded) return;
+    
+    // FIX: Prevents fetchItems from being called twice on initial mount/category load (Issue 2)
+    if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return; 
+    }
 
     const debounceTimer = setTimeout(() => {
       fetchItems();
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [searchTerm, selectedCategory, priceRange, fetchItems, categoriesLoaded]);
+  }, [searchTerm, selectedCategory, priceRange, categoriesLoaded, fetchItems]);
 
 
   // --- HANDLERS (Unchanged logic) ---
@@ -615,32 +648,44 @@ const Dashboard = () => {
   // --- Filter Components (Refined Icons) ---
 
   const PriceRangeSelect = ({ className }: { className?: string }) => (
+    // Consistent SelectValue usage (children based)
     <Select value={priceRange} onValueChange={(val) => handleFilterChange('priceRange', val)}>
       <SelectTrigger className={`w-full ${className}`}>
         <DollarSign className="h-4 w-4 mr-2 text-gray-500" />
-        <SelectValue placeholder="Price Range" />
+        <SelectValue>
+          {PRICE_RANGE_MAP[priceRange] || "Price Range"}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="all">All Prices</SelectItem>
-        <SelectItem value="0-500">₹0 - ₹500</SelectItem>
-        <SelectItem value="500-1000">₹500 - ₹1,000</SelectItem>
-        <SelectItem value="1000-5000">₹1,000 - ₹5,000</SelectItem>
-        <SelectItem value="5000-10000">₹5,000 - ₹10,000</SelectItem>
-        <SelectItem value="10000">₹10,000+</SelectItem>
+        {Object.entries(PRICE_RANGE_MAP).map(([key, label]) => (
+          <SelectItem key={key} value={key}>{label}</SelectItem>
+        ))}
       </SelectContent>
     </Select>
   );
 
   const CategorySelect = ({ className }: { className?: string }) => (
-    <Select value={selectedCategory} onValueChange={(val) => handleFilterChange('selectedCategory', val)} disabled={!categoriesLoaded}>
+    // Set value to undefined if categories aren't loaded to allow SelectValue to show a loading state.
+    <Select 
+      value={categoriesLoaded ? selectedCategory : undefined} 
+      onValueChange={(val) => handleFilterChange('selectedCategory', val)} 
+      disabled={!categoriesLoaded}
+    >
       <SelectTrigger className={`w-full ${className}`}>
         <Filter className="h-4 w-4 mr-2 text-gray-500" />
-        <SelectValue placeholder={categoriesLoaded ? "Category" : "Loading Categories..."} />
+        <SelectValue>
+          {categoriesLoaded 
+            ? selectedCategory === "all"
+              ? "All Categories"
+              // Find name based on selected ID
+              : allCategories?.find(c => c.id === selectedCategory)?.name || "Category"
+            : "Loading Categories..."
+          }
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="all">All Categories</SelectItem>
-        {allCategories && allCategories
-          .map(category => (
+        {/* FIX: Removed filter(c => c.id !== 'unassigned') to allow selecting the 'Other' category (Issue 1) */}
+        {allCategories && allCategories.map(category => (
           <SelectItem key={category.id} value={category.id}>
             <span className="mr-2 inline-block" role="img" aria-label={category.name}>{category.icon}</span>
             {category.name}
