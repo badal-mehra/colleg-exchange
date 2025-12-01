@@ -2,7 +2,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 }
 
 interface SearchParams {
@@ -27,15 +28,31 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey)
 
     const url = new URL(req.url)
+    let queryString = url.searchParams.get('queryString') || ''
+
+    let body: any = {}
+    try {
+      const text = await req.text()
+      if (text) {
+        body = JSON.parse(text)
+        if (body.queryString) {
+          queryString = body.queryString
+        }
+      }
+    } catch (e) {
+      // No body
+    }
+
+    const searchParams = new URLSearchParams(queryString)
     const params: SearchParams = {
-      query: url.searchParams.get('query') || undefined,
-      categoryId: url.searchParams.get('categoryId') || undefined,
-      campusId: url.searchParams.get('campusId') || undefined,
-      minPrice: url.searchParams.get('minPrice') ? parseFloat(url.searchParams.get('minPrice')!) : undefined,
-      maxPrice: url.searchParams.get('maxPrice') ? parseFloat(url.searchParams.get('maxPrice')!) : undefined,
-      condition: url.searchParams.get('condition') || undefined,
-      limit: parseInt(url.searchParams.get('limit') || '50'),
-      offset: parseInt(url.searchParams.get('offset') || '0')
+      query: searchParams.get('query') || undefined,
+      categoryId: searchParams.get('categoryId') || undefined,
+      campusId: searchParams.get('campusId') || undefined,
+      minPrice: searchParams.get('minPrice') ? parseFloat(searchParams.get('minPrice')!) : undefined,
+      maxPrice: searchParams.get('maxPrice') ? parseFloat(searchParams.get('maxPrice')!) : undefined,
+      condition: searchParams.get('condition') || undefined,
+      limit: parseInt(searchParams.get('limit') || '50'),
+      offset: parseInt(searchParams.get('offset') || '0')
     }
 
     console.log('Search request:', params)

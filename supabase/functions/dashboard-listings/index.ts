@@ -2,7 +2,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 }
 
 interface ListingWithProfile {
@@ -45,10 +46,25 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Get user's campus/university from query params or auth
     const url = new URL(req.url)
-    const campusId = url.searchParams.get('campusId')
-    const limit = parseInt(url.searchParams.get('limit') || '24')
+    let queryString = url.searchParams.get('queryString') || ''
+
+    let body: any = {}
+    try {
+      const text = await req.text()
+      if (text) {
+        body = JSON.parse(text)
+        if (body.queryString) {
+          queryString = body.queryString
+        }
+      }
+    } catch (e) {
+      // No body
+    }
+
+    const searchParams = new URLSearchParams(queryString)
+    let campusId = searchParams.get('campusId')
+    let limit = parseInt(searchParams.get('limit') || '24')
 
     console.log(`Dashboard listings request - campus: ${campusId}, limit: ${limit}`)
 

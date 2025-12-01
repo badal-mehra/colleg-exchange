@@ -431,17 +431,13 @@ const Dashboard = () => {
     }
 
     setLoading(true);
-    
+
     try {
-      // Determine if this is a search or dashboard view
       const isSearching = searchTerm || selectedCategory !== 'all' || priceRange !== 'all';
-      
+      const { data: { session } } = await supabase.auth.getSession();
+
       if (isSearching) {
-        // Use search endpoint for filtered results (priority-ranked)
-        const params = new URLSearchParams({
-          limit: '24'
-        });
-        
+        const params = new URLSearchParams({ limit: '24' });
         if (searchTerm) params.append('query', searchTerm);
         if (selectedCategory !== 'all') params.append('categoryId', selectedCategory);
         if (priceRange !== 'all') {
@@ -452,46 +448,30 @@ const Dashboard = () => {
         if (profile?.university) params.append('campusId', profile.university);
 
         const { data, error } = await supabase.functions.invoke('search-listings', {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          body: { queryString: params.toString() },
+          headers: session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}
         });
 
-        // Construct URL with params
-        const searchUrl = `https://mtaeqtmcixlrudjsxcew.supabase.co/functions/v1/search-listings?${params.toString()}`;
-        const response = await fetch(searchUrl, {
-          headers: {
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10YWVxdG1jaXhscnVkanN4Y2V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyODg1MDksImV4cCI6MjA3Mzg2NDUwOX0.7IjteljUrmEBwmhtAsThCuWEKEcGNFI1yeLL4TJokFg'
-          }
-        });
-
-        const result = await response.json();
-        if (result.success && result.data) {
-          setItems(result.data as EnrichedItem[]);
+        if (error) throw error;
+        if (data?.success && data?.data) {
+          setItems(data.data as EnrichedItem[]);
         } else {
-          throw new Error(result.error || 'Search failed');
+          throw new Error(data?.error || 'Search failed');
         }
       } else {
-        // Use dashboard endpoint for randomized feed (60% random + 40% priority)
-        const params = new URLSearchParams({
-          limit: '24'
-        });
-        
+        const params = new URLSearchParams({ limit: '24' });
         if (profile?.university) params.append('campusId', profile.university);
 
-        const dashboardUrl = `https://mtaeqtmcixlrudjsxcew.supabase.co/functions/v1/dashboard-listings?${params.toString()}`;
-        const response = await fetch(dashboardUrl, {
-          headers: {
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10YWVxdG1jaXhscnVkanN4Y2V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyODg1MDksImV4cCI6MjA3Mzg2NDUwOX0.7IjteljUrmEBwmhtAsThCuWEKEcGNFI1yeLL4TJokFg'
-          }
+        const { data, error } = await supabase.functions.invoke('dashboard-listings', {
+          body: { queryString: params.toString() },
+          headers: session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}
         });
 
-        const result = await response.json();
-        if (result.success && result.data) {
-          setItems(result.data as EnrichedItem[]);
+        if (error) throw error;
+        if (data?.success && data?.data) {
+          setItems(data.data as EnrichedItem[]);
         } else {
-          throw new Error(result.error || 'Failed to load dashboard');
+          throw new Error(data?.error || 'Failed to load dashboard');
         }
       }
     } catch (error) {
@@ -499,7 +479,7 @@ const Dashboard = () => {
       toast({ title: "Error", description: "Failed to load items", variant: "destructive" });
       setItems([]);
     }
-    
+
     setLoading(false);
   }, [searchTerm, selectedCategory, priceRange, categoriesLoaded, profile, toast]);
 
