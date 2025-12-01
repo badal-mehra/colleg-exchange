@@ -31,6 +31,7 @@ interface Profile {
   avatar_url: string | null;
   mck_id: string;
   trust_seller_badge: boolean;
+  university: string | null;
 }
 
 interface MinimalProfile {
@@ -71,7 +72,7 @@ interface EnrichedItem extends RawItem {
 }
 
 interface SliderImage {
-  id: number;
+  id: string;
   image_url: string;
   title: string | null;
   description: string | null;
@@ -282,12 +283,9 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
       <div className="relative">
         <div className="aspect-square w-full rounded-t-xl overflow-hidden">
           <ImageCarousel 
-            images={thumbnailImages} // ✅ Use thumbnail URLs
+            images={thumbnailImages}
             alt={item.title} 
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
-            // Note: Lazy loading should be handled by ImageCarousel internally for best UX, but passing a prop for safety.
-            // This is the fastest way to implement STEP 3's goal without modifying ImageCarousel source.
-            loading="lazy" 
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         </div>
 
@@ -434,34 +432,76 @@ const Dashboard = () => {
 
     setLoading(true);
     
-    // ✅ STEP 2 FIX: Implement Pagination (Limit to first 20 items for the initial load)
-    const PAGE_LIMIT = 20;
+    try {
+      // Determine if this is a search or dashboard view
+      const isSearching = searchTerm || selectedCategory !== 'all' || priceRange !== 'all';
+      
+      if (isSearching) {
+        // Use search endpoint for filtered results (priority-ranked)
+        const params = new URLSearchParams({
+          limit: '24'
+        });
+        
+        if (searchTerm) params.append('query', searchTerm);
+        if (selectedCategory !== 'all') params.append('categoryId', selectedCategory);
+        if (priceRange !== 'all') {
+          const [min, max] = priceRange.split('-').map(Number);
+          if (min) params.append('minPrice', min.toString());
+          if (max) params.append('maxPrice', max.toString());
+        }
+        if (profile?.university) params.append('campusId', profile.university);
 
-    let query = supabase.from('items').select(`*`)
-      .eq('is_sold', false).order('created_at', { ascending: false })
-      .range(0, PAGE_LIMIT - 1); // Only fetch 20 items (0 to 19)
+        const { data, error } = await supabase.functions.invoke('search-listings', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
 
-    if (selectedCategory !== 'all') {
-      query = query.eq('category_id', selectedCategory);
-    }
-    if (searchTerm) {
-      query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
-    }
-    if (priceRange !== 'all') {
-      const [min, max] = priceRange.split('-').map(Number);
-      query = max ? query.gte('price', min).lte('price', max) : query.gte('price', min);
-    }
+        // Construct URL with params
+        const searchUrl = `https://mtaeqtmcixlrudjsxcew.supabase.co/functions/v1/search-listings?${params.toString()}`;
+        const response = await fetch(searchUrl, {
+          headers: {
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10YWVxdG1jaXhscnVkanN4Y2V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyODg1MDksImV4cCI6MjA3Mzg2NDUwOX0.7IjteljUrmEBwmhtAsThCuWEKEcGNFI1yeLL4TJokFg'
+          }
+        });
 
-    const { data: rawItems, error } = await query;
-    if (error) {
-      console.error('Error fetching raw items:', error);
+        const result = await response.json();
+        if (result.success && result.data) {
+          setItems(result.data as EnrichedItem[]);
+        } else {
+          throw new Error(result.error || 'Search failed');
+        }
+      } else {
+        // Use dashboard endpoint for randomized feed (60% random + 40% priority)
+        const params = new URLSearchParams({
+          limit: '24'
+        });
+        
+        if (profile?.university) params.append('campusId', profile.university);
+
+        const dashboardUrl = `https://mtaeqtmcixlrudjsxcew.supabase.co/functions/v1/dashboard-listings?${params.toString()}`;
+        const response = await fetch(dashboardUrl, {
+          headers: {
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10YWVxdG1jaXhscnVkanN4Y2V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyODg1MDksImV4cCI6MjA3Mzg2NDUwOX0.7IjteljUrmEBwmhtAsThCuWEKEcGNFI1yeLL4TJokFg'
+          }
+        });
+
+        const result = await response.json();
+        if (result.success && result.data) {
+          setItems(result.data as EnrichedItem[]);
+        } else {
+          throw new Error(result.error || 'Failed to load dashboard');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching items:', error);
       toast({ title: "Error", description: "Failed to load items", variant: "destructive" });
-    } else {
-      const enrichedItems = await enrichItemsWithDetails(rawItems as RawItem[]);
-      setItems(enrichedItems);
+      setItems([]);
     }
+    
     setLoading(false);
-  }, [searchTerm, selectedCategory, priceRange, enrichItemsWithDetails, toast, categoriesLoaded]);
+  }, [searchTerm, selectedCategory, priceRange, categoriesLoaded, profile, toast]);
 
 
   const fetchProfile = useCallback(async (userId: string) => {

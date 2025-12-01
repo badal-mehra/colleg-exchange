@@ -337,7 +337,7 @@ const MyChats = () => {
                     {otherUser?.full_name || 'Unknown User'}
                 </span>
                 {otherUser?.verification_status === 'approved' && (
-                  <Shield className="h-4 w-4 text-green-500" title="Verified User" /> 
+                  <Shield className="h-4 w-4 text-green-500" aria-label="Verified User" /> 
                 )}
                 <Badge variant="outline" className="text-xs font-medium px-2 py-0.5 border-border text-muted-foreground">
                     {isBuyer ? 'Buyer' : 'Seller'}

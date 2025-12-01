@@ -27,7 +27,7 @@ interface AdPackage {
   ad_type: 'basic' | 'premium' | 'featured' | 'urgent'; 
   points_cost: number;
   duration_days: number;
-  description: string;
+  description?: string;
 }
 
 // Map ad_type to a numerical priority (for ORDER BY ad_priority DESC)
