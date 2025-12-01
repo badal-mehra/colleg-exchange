@@ -342,6 +342,7 @@ const SellItem = () => {
         location: formData.location.trim() || null,
         images: uploadedImageUrls,
         seller_id: user.id,
+        campus_id: profile.university,
         ad_type: selectedPackage.ad_type, 
         ad_duration_days: selectedPackage.duration_days,
         expires_at: new Date(Date.now() + selectedPackage.duration_days * 24 * 60 * 60 * 1000).toISOString(),
