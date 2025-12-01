@@ -67,11 +67,12 @@ export function TransactionConfirmation({
 
       if (error) throw error;
 
-      if (data?.success) {
-        toast.success(data.message);
-        onConfirm(); // Refresh orders list
+      const result = data as any;
+      if (result?.success) {
+        toast.success(result.message || "Transaction confirmed");
+        onConfirm();
       } else {
-        toast.error(data?.error || "Failed to confirm transaction");
+        toast.error(result?.error || "Failed to confirm transaction");
       }
     } catch (error: any) {
       console.error("Error confirming transaction:", error);
@@ -96,7 +97,7 @@ export function TransactionConfirmation({
 
         // Call the RPC function (Seller only)
         const { data, error } = await supabase.rpc(
-            "cancel_order",
+            "cancel_order" as any,
             {
                 order_id: order.id,
                 seller_id: user.id, 
@@ -105,11 +106,12 @@ export function TransactionConfirmation({
 
         if (error) throw error;
 
-        if (data?.success) {
-            toast.success(data.message);
-            onConfirm(); // Refresh orders list
+        const result = data as any;
+        if (result?.success) {
+            toast.success(result.message || "Order cancelled");
+            onConfirm();
         } else {
-            toast.error(data?.error || "Failed to cancel order");
+            toast.error(result?.error || "Failed to cancel order");
         }
     } catch (error: any) {
         console.error("Error cancelling order:", error);

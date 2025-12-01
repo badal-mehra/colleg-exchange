@@ -352,42 +352,37 @@ const ItemDetail = () => {
     }
 
     // CREATE ORDER using a hypothetical RPC for robust server-side validation
-    const { data: rpcResponse, error: rpcError } = await supabase.rpc("create_new_order", {
+    const { data: rpcResponse, error: rpcError } = await supabase.rpc("create_new_order" as any, {
       item_id_input: item.id,
       buyer_id_input: user.id,
       seller_id_input: item.seller_id,
-      agreed_price_input: item.price // Pass the necessary inputs
+      agreed_price_input: item.price
     });
 
     if (rpcError) {
       console.error("Order Failed (RPC Error):", rpcError);
       
-      // ✅ FIX 1: Check for a database conflict/race condition error string
       const errorText = JSON.stringify(rpcError).toLowerCase();
 
       if (errorText.includes("duplicate pending order") || errorText.includes("already reserved")) {
-        // This handles the race condition where another buyer just reserved it
         sonnerToast.error("This item has just been reserved by another buyer.");
       } else {
-        // Generic network or unexpected DB error
         sonnerToast.error("Could not process order due to a system error. Please try again.");
       }
       return;
     }
     
-    // Handle business logic failure (e.g., duplicate order check from RPC, for current user)
-    if (!rpcResponse?.success) {
+    const result = rpcResponse as any;
+    if (!result?.success) {
         sonnerToast.error(
-            rpcResponse?.error ||
+            result?.error ||
             "You already reserved this item. Go to My Orders to complete it."
         );
-        // Redirect buyer to My Orders for smoother UX
         navigate("/my-orders"); 
         return;
     }
 
-    // Success case
-    sonnerToast.success(rpcResponse.message || "Item reserved successfully! Complete the transaction in My Orders.");
+    sonnerToast.success(result.message || "Item reserved successfully! Complete the transaction in My Orders.");
     navigate("/my-orders");
     
     // Optimistic update: set state immediately, though the real-time listener will confirm it.
