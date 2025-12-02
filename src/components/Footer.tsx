@@ -5,14 +5,14 @@ import { Linkedin, Instagram, Mail, Home } from 'lucide-react'; // Import Home i
 import logo from '@/assets/mycampuskart-logo.png';
 
 interface StaticPage {
-  id: string;
-  title: string;
-  slug: string;
-  content: string;
-  version: string;
-  link_url?: string | null;
-  is_active: boolean;
-  created_at: string;
+  id: string;
+  title: string;
+  slug: string; // e.g., 'terms', 'privacy', 'about'
+  content: string;
+  version: string;
+  link_url: string | null;
+  is_active: boolean;
+  created_at: string;
 }
 
 // Custom link type for hardcoded or social links

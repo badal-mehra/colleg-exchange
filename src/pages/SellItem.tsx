@@ -27,7 +27,7 @@ interface AdPackage {
   ad_type: 'basic' | 'premium' | 'featured' | 'urgent'; 
   points_cost: number;
   duration_days: number;
-  description?: string;
+  description: string;
 }
 
 // Map ad_type to a numerical priority (for ORDER BY ad_priority DESC)
@@ -154,7 +154,6 @@ const SellItem = () => {
   const [images, setImages] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [userPoints, setUserPoints] = useState<number>(0);
-  const [userUniversity, setUserUniversity] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -202,12 +201,11 @@ const SellItem = () => {
     if (!user) return;
     const { data } = await supabase
       .from('profiles')
-      .select('campus_points, university')
+      .select('campus_points')
       .eq('user_id', user.id)
       .single();
 
     setUserPoints(data?.campus_points || 0);
-    setUserUniversity(data?.university || null);
   };
 
   // --- Derived State ---
@@ -344,8 +342,7 @@ const SellItem = () => {
         location: formData.location.trim() || null,
         images: uploadedImageUrls,
         seller_id: user.id,
-        campus_id: userUniversity,
-        ad_type: selectedPackage.ad_type,
+        ad_type: selectedPackage.ad_type, 
         ad_duration_days: selectedPackage.duration_days,
         expires_at: new Date(Date.now() + selectedPackage.duration_days * 24 * 60 * 60 * 1000).toISOString(),
         is_negotiable: formData.is_negotiable,

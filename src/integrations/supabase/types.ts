@@ -23,7 +23,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
-          points_cost: number
+          price: number
         }
         Insert: {
           ad_type: string
@@ -33,7 +33,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
-          points_cost?: number
+          price?: number
         }
         Update: {
           ad_type?: string
@@ -43,7 +43,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
-          points_cost?: number
+          price?: number
         }
         Relationships: []
       }
@@ -130,41 +130,6 @@ export type Database = {
           slug?: string
         }
         Relationships: []
-      }
-      comments: {
-        Row: {
-          created_at: string | null
-          id: string
-          listing_id: string
-          text: string
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          listing_id: string
-          text: string
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          listing_id?: string
-          text?: string
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "comments_listing_id_fkey"
-            columns: ["listing_id"]
-            isOneToOne: false
-            referencedRelation: "items"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       conversations: {
         Row: {
@@ -272,45 +237,6 @@ export type Database = {
         }
         Relationships: []
       }
-      hall_of_fame: {
-        Row: {
-          avatar_url: string | null
-          badge: string | null
-          created_at: string | null
-          full_name: string | null
-          id: string
-          lifetime_points: number
-          month: string
-          rank: number
-          university: string | null
-          user_id: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          badge?: string | null
-          created_at?: string | null
-          full_name?: string | null
-          id?: string
-          lifetime_points: number
-          month: string
-          rank: number
-          university?: string | null
-          user_id: string
-        }
-        Update: {
-          avatar_url?: string | null
-          badge?: string | null
-          created_at?: string | null
-          full_name?: string | null
-          id?: string
-          lifetime_points?: number
-          month?: string
-          rank?: number
-          university?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       image_slidebar: {
         Row: {
           created_at: string
@@ -350,12 +276,9 @@ export type Database = {
       items: {
         Row: {
           ad_duration_days: number | null
-          ad_price_paid: number | null
-          ad_priority: number | null
           ad_type: string | null
           auto_repost: boolean | null
           boost_count: number | null
-          campus_id: string | null
           category_id: string | null
           condition: string | null
           created_at: string
@@ -363,7 +286,7 @@ export type Database = {
           expires_at: string | null
           featured_until: string | null
           id: string
-          images: string[]
+          images: string[] | null
           is_negotiable: boolean | null
           is_promoted: boolean | null
           is_sold: boolean | null
@@ -371,21 +294,16 @@ export type Database = {
           price: number
           promotion_expires_at: string | null
           seller_id: string
-          status: string | null
           tags: string[] | null
           title: string
           updated_at: string
-          upgrade_transaction_id: string | null
           views: number | null
         }
         Insert: {
           ad_duration_days?: number | null
-          ad_price_paid?: number | null
-          ad_priority?: number | null
           ad_type?: string | null
           auto_repost?: boolean | null
           boost_count?: number | null
-          campus_id?: string | null
           category_id?: string | null
           condition?: string | null
           created_at?: string
@@ -393,7 +311,7 @@ export type Database = {
           expires_at?: string | null
           featured_until?: string | null
           id?: string
-          images?: string[]
+          images?: string[] | null
           is_negotiable?: boolean | null
           is_promoted?: boolean | null
           is_sold?: boolean | null
@@ -401,21 +319,16 @@ export type Database = {
           price: number
           promotion_expires_at?: string | null
           seller_id: string
-          status?: string | null
           tags?: string[] | null
           title: string
           updated_at?: string
-          upgrade_transaction_id?: string | null
           views?: number | null
         }
         Update: {
           ad_duration_days?: number | null
-          ad_price_paid?: number | null
-          ad_priority?: number | null
           ad_type?: string | null
           auto_repost?: boolean | null
           boost_count?: number | null
-          campus_id?: string | null
           category_id?: string | null
           condition?: string | null
           created_at?: string
@@ -423,7 +336,7 @@ export type Database = {
           expires_at?: string | null
           featured_until?: string | null
           id?: string
-          images?: string[]
+          images?: string[] | null
           is_negotiable?: boolean | null
           is_promoted?: boolean | null
           is_sold?: boolean | null
@@ -431,11 +344,9 @@ export type Database = {
           price?: number
           promotion_expires_at?: string | null
           seller_id?: string
-          status?: string | null
           tags?: string[] | null
           title?: string
           updated_at?: string
-          upgrade_transaction_id?: string | null
           views?: number | null
         }
         Relationships: [
@@ -452,35 +363,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
-          },
-        ]
-      }
-      likes: {
-        Row: {
-          created_at: string | null
-          id: string
-          listing_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          listing_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          listing_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "likes_listing_id_fkey"
-            columns: ["listing_id"]
-            isOneToOne: false
-            referencedRelation: "items"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -528,7 +410,6 @@ export type Database = {
       }
       orders: {
         Row: {
-          agreed_price: number | null
           buyer_confirmed: boolean | null
           buyer_confirmed_at: string | null
           buyer_id: string
@@ -547,7 +428,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          agreed_price?: number | null
           buyer_confirmed?: boolean | null
           buyer_confirmed_at?: string | null
           buyer_id: string
@@ -566,7 +446,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          agreed_price?: number | null
           buyer_confirmed?: boolean | null
           buyer_confirmed_at?: string | null
           buyer_id?: string
@@ -594,46 +473,10 @@ export type Database = {
           },
         ]
       }
-      points_history: {
-        Row: {
-          created_at: string | null
-          id: number
-          order_id: string | null
-          points: number
-          reason: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: number
-          order_id?: string | null
-          points: number
-          reason?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: number
-          order_id?: string | null
-          points?: number
-          reason?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "points_history_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
           avatar_url: string | null
           average_rating: number | null
-          badge: string | null
           batch: string | null
           campus_points: number | null
           college_name: string | null
@@ -645,11 +488,8 @@ export type Database = {
           hostel: string | null
           id: string
           is_verified: boolean | null
-          lifetime_points: number | null
           mck_id: string | null
           phone: string | null
-          points: number | null
-          rank: number | null
           student_id: string | null
           total_ratings: number | null
           trust_seller_badge: boolean | null
@@ -662,7 +502,6 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           average_rating?: number | null
-          badge?: string | null
           batch?: string | null
           campus_points?: number | null
           college_name?: string | null
@@ -674,11 +513,8 @@ export type Database = {
           hostel?: string | null
           id?: string
           is_verified?: boolean | null
-          lifetime_points?: number | null
           mck_id?: string | null
           phone?: string | null
-          points?: number | null
-          rank?: number | null
           student_id?: string | null
           total_ratings?: number | null
           trust_seller_badge?: boolean | null
@@ -691,7 +527,6 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           average_rating?: number | null
-          badge?: string | null
           batch?: string | null
           campus_points?: number | null
           college_name?: string | null
@@ -703,11 +538,8 @@ export type Database = {
           hostel?: string | null
           id?: string
           is_verified?: boolean | null
-          lifetime_points?: number | null
           mck_id?: string | null
           phone?: string | null
-          points?: number | null
-          rank?: number | null
           student_id?: string | null
           total_ratings?: number | null
           trust_seller_badge?: boolean | null
@@ -799,39 +631,6 @@ export type Database = {
           status?: string
           target_id?: string | null
           updated_at?: string
-        }
-        Relationships: []
-      }
-      static_pages: {
-        Row: {
-          content: string
-          created_at: string | null
-          created_by: string | null
-          id: string
-          is_active: boolean
-          slug: string
-          title: string
-          version: string
-        }
-        Insert: {
-          content: string
-          created_at?: string | null
-          created_by?: string | null
-          id?: string
-          is_active?: boolean
-          slug: string
-          title: string
-          version: string
-        }
-        Update: {
-          content?: string
-          created_at?: string | null
-          created_by?: string | null
-          id?: string
-          is_active?: boolean
-          slug?: string
-          title?: string
-          version?: string
         }
         Relationships: []
       }
@@ -968,19 +767,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      award_points: {
-        Args: {
-          p_action: string
-          p_item_id?: string
-          p_points: number
-          p_user_id: string
-        }
-        Returns: Json
-      }
-      cancel_order: {
-        Args: { order_id: string; seller_id: string }
-        Returns: Json
-      }
       complete_order: { Args: { order_id: string }; Returns: Json }
       complete_order_with_confirmation: {
         Args: {
@@ -990,16 +776,6 @@ export type Database = {
         }
         Returns: Json
       }
-      create_new_order: {
-        Args: {
-          agreed_price_input: number
-          buyer_id_input: string
-          item_id_input: string
-          seller_id_input: string
-        }
-        Returns: Json
-      }
-      delete_old_messages: { Args: never; Returns: undefined }
       generate_mck_id: { Args: never; Returns: string }
       get_admin_role: { Args: { user_id: string }; Returns: string }
       get_monthly_leaderboard: {
@@ -1007,8 +783,11 @@ export type Database = {
         Returns: {
           avatar_url: string
           campus_points: number
+          deals_completed: number
           full_name: string
           mck_id: string
+          monthly_revenue: number
+          monthly_sales: number
           trust_seller_badge: boolean
           university: string
           user_id: string
@@ -1024,17 +803,6 @@ export type Database = {
         Args: { conv_id: string; uid: string }
         Returns: undefined
       }
-      spend_points_for_upgrade: {
-        Args: {
-          p_ad_type: string
-          p_duration_days: number
-          p_item_id: string
-          p_points_cost: number
-          p_user_id: string
-        }
-        Returns: Json
-      }
-      update_user_ranks: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

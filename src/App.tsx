@@ -26,7 +26,6 @@ import MyOrders from "./pages/MyOrders";
 import MyCart from "./pages/MyCart";
 import MyReports from "./pages/MyReports";
 import StaticPage from "./pages/StaticPage";
-import Search from "./pages/Search";
 
 const App = () => (
   <Routes>
@@ -70,7 +69,6 @@ const App = () => (
     {/** PUBLIC NO-LAYOUT PAGES */}
     <Route path="/item/:id" element={<ItemDetail />} />
     <Route path="/profile/:mckId" element={<PublicProfile />} />
-    <Route path="/search" element={<Search />} />
 
     {/** PROTECTED NO-LAYOUT PAGES */}
     <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
