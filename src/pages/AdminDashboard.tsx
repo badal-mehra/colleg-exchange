@@ -223,25 +223,51 @@ const AdminDashboard = () => {
   // OLD: Removed fetchTermsConditions function (Logic moved to fetchStaticPages)
 
   const fetchReports = async () => {
-    const { data, error } = await supabase
+    // Fetch reports first
+    const { data: reportsData, error: reportsError } = await supabase
       .from('reports')
-      .select(`
-        *,
-        reporter:profiles!reports_reported_by_fkey(full_name, email, avatar_url, mck_id),
-        reported_user:profiles!reports_target_id_fkey(full_name, email, avatar_url, mck_id)
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching reports:', error);
+    if (reportsError) {
+      console.error('Error fetching reports:', reportsError);
       toast({
         title: "Error",
-        description: error.message || "Failed to fetch reports",
+        description: reportsError.message || "Failed to fetch reports",
         variant: "destructive",
       });
-    } else {
-      setReports(data || []);
+      return;
     }
+
+    if (!reportsData || reportsData.length === 0) {
+      setReports([]);
+      return;
+    }
+
+    // Get unique user IDs for reporter and target
+    const reporterIds = [...new Set(reportsData.map(r => r.reported_by).filter(Boolean))];
+    const targetIds = [...new Set(reportsData.map(r => r.target_id).filter(Boolean))];
+    const allUserIds = [...new Set([...reporterIds, ...targetIds])];
+
+    // Fetch profiles for all relevant users
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('user_id, full_name, email, avatar_url, mck_id')
+      .in('user_id', allUserIds);
+
+    // Create a map for quick lookup
+    const profilesMap = new Map(
+      (profilesData || []).map(p => [p.user_id, p])
+    );
+
+    // Combine reports with profile data
+    const enrichedReports = reportsData.map(report => ({
+      ...report,
+      reporter: profilesMap.get(report.reported_by) || null,
+      reported_user: profilesMap.get(report.target_id) || null
+    }));
+
+    setReports(enrichedReports);
   };
 
   const fetchSliderImages = async () => {
