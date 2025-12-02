@@ -1,4 +1,4 @@
-// Leaderboard.tsx - ABSOLUTE FINAL: Bug-Fixed, Optimized, and Production-Grade
+// Leaderboard.tsx - ABSOLUTE FINAL: Strict MCK-ID Enforcement
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,13 +41,11 @@ const LOAD_INCREMENT = 10;
 const MAX_VISIBLE_RANKS = 99;
 const SCROLL_THRESHOLD = 200;
 
-// --- Custom Components ---
-
+// --- Custom Components (Unchanged) ---
 /**
  * Custom Rank Badge Component for the Top 3
  */
 const RankBadge: React.FC<{ rank: number }> = React.memo(({ rank }) => {
-  // ... (RankBadge component logic remains unchanged) ...
   const styles = {
     1: { color: 'text-yellow-400', bg: 'bg-gradient-to-br from-yellow-600 to-yellow-300', icon: Crown },
     2: { color: 'text-gray-400', bg: 'bg-gradient-to-br from-gray-500 to-gray-200', icon: ShieldCheck },
@@ -72,7 +70,7 @@ const RankBadge: React.FC<{ rank: number }> = React.memo(({ rank }) => {
  * Renders the custom card for the top 3 users (The Podium).
  */
 const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number; onClick: () => void }> = React.memo(({ entry, rank, onClick }) => {
-  // ... (TopRankCard component logic remains unchanged) ...
+  
   const isChampion = rank === 1;
 
   const rankStyles = {
@@ -147,12 +145,10 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number; onClick: ()
  */
 const ListItemCard: React.FC<{ entry: LeaderboardEntry; index: number; onClick: () => void }> = React.memo(({ entry, index, onClick }) => {
   const avatarUrl = entry.avatar_url || undefined;
-
-  // ❌ FIX 1 & 3: Removed useImperativeHandle and unused cardRef
   
   return (
     <Card 
-      id={`rank-${index + 1}`} // ID for direct scrolling
+      id={`rank-${index + 1}`} 
       onClick={onClick} 
       className="cursor-pointer p-3 sm:p-4 border-border hover:border-primary/30 transition-all duration-200 hover:shadow-md bg-card/90"
     >
@@ -262,14 +258,25 @@ const Leaderboard = () => {
   const [loading, setLoading] = useState(true);
   const [globalRank, setGlobalRank] = useState<number | null>(null); 
   const [visibleCount, setVisibleCount] = useState(LOAD_INCREMENT); 
-  const [pendingJumpRank, setPendingJumpRank] = useState<number | null>(null); // ✅ FIX 2: State for syncing scroll after render
-  const [disableAutoLoad, setDisableAutoLoad] = useState(false); // ✅ FIX 4: State for disabling scroll handler during jump
+  const [pendingJumpRank, setPendingJumpRank] = useState<number | null>(null);
+  const [disableAutoLoad, setDisableAutoLoad] = useState(false); 
 
   const scrollTimeoutRef = useRef<number | null>(null); 
   
-  const handleCardClick = useCallback((userId: string) => {
-    navigate(`/profile/${userId}`);
-  }, [navigate]);
+  const handleCardClick = useCallback((entry: LeaderboardEntry) => {
+    // 🔥 CRITICAL FIX: Strict MCK-ID enforcement. No fallback to user_id.
+    if (!entry.mck_id) {
+        console.error("Missing mck_id for this user. Cannot open profile.");
+        toast({ 
+            title: "Profile Unavailable", 
+            description: "User profile link is currently missing a public ID. Please try again later.", 
+            variant: "destructive" 
+        });
+        return;
+    }
+    
+    navigate(`/profile/${entry.mck_id}`);
+  }, [navigate, toast]);
 
   const fetchLeaderboard = async () => {
     setLoading(true);
@@ -297,16 +304,15 @@ const Leaderboard = () => {
     setLoading(false);
   };
 
-  // ✅ FIX 2: Effect to watch for DOM update and then scroll (replaces unreliable setTimeout)
+  // Effect to watch for DOM update and then scroll 
   useEffect(() => {
     if (pendingJumpRank) {
       const el = document.getElementById(`rank-${pendingJumpRank}`);
       if (el) {
-        // Scroll happens
         el.scrollIntoView({ behavior: "smooth", block: "center" });
         setPendingJumpRank(null);
 
-        // ✅ FIX 4: Re-enable auto-scroll after a delay to ensure jump-scroll has settled
+        // Re-enable auto-scroll after a delay to ensure jump-scroll has settled
         setTimeout(() => setDisableAutoLoad(false), 500); 
       }
     }
@@ -318,7 +324,7 @@ const Leaderboard = () => {
     if (loading || leaderboard.length <= 3 + visibleCount) return;
     
     const handleScroll = () => {
-      // ✅ FIX 4: Guard to prevent auto-loading when smooth scroll is active (e.g., from jump button)
+      // Guard to prevent auto-loading when smooth scroll is active (e.g., from jump button)
       if (disableAutoLoad) return; 
 
       if (scrollTimeoutRef.current) {
@@ -416,17 +422,17 @@ const Leaderboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-stretch">
               {topThree[0] && (
                 <div className="order-1 sm:order-2">
-                  <TopRankCard entry={topThree[0]} rank={1} onClick={() => handleCardClick(topThree[0].user_id)} />
+                  <TopRankCard entry={topThree[0]} rank={1} onClick={() => handleCardClick(topThree[0])} />
                 </div>
               )}
               {topThree[1] && (
                 <div className="order-2 sm:order-1">
-                  <TopRankCard entry={topThree[1]} rank={2} onClick={() => handleCardClick(topThree[1].user_id)} />
+                  <TopRankCard entry={topThree[1]} rank={2} onClick={() => handleCardClick(topThree[1])} />
                 </div>
               )}
               {topThree[2] && (
                 <div className="order-3 sm:order-3">
-                  <TopRankCard entry={topThree[2]} rank={3} onClick={() => handleCardClick(topThree[2].user_id)} />
+                  <TopRankCard entry={topThree[2]} rank={3} onClick={() => handleCardClick(topThree[2])} />
                 </div>
               )}
             </div>
@@ -455,7 +461,7 @@ const Leaderboard = () => {
                     key={entry.user_id} 
                     entry={entry} 
                     index={index + 3} 
-                    onClick={() => handleCardClick(entry.user_id)} 
+                    onClick={() => handleCardClick(entry)} 
                   />
                 ))}
                 
