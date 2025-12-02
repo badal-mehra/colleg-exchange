@@ -2,7 +2,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 }
 
 Deno.serve(async (req) => {
@@ -15,73 +16,20 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Parse params from URL or body
-    const url = new URL(req.url)
-    let campusId = url.searchParams.get('campusId')
-    let limit = parseInt(url.searchParams.get('limit') || '24')
+    const body = await req.json().catch(() => ({}))
+    const qs = body.queryString || ''
+    const params = Object.fromEntries(new URLSearchParams(qs))
 
-    // Try to get from body if POST request
-    if (req.method === 'POST') {
-      try {
-        const body = await req.json()
-        if (body.queryString) {
-          const bodyParams = new URLSearchParams(body.queryString)
-          campusId = bodyParams.get('campusId') || campusId
-          limit = parseInt(bodyParams.get('limit') || '24')
-        }
-      } catch (_e) {
-        // No body or invalid JSON
-      }
+    let campusId = params.campusId as string | undefined
+    let limit = parseInt((params.limit as string) || '24')
+
+    if (campusId === 'undefined' || campusId === 'null' || !campusId) {
+      campusId = undefined
     }
 
     console.log(`Dashboard listings request - campus: ${campusId}, limit: ${limit}`)
 
-    // Calculate split: 60% random, 40% priority
-    const randomLimit = Math.ceil(limit * 0.6)
-    const priorityLimit = Math.ceil(limit * 0.4)
-
-    // Get count of all active items
-    const { count } = await supabase
-      .from('items')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_sold', false)
-      .in('status', ['active', 'available'])
-    
-    const totalItems = count || 0
-    console.log(`Total active items: ${totalItems}`)
-
-    // Fetch random listings
-    let randomItems: any[] = []
-    if (totalItems > 0) {
-      const randomOffset = Math.floor(Math.random() * Math.max(1, totalItems - randomLimit))
-      
-      const { data: randomData, error: randomError } = await supabase
-        .from('items')
-        .select(`
-          id, title, description, price, images, category_id, seller_id,
-          ad_type, status, is_sold, created_at, views, location, condition,
-          is_negotiable, ad_priority,
-          profiles!items_seller_id_fkey(user_id, full_name, university, trust_seller_badge),
-          categories(id, name, icon)
-        `)
-        .eq('is_sold', false)
-        .in('status', ['active', 'available'])
-        .order('created_at', { ascending: false })
-        .range(randomOffset, randomOffset + randomLimit - 1)
-      
-      if (randomError) {
-        console.error('Random query error:', randomError)
-      }
-      
-      randomItems = (randomData || []).map(item => ({
-        ...item,
-        profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
-        categories: Array.isArray(item.categories) ? item.categories[0] : item.categories
-      }))
-    }
-
-    // Fetch priority listings (separate query)
-    const { data: priorityData, error: priorityError } = await supabase
+    let baseQuery = supabase
       .from('items')
       .select(`
         id, title, description, price, images, category_id, seller_id,
@@ -90,32 +38,31 @@ Deno.serve(async (req) => {
         profiles!items_seller_id_fkey(user_id, full_name, university, trust_seller_badge),
         categories(id, name, icon)
       `)
-      .eq('is_sold', false)
       .in('status', ['active', 'available'])
-      .order('ad_priority', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(priorityLimit)
+      .eq('is_sold', false)
 
-    if (priorityError) {
-      console.error('Priority query error:', priorityError)
+    if (campusId) {
+      baseQuery = baseQuery.eq('profiles.university', campusId)
     }
 
-    const priorityItems = (priorityData || []).map(item => ({
+    const { data: allItems, error } = await baseQuery
+      .order('ad_priority', { ascending: false })
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Dashboard query error:', error)
+      throw error
+    }
+
+    const items = (allItems || []).map(item => ({
       ...item,
       profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
       categories: Array.isArray(item.categories) ? item.categories[0] : item.categories
     }))
 
-    // Combine and shuffle lightly
-    const allItems = [...randomItems, ...priorityItems]
-    const shuffled = allItems.sort(() => Math.random() - 0.5)
+    const uniqueItems = items.slice(0, limit)
 
-    // Remove duplicates by id
-    const uniqueItems = shuffled.filter((item, index, self) =>
-      index === self.findIndex((t) => t.id === item.id)
-    ).slice(0, limit)
-
-    console.log(`Returning ${uniqueItems.length} dashboard listings (random: ${randomItems.length}, priority: ${priorityItems.length})`)
+    console.log(`Returning ${uniqueItems.length} dashboard listings`)
 
     return new Response(
       JSON.stringify({ 

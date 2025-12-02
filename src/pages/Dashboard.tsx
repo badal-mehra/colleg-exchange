@@ -453,8 +453,8 @@ const Dashboard = () => {
         });
 
         if (error) throw error;
-        if (data?.success && data?.data) {
-          setItems(data.data as EnrichedItem[]);
+        if (data?.success) {
+          setItems(data.data || []);
         } else {
           throw new Error(data?.error || 'Search failed');
         }
@@ -468,8 +468,8 @@ const Dashboard = () => {
         });
 
         if (error) throw error;
-        if (data?.success && data?.data) {
-          setItems(data.data as EnrichedItem[]);
+        if (data?.success) {
+          setItems(data.data || []);
         } else {
           throw new Error(data?.error || 'Failed to load dashboard');
         }
