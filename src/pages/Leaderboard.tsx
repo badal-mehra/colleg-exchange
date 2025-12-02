@@ -1,4 +1,4 @@
-// Leaderboard.tsx - FINAL Fully Responsive & Professional Version
+// Leaderboard.tsx - FINAL Fully Responsive & Professional Version (FIXED AVATAR URL LOGIC)
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -89,9 +89,10 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number }> = ({ entr
 
   const currentStyle = rankStyles[rank];
 
-  const avatarUrl = entry.avatar_url 
-    ? supabase.storage.from('avatars').getPublicUrl(entry.avatar_url).data.publicUrl 
-    : undefined;
+  // 🔥 FIX: Directly use entry.avatar_url since it's a full Cloudinary/CDN URL, 
+  // removing the incorrect Supabase storage fetch.
+  const avatarUrl = entry.avatar_url || undefined;
+
 
   return (
     // FIXED: Removed fixed heights (md:h-[...]) and added responsive padding (p-4 sm:p-6) and min-heights.
@@ -142,9 +143,9 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number }> = ({ entr
  */
 const ListItemCard: React.FC<{ entry: LeaderboardEntry; index: number }> = ({ entry, index }) => {
 
-  const avatarUrl = entry.avatar_url 
-    ? supabase.storage.from('avatars').getPublicUrl(entry.avatar_url).data.publicUrl 
-    : undefined;
+  // 🔥 FIX: Directly use entry.avatar_url since it's a full Cloudinary/CDN URL, 
+  // removing the incorrect Supabase storage fetch.
+  const avatarUrl = entry.avatar_url || undefined;
 
   return (
     // FIXED: Responsive padding on list item card
@@ -200,6 +201,7 @@ const Leaderboard = () => {
 
   const fetchLeaderboard = async () => {
     setLoading(true);
+    // NOTE: 'get_monthly_leaderboard' is a Supabase RPC (Remote Procedure Call/Function) which is correct for fetching data.
     const { data, error } = await supabase.rpc('get_monthly_leaderboard');
 
     if (error) {
