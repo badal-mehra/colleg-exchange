@@ -31,7 +31,6 @@ interface Profile {
   avatar_url: string | null;
   mck_id: string;
   trust_seller_badge: boolean;
-  university: string | null;
 }
 
 interface MinimalProfile {
@@ -72,7 +71,7 @@ interface EnrichedItem extends RawItem {
 }
 
 interface SliderImage {
-  id: string;
+  id: number;
   image_url: string;
   title: string | null;
   description: string | null;
@@ -283,9 +282,12 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
       <div className="relative">
         <div className="aspect-square w-full rounded-t-xl overflow-hidden">
           <ImageCarousel 
-            images={thumbnailImages}
+            images={thumbnailImages} // ✅ Use thumbnail URLs
             alt={item.title} 
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
+            // Note: Lazy loading should be handled by ImageCarousel internally for best UX, but passing a prop for safety.
+            // This is the fastest way to implement STEP 3's goal without modifying ImageCarousel source.
+            loading="lazy" 
           />
         </div>
 
@@ -431,122 +433,35 @@ const Dashboard = () => {
     }
 
     setLoading(true);
+    
+    // ✅ STEP 2 FIX: Implement Pagination (Limit to first 20 items for the initial load)
+    const PAGE_LIMIT = 20;
 
-    try {
-      const isSearching = searchTerm || selectedCategory !== 'all' || priceRange !== 'all';
-      const { data: { session } } = await supabase.auth.getSession();
+    let query = supabase.from('items').select(`*`)
+      .eq('is_sold', false).order('created_at', { ascending: false })
+      .range(0, PAGE_LIMIT - 1); // Only fetch 20 items (0 to 19)
 
-      // build params common block
-      const params = new URLSearchParams({ limit: '24' });
-      if (isSearching) {
-        if (searchTerm) params.append('query', searchTerm);
-        if (selectedCategory !== 'all') params.append('categoryId', selectedCategory);
-        if (priceRange !== 'all') {
-          const [min, max] = priceRange.split('-').map(Number);
-          if (min) params.append('minPrice', min.toString());
-          if (max) params.append('maxPrice', max.toString());
-        }
-      }
-      if (profile?.university) params.append('campusId', profile.university);
-
-      // invoke relevant function name
-      const fnName = isSearching ? 'search-listings' : 'dashboard-listings';
-      console.log(`[DASH] invoking ${fnName} with params:`, params.toString());
-
-      const { data, error } = await supabase.functions.invoke(fnName, {
-        body: { queryString: params.toString() },
-        headers: session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}
-      });
-
-      // 🎯 DEBUG LOG 1: inspect raw invoke response
-      console.log('[DASH] supabase.functions.invoke response:', { data, error });
-
-      // Handle multiple possible shapes the edge function might return:
-      // 1) { success: true, data: [...] }
-      // 2) plain array [...]
-      // 3) { data: [...], error: ... } (older patterns)
-      let itemsFromInvoke: any[] = [];
-
-      if (data == null && error) {
-        throw error;
-      }
-
-      // shape #1: wrapped
-      if (data && typeof data === 'object' && 'success' in data) {
-        if (data.success) itemsFromInvoke = Array.isArray(data.data) ? data.data : [];
-        else throw new Error(data.error || 'Edge returned success:false');
-      }
-      // shape #2: plain array or object that directly contains items
-      else if (Array.isArray(data)) {
-        itemsFromInvoke = data;
-      }
-      // shape #3: nested `data.data` (some code returns { data: { data: [...] } })
-      else if (data && data.data && Array.isArray(data.data)) {
-        itemsFromInvoke = data.data;
-      }
-      // fallback: if something else, try to parse as it might be a stringified response
-      else if (typeof data === 'string') {
-        try {
-          const parsed = JSON.parse(data);
-          if (Array.isArray(parsed)) itemsFromInvoke = parsed;
-          else if (parsed && parsed.data && Array.isArray(parsed.data)) itemsFromInvoke = parsed.data;
-          else if (parsed && parsed.success && parsed.data) itemsFromInvoke = parsed.data;
-        } catch (e) {
-          console.warn('[DASH] could not parse string response from edge fn', e);
-        }
-      }
-
-      // 🎯 DEBUG LOG 2: items parsed from invoke
-      console.log('[DASH] itemsFromInvoke count:', itemsFromInvoke.length);
-
-      // If invoke returned items, use them
-      if (itemsFromInvoke.length > 0) {
-        // ✅ Enrichment must run to get profiles/categories for ItemCard to work
-        const enriched = await enrichItemsWithDetails(itemsFromInvoke as RawItem[]);
-        setItems(enriched);
-        setLoading(false);
-        return;
-      }
-
-      // --- FALLBACK (DEBUG ONLY): directly query Supabase if edge fn returned nothing ---
-      // 🛑 REMOVE THIS ENTIRE BLOCK ONCE EDGE FUNCTION IS FIXED
-      console.warn('[DASH] invoke returned no items — running direct supabase fallback query for debugging');
-      const supQuery = supabase
-        .from<RawItem>('items')
-        .select('*')
-        .in('status', ['active', 'available'])
-        .eq('is_sold', false)
-        .order('ad_priority', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(24);
-
-      if (profile?.university) supQuery.eq('campus_id', profile.university);
-
-      const { data: directItems, error: directErr } = await supQuery;
-
-      if (directErr) {
-        console.error('[DASH] direct supabase query error:', directErr);
-        throw directErr;
-      }
-
-      console.log('[DASH] direct supabase returned:', (directItems || []).length);
-
-      if (directItems && directItems.length > 0) {
-        const enriched = await enrichItemsWithDetails(directItems as RawItem[]);
-        setItems(enriched);
-      } else {
-        setItems([]);
-      }
-      // --- END FALLBACK BLOCK TO REMOVE ---
-
-    } catch (error) {
-      console.error('Error fetching items:', error);
-      toast({ title: "Error", description: "Failed to load items", variant: "destructive" });
-      setItems([]);
+    if (selectedCategory !== 'all') {
+      query = query.eq('category_id', selectedCategory);
+    }
+    if (searchTerm) {
+      query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+    }
+    if (priceRange !== 'all') {
+      const [min, max] = priceRange.split('-').map(Number);
+      query = max ? query.gte('price', min).lte('price', max) : query.gte('price', min);
     }
 
+    const { data: rawItems, error } = await query;
+    if (error) {
+      console.error('Error fetching raw items:', error);
+      toast({ title: "Error", description: "Failed to load items", variant: "destructive" });
+    } else {
+      const enrichedItems = await enrichItemsWithDetails(rawItems as RawItem[]);
+      setItems(enrichedItems);
+    }
     setLoading(false);
-  }, [searchTerm, selectedCategory, priceRange, categoriesLoaded, profile, toast, enrichItemsWithDetails]);
+  }, [searchTerm, selectedCategory, priceRange, enrichItemsWithDetails, toast, categoriesLoaded]);
 
 
   const fetchProfile = useCallback(async (userId: string) => {
