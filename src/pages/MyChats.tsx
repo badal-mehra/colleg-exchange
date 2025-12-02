@@ -63,11 +63,13 @@ const OnlineIndicator: React.FC = () => (
 );
 
 const UserAvatar: React.FC<{ userProfile: Profile, isOnline: boolean }> = ({ userProfile, isOnline }) => {
-    const avatarUrl = useMemo(() => {
-        return userProfile.avatar_url 
-            ? supabase.storage.from('avatars').getPublicUrl(userProfile.avatar_url).data.publicUrl 
-            : undefined;
-    }, [userProfile.avatar_url]);
+  const avatarUrl = userProfile.avatar_url || undefined;
+
+    // const avatarUrl = useMemo(() => {
+    //     return userProfile.avatar_url 
+    //         ? supabase.storage.from('avatars').getPublicUrl(userProfile.avatar_url).data.publicUrl 
+    //         : undefined;
+    // }, [userProfile.avatar_url]);
 
     return (
         <div className="relative">
