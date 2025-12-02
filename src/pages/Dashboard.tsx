@@ -436,8 +436,9 @@ const Dashboard = () => {
       const isSearching = searchTerm || selectedCategory !== 'all' || priceRange !== 'all';
       const { data: { session } } = await supabase.auth.getSession();
 
+      // build params common block
+      const params = new URLSearchParams({ limit: '24' });
       if (isSearching) {
-        const params = new URLSearchParams({ limit: '24' });
         if (searchTerm) params.append('query', searchTerm);
         if (selectedCategory !== 'all') params.append('categoryId', selectedCategory);
         if (priceRange !== 'all') {
@@ -445,35 +446,99 @@ const Dashboard = () => {
           if (min) params.append('minPrice', min.toString());
           if (max) params.append('maxPrice', max.toString());
         }
-        if (profile?.university) params.append('campusId', profile.university);
+      }
+      if (profile?.university) params.append('campusId', profile.university);
 
-        const { data, error } = await supabase.functions.invoke('search-listings', {
-          body: { queryString: params.toString() },
-          headers: session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}
-        });
+      // invoke relevant function name
+      const fnName = isSearching ? 'search-listings' : 'dashboard-listings';
+      console.log(`[DASH] invoking ${fnName} with params:`, params.toString());
 
-        if (error) throw error;
-        if (data?.success) {
-          setItems(data.data || []);
-        } else {
-          throw new Error(data?.error || 'Search failed');
-        }
-      } else {
-        const params = new URLSearchParams({ limit: '24' });
-        if (profile?.university) params.append('campusId', profile.university);
+      const { data, error } = await supabase.functions.invoke(fnName, {
+        body: { queryString: params.toString() },
+        headers: session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}
+      });
 
-        const { data, error } = await supabase.functions.invoke('dashboard-listings', {
-          body: { queryString: params.toString() },
-          headers: session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}
-        });
+      // 🎯 DEBUG LOG 1: inspect raw invoke response
+      console.log('[DASH] supabase.functions.invoke response:', { data, error });
 
-        if (error) throw error;
-        if (data?.success) {
-          setItems(data.data || []);
-        } else {
-          throw new Error(data?.error || 'Failed to load dashboard');
+      // Handle multiple possible shapes the edge function might return:
+      // 1) { success: true, data: [...] }
+      // 2) plain array [...]
+      // 3) { data: [...], error: ... } (older patterns)
+      let itemsFromInvoke: any[] = [];
+
+      if (data == null && error) {
+        throw error;
+      }
+
+      // shape #1: wrapped
+      if (data && typeof data === 'object' && 'success' in data) {
+        if (data.success) itemsFromInvoke = Array.isArray(data.data) ? data.data : [];
+        else throw new Error(data.error || 'Edge returned success:false');
+      }
+      // shape #2: plain array or object that directly contains items
+      else if (Array.isArray(data)) {
+        itemsFromInvoke = data;
+      }
+      // shape #3: nested `data.data` (some code returns { data: { data: [...] } })
+      else if (data && data.data && Array.isArray(data.data)) {
+        itemsFromInvoke = data.data;
+      }
+      // fallback: if something else, try to parse as it might be a stringified response
+      else if (typeof data === 'string') {
+        try {
+          const parsed = JSON.parse(data);
+          if (Array.isArray(parsed)) itemsFromInvoke = parsed;
+          else if (parsed && parsed.data && Array.isArray(parsed.data)) itemsFromInvoke = parsed.data;
+          else if (parsed && parsed.success && parsed.data) itemsFromInvoke = parsed.data;
+        } catch (e) {
+          console.warn('[DASH] could not parse string response from edge fn', e);
         }
       }
+
+      // 🎯 DEBUG LOG 2: items parsed from invoke
+      console.log('[DASH] itemsFromInvoke count:', itemsFromInvoke.length);
+
+      // If invoke returned items, use them
+      if (itemsFromInvoke.length > 0) {
+        // ✅ Enrichment must run to get profiles/categories for ItemCard to work
+        const enriched = await enrichItemsWithDetails(itemsFromInvoke as RawItem[]);
+        setItems(enriched);
+        setLoading(false);
+        return;
+      }
+
+      // --- FALLBACK (DEBUG ONLY): directly query Supabase if edge fn returned nothing ---
+      // 🛑 REMOVE THIS ENTIRE BLOCK ONCE EDGE FUNCTION IS FIXED
+      console.warn('[DASH] invoke returned no items — running direct supabase fallback query for debugging');
+      const supQuery = supabase
+        .from<RawItem>('items')
+        .select('*')
+        .in('status', ['active', 'available'])
+        .eq('is_sold', false)
+        .order('ad_priority', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(24);
+
+      if (profile?.university) supQuery.eq('campus_id', profile.university);
+
+      const { data: directItems, error: directErr } = await supQuery;
+
+      if (directErr) {
+        console.error('[DASH] direct supabase query error:', directErr);
+        throw directErr;
+      }
+
+      console.log('[DASH] direct supabase returned:', (directItems || []).length);
+
+      if (directItems && directItems.length > 0) {
+        const enriched = await enrichItemsWithDetails(directItems as RawItem[]);
+        setItems(enriched);
+      } else {
+        setItems([]);
+      }
+      // --- END FALLBACK BLOCK TO REMOVE ---
+
     } catch (error) {
       console.error('Error fetching items:', error);
       toast({ title: "Error", description: "Failed to load items", variant: "destructive" });
@@ -481,7 +546,7 @@ const Dashboard = () => {
     }
 
     setLoading(false);
-  }, [searchTerm, selectedCategory, priceRange, categoriesLoaded, profile, toast]);
+  }, [searchTerm, selectedCategory, priceRange, categoriesLoaded, profile, toast, enrichItemsWithDetails]);
 
 
   const fetchProfile = useCallback(async (userId: string) => {
