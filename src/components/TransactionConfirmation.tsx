@@ -57,12 +57,21 @@ export function TransactionConfirmation({
 
       // STEP 1 → Call correct RPC: confirm_transaction (Updates confirmation flags)
       const { data: confirmData, error: confirmError } = await supabase.rpc(
-        "confirm_transaction",
-        {
-          txn_id: order.id, // Using order.id as it holds the transaction ID
-          role: userType    // "buyer" or "seller"
-        }
-      );
+  "complete_order_with_confirmation",
+  {
+    order_id: order.id,
+    confirming_user_id: user.id,
+    user_type: userType
+  }
+);
+
+      // const { data: confirmData, error: confirmError } = await supabase.rpc(
+      //   "confirm_transaction",
+      //   {
+      //     txn_id: order.id, // Using order.id as it holds the transaction ID
+      //     role: userType    // "buyer" or "seller"
+      //   }
+      // );
 
       if (confirmError) {
         console.error("Confirm RPC Error:", confirmError);
