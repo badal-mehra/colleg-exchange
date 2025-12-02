@@ -355,6 +355,7 @@ export type Database = {
           ad_type: string | null
           auto_repost: boolean | null
           boost_count: number | null
+          campus_id: string | null
           category_id: string | null
           condition: string | null
           created_at: string
@@ -384,6 +385,7 @@ export type Database = {
           ad_type?: string | null
           auto_repost?: boolean | null
           boost_count?: number | null
+          campus_id?: string | null
           category_id?: string | null
           condition?: string | null
           created_at?: string
@@ -413,6 +415,7 @@ export type Database = {
           ad_type?: string | null
           auto_repost?: boolean | null
           boost_count?: number | null
+          campus_id?: string | null
           category_id?: string | null
           condition?: string | null
           created_at?: string

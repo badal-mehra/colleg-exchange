@@ -2,8 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
 interface SearchParams {
@@ -13,8 +12,8 @@ interface SearchParams {
   minPrice?: number
   maxPrice?: number
   condition?: string
-  limit?: number
-  offset?: number
+  limit: number
+  offset: number
 }
 
 Deno.serve(async (req) => {
@@ -27,23 +26,22 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
+    // Parse params from URL or body
     const url = new URL(req.url)
-    let queryString = url.searchParams.get('queryString') || ''
+    let searchParams = url.searchParams
 
-    let body: any = {}
-    try {
-      const text = await req.text()
-      if (text) {
-        body = JSON.parse(text)
+    // Try to get from body if POST request
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json()
         if (body.queryString) {
-          queryString = body.queryString
+          searchParams = new URLSearchParams(body.queryString)
         }
+      } catch (_e) {
+        // No body or invalid JSON
       }
-    } catch (e) {
-      // No body
     }
 
-    const searchParams = new URLSearchParams(queryString)
     const params: SearchParams = {
       query: searchParams.get('query') || undefined,
       categoryId: searchParams.get('categoryId') || undefined,
@@ -76,16 +74,11 @@ Deno.serve(async (req) => {
         categories(id, name, icon)
       `)
       .eq('is_sold', false)
-      .eq('status', 'active')
+      .in('status', ['active', 'available'])
 
     // Apply filters
     if (params.categoryId) {
       query = query.eq('category_id', params.categoryId)
-    }
-
-    if (params.campusId) {
-      // Filter by university through profiles join
-      query = query.eq('profiles.university', params.campusId)
     }
 
     if (params.minPrice !== undefined) {
@@ -103,7 +96,7 @@ Deno.serve(async (req) => {
     // Text search
     if (params.query && params.query.trim()) {
       const searchTerm = params.query.trim()
-      query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,tags.cs.{${searchTerm}}`)
+      query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
     }
 
     // Fetch all matching items first
@@ -149,7 +142,8 @@ Deno.serve(async (req) => {
     scoredItems.sort((a, b) => b._score - a._score)
 
     // Apply pagination
-    const paginatedItems = scoredItems.slice(params.offset, params.offset + params.limit!)
+    const offset = params.offset || 0
+    const paginatedItems = scoredItems.slice(offset, offset + params.limit)
 
     // Remove score from response
     const cleanedItems = paginatedItems.map(({ _score, ...item }) => item)
@@ -169,12 +163,13 @@ Deno.serve(async (req) => {
       }
     )
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Search error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message 
+        error: errorMessage 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
