@@ -16,12 +16,28 @@ const UNIVERSITY_OPTIONS = [
   { value: 'Lovely Professional University', label: 'Lovely Professional University' },
 ];
 
+// --- NEW COMPONENT: Full-Screen Loader Overlay ---
+const LoadingOverlay = () => (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity duration-300">
+        <div className="bg-white px-6 py-4 rounded-xl shadow-2xl text-center flex items-center">
+            {/* Tailwind CSS spinner equivalent */}
+            <div className="animate-spin h-6 w-6 border-4 border-t-4 border-t-primary border-gray-200 rounded-full mr-3"></div>
+            <p className="text-base font-semibold text-gray-700">Processing...</p>
+        </div>
+    </div>
+);
+// -------------------------------------------------
+
+
 const Auth = () => {
   const { user, signIn, signUp } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
+  // State for overall loading status, controls the full-screen overlay and disables UI
+  const [isLoading, setIsLoading] = useState(false); 
   const [showPassword, setShowPassword] = useState(false);
+  // Renamed for clarity: use separate state for each password field visibility
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [selectedUniversity, setSelectedUniversity] = useState(UNIVERSITY_OPTIONS[0].value);
 
@@ -42,6 +58,7 @@ const Auth = () => {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     await signIn(email, password);
+    // signIn will set the user and trigger the Navigate, or show an error via toast (handled in AuthContext)
     setIsLoading(false);
   };
 
@@ -54,7 +71,8 @@ const Auth = () => {
     const confirmPassword = formData.get('confirmPassword') as string;
     const fullName = formData.get('fullName') as string;
     const university = selectedUniversity;
-    const termsAccepted = formData.get('terms') as string;
+    // For checkbox, FormData.get returns 'on' if checked, null if not present (since it's a required field in HTML, it will be 'on')
+    const termsAccepted = formData.get('terms'); 
 
     if (password !== confirmPassword) {
       toast({
@@ -79,6 +97,12 @@ const Auth = () => {
     const result = await signUp(email, password, fullName, university);
 
     if (result?.data?.user) {
+      // SUCCESS: Add an explicit toast for user clarity (Supabase usually requires email verification)
+      toast({ 
+        title: "Account Created! 🎉", 
+        description: "Check your @lpu.in email for the verification link. It may take 5-10 seconds.", // ADDED: Clear instructions
+      });
+
       const { data: activeTerms } = await supabase
         .from('terms_and_conditions')
         .select('id')
@@ -114,6 +138,10 @@ const Auth = () => {
   );
 
   const handleViewTerms = async () => {
+    // OPTIMIZATION: Only show loading overlay for data-intensive/blocking actions
+    // For terms viewing, a small in-button spinner is usually fine, but for consistency:
+    setIsLoading(true); 
+
     const { data: terms } = await supabase
       .from('terms_and_conditions')
       .select('*')
@@ -130,9 +158,9 @@ const Auth = () => {
             <head>
               <title>Terms and Conditions - MyCampusKart</title>
               <style>
-                body { font-family: system-ui; padding: 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+                body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol'; padding: 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; }
                 h1 { color: #333; }
-                .version { color: #666; font-size: 0.9rem; }
+                .version { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
               </style>
             </head>
             <body>
@@ -151,16 +179,18 @@ const Auth = () => {
         variant: "destructive",
       });
     }
+
+    setIsLoading(false);
   };
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4 bg-white" // CHANGED: Replaced bg-cover bg-center with bg-white
-      style={{
-        // CHANGED: Removed backgroundImage, backgroundBlendMode, and backgroundColor from style
-        // to enforce a pure white background set by the className="... bg-white"
-      }}
+      className="min-h-screen flex items-center justify-center p-4 bg-white"
     >
+        {/* --- ADDED: Full-Screen Loader --- */}
+        {isLoading && <LoadingOverlay />}
+        {/* ---------------------------------- */}
+        
       {/* Container for the Auth Card with Fade-In Animation */}
       <div
         className="
@@ -175,160 +205,187 @@ const Auth = () => {
         "
         style={{ animation: 'fadeInUp 0.7s ease-out 0.1s forwards' }}
       >
-        <Card className="w-full shadow-2xl bg-white/90 backdrop-blur-sm"> {/* Kept card styling for contrast */}
-          <CardHeader className="text-center relative">
+        {/* --- ADDED: Disable interaction while loading (subtle freeze) --- */}
+        <div className={`${isLoading ? "pointer-events-none opacity-80 transition-opacity duration-300" : ""}`}> 
+            <Card className="w-full shadow-2xl bg-white/90 backdrop-blur-sm"> {/* Kept card styling for contrast */}
+            <CardHeader className="text-center relative">
 
-            {/* Working Back Button */}
-            <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-4 left-4 h-8 w-8 text-muted-foreground hover:text-primary"
-                onClick={handleBack}
-            >
-                <X className="h-5 w-5" />
-            </Button>
+                {/* Working Back Button */}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-4 left-4 h-8 w-8 text-muted-foreground hover:text-primary"
+                    onClick={handleBack}
+                    disabled={isLoading} // ADDED: Disable back button while loading
+                >
+                    <X className="h-5 w-5" />
+                </Button>
 
-            <div className="flex justify-center mb-4 mt-2">
-              <img
-                src={logo}
-                alt="MyCampusKart"
-                className="h-16"
-              />
-            </div>
-            <CardTitle className="text-2xl">Welcome to MyCampusKart</CardTitle>
-            <CardDescription>
-              Sign in or create your LPU student account
-            </CardDescription>
-          </CardHeader>
+                <div className="flex justify-center mb-4 mt-2">
+                <img
+                    src={logo}
+                    alt="MyCampusKart"
+                    className="h-16"
+                />
+                </div>
+                <CardTitle className="text-2xl">Welcome to MyCampusKart</CardTitle>
+                <CardDescription>
+                Sign in or create your LPU student account
+                </CardDescription>
+            </CardHeader>
 
-          <CardContent>
-            {/* Tabs */}
-            <Tabs defaultValue="signin" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
+            <CardContent>
+                {/* Tabs */}
+                <Tabs defaultValue="signin" className="space-y-4">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="signin" disabled={isLoading}>Sign In</TabsTrigger>
+                    <TabsTrigger value="signup" disabled={isLoading}>Sign Up</TabsTrigger>
+                </TabsList>
 
-              {/* Sign In Content */}
-              <TabsContent value="signin" className="space-y-4">
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <Input id="signin-email" name="email" type="email" placeholder="your.email@lpu.in" required />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="signin-password">Password</Label>
-                      <Button
-                        type="button"
-                        variant="link"
-                        className="text-xs p-0 h-auto"
-                        onClick={async () => {
-                            const email = (document.getElementById('signin-email') as HTMLInputElement)?.value;
-                            if (!email) {
-                                toast({ title: "Error", description: "Please enter your email first", variant: "destructive" });
-                                return;
-                            }
-                            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                                redirectTo: `${window.location.origin}/reset-password`,
-                            });
-                            if (error) {
-                                toast({ title: "Error", description: error.message, variant: "destructive" });
-                            } else {
-                                toast({ title: "Success", description: "Password reset email sent! Check your inbox." });
-                            }
-                        }}
-                      >
-                        Forgot Password?
-                      </Button>
+                {/* Sign In Content */}
+                <TabsContent value="signin" className="space-y-4">
+                    <form onSubmit={handleSignIn} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="signin-email">Email</Label>
+                        <Input id="signin-email" name="email" type="email" placeholder="your.email@lpu.in" required disabled={isLoading} />
                     </div>
-                    <div className="relative">
-                      <Input id="signin-password" name="password" type={showPassword ? "text" : "password"} required className="pr-10" />
-                      <PasswordToggle isVisible={showPassword} toggleVisibility={() => setShowPassword(!showPassword)} />
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Signing in..." : "Sign In"}
-                  </Button>
-                </form>
-              </TabsContent>
-
-              {/* Sign Up Content */}
-              <TabsContent value="signup" className="space-y-4">
-                <form onSubmit={handleSignUp} className="space-y-4">
-
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name</Label>
-                    <Input id="fullName" name="fullName" placeholder="Your full name" required />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="university">University</Label>
-                    <Select value={selectedUniversity} onValueChange={setSelectedUniversity}>
-                      <SelectTrigger id="university">
-                        <SelectValue placeholder="Select your university" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {UNIVERSITY_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">University Email</Label>
-                    <Input
-                      id="signup-email"
-                      name="email"
-                      type="email"
-                      required
-                      pattern=".*@lpu\.in$"
-                      placeholder="yourname@lpu.in"
-                    />
-                    <p className="text-xs text-muted-foreground">Student verification is done via your @lpu.in email.</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <div className="relative">
-                      <Input id="signup-password" name="password" type={showConfirmPassword ? "text" : "password"} required />
-                      <PasswordToggle isVisible={showConfirmPassword} toggleVisibility={() => setShowConfirmPassword(!showConfirmPassword)} />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <div className="relative">
-                      <Input id="confirmPassword" name="confirmPassword" type={showConfirmPassword ? "text" : "password"} required />
-                      <PasswordToggle isVisible={showConfirmPassword} toggleVisibility={() => setShowConfirmPassword(!showConfirmPassword)} />
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-2">
-                    <input type="checkbox" id="terms" name="terms" required className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary" />
-                    <Label htmlFor="terms" className='text-sm leading-tight'>
-                        I agree to the{' '}
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                        <Label htmlFor="signin-password">Password</Label>
                         <Button
                             type="button"
                             variant="link"
-                            className="h-auto p-0 text-sm text-primary hover:underline"
-                            onClick={handleViewTerms}
+                            className="text-xs p-0 h-auto"
+                            disabled={isLoading} // ADDED: Disable forgot password while loading
+                            onClick={async () => {
+                                const email = (document.getElementById('signin-email') as HTMLInputElement)?.value;
+                                if (!email) {
+                                    toast({ title: "Error", description: "Please enter your email first", variant: "destructive" });
+                                    return;
+                                }
+                                setIsLoading(true); // START loading for password reset
+                                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                                    redirectTo: `${window.location.origin}/reset-password`,
+                                });
+                                setIsLoading(false); // END loading
+                                if (error) {
+                                    toast({ title: "Error", description: error.message, variant: "destructive" });
+                                } else {
+                                    // IMPROVED TOAST: Better clarity for the user
+                                    toast({ title: "Email Sent", description: "Password reset link sent! Check your @lpu.in inbox. It may take 5–10 seconds." });
+                                }
+                            }}
                         >
-                            Terms and Conditions
+                            Forgot Password?
                         </Button>
-                    </Label>
-                  </div>
+                        </div>
+                        <div className="relative">
+                        <Input id="signin-password" name="password" type={showPassword ? "text" : "password"} required className="pr-10" disabled={isLoading} />
+                        <PasswordToggle isVisible={showPassword} toggleVisibility={() => setShowPassword(!showPassword)} />
+                        </div>
+                    </div>
+                    {/* IMPROVED BUTTON: Spinner + Text Swap */}
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? (
+                            <div className="flex items-center justify-center gap-2">
+                                <div className="h-4 w-4 animate-spin border-2 border-t-transparent border-white rounded-full"></div>
+                                <span>Signing in...</span>
+                            </div>
+                        ) : (
+                            "Sign In"
+                        )}
+                    </Button>
+                    </form>
+                </TabsContent>
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Creating account..." : "Create Account"}
-                  </Button>
+                {/* Sign Up Content */}
+                <TabsContent value="signup" className="space-y-4">
+                    <form onSubmit={handleSignUp} className="space-y-4">
 
-                </form>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+                    <div className="space-y-2">
+                        <Label htmlFor="fullName">Full Name</Label>
+                        <Input id="fullName" name="fullName" placeholder="Your full name" required disabled={isLoading} />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="university">University</Label>
+                        <Select value={selectedUniversity} onValueChange={setSelectedUniversity} disabled={isLoading}>
+                        <SelectTrigger id="university">
+                            <SelectValue placeholder="Select your university" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {UNIVERSITY_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
+                        </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="signup-email">University Email</Label>
+                        <Input
+                        id="signup-email"
+                        name="email"
+                        type="email"
+                        required
+                        pattern=".*@lpu\.in$"
+                        placeholder="yourname@lpu.in"
+                        disabled={isLoading}
+                        />
+                        <p className="text-xs text-muted-foreground">Student verification is done via your @lpu.in email.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="signup-password">Password</Label>
+                        <div className="relative">
+                        <Input id="signup-password" name="password" type={showSignUpPassword ? "text" : "password"} required className="pr-10" disabled={isLoading} />
+                        <PasswordToggle isVisible={showSignUpPassword} toggleVisibility={() => setShowSignUpPassword(!showSignUpPassword)} />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="confirmPassword">Confirm Password</Label>
+                        <div className="relative">
+                        <Input id="confirmPassword" name="confirmPassword" type={showConfirmPassword ? "text" : "password"} required className="pr-10" disabled={isLoading} />
+                        <PasswordToggle isVisible={showConfirmPassword} toggleVisibility={() => setShowConfirmPassword(!showConfirmPassword)} />
+                        </div>
+                    </div>
+
+                    <div className="flex items-start space-x-2">
+                        {/* Note: Checkbox itself doesn't have a disabled prop in the markup, but the parent pointer-events-none handles it */}
+                        <input type="checkbox" id="terms" name="terms" required className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary" />
+                        <Label htmlFor="terms" className='text-sm leading-tight'>
+                            I agree to the{' '}
+                            <Button
+                                type="button"
+                                variant="link"
+                                className="h-auto p-0 text-sm text-primary hover:underline"
+                                onClick={handleViewTerms}
+                                disabled={isLoading} // ADDED: Disable while main form is loading
+                            >
+                                Terms and Conditions
+                            </Button>
+                        </Label>
+                    </div>
+
+                    {/* IMPROVED BUTTON: Spinner + Text Swap */}
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? (
+                            <div className="flex items-center justify-center gap-2">
+                                <div className="h-4 w-4 animate-spin border-2 border-t-transparent border-white rounded-full"></div>
+                                <span>Creating account...</span>
+                            </div>
+                        ) : (
+                            "Create Account"
+                        )}
+                    </Button>
+
+                    </form>
+                </TabsContent>
+                </Tabs>
+            </CardContent>
+            </Card>
+        </div> {/* END of pointer-events-none wrapper */}
       </div>
     </div>
   );
