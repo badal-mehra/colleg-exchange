@@ -11,34 +11,26 @@ import { Lock } from 'lucide-react';
 const ResetPassword = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [loadingLink, setLoadingLink] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isValidSession, setIsValidSession] = useState(false);
 
   useEffect(() => {
-    const processLink = async () => {
-      const { error } = await supabase.auth.getSessionFromUrl({
-        storeSession: true
-      });
-
-      if (error) {
+    // Check if we have a valid recovery session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setIsValidSession(true);
+      } else {
         toast({
-          title: "Invalid or expired link",
-          description: error.message,
+          title: "Invalid Session",
+          description: "Please request a new password reset link.",
           variant: "destructive",
         });
         setTimeout(() => navigate('/auth'), 2000);
-      } else {
-        setIsValidSession(true);
       }
-
-      setLoadingLink(false);
-    };
-
-    processLink();
-  }, []);
+    });
+  }, [navigate, toast]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,9 +44,19 @@ const ResetPassword = () => {
       return;
     }
 
-    setIsLoading(true);
+    if (password.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const { error } = await supabase.auth.updateUser({ password });
+    setIsLoading(true);
+    const { error } = await supabase.auth.updateUser({ 
+      password: password 
+    });
 
     if (error) {
       toast({
@@ -65,23 +67,25 @@ const ResetPassword = () => {
     } else {
       toast({
         title: "Success",
-        description: "Password updated successfully!",
+        description: "Password updated successfully! Redirecting to dashboard...",
       });
       setTimeout(() => navigate('/dashboard'), 2000);
     }
-
     setIsLoading(false);
   };
 
-  if (loadingLink) {
+  if (!isValidSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Verifying link…</p>
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>Invalid Session</CardTitle>
+            <CardDescription>Redirecting...</CardDescription>
+          </CardHeader>
+        </Card>
       </div>
     );
   }
-
-  if (!isValidSession) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center p-4">
@@ -91,32 +95,36 @@ const ResetPassword = () => {
             <Lock className="h-6 w-6 text-primary" />
           </div>
           <CardTitle>Reset Your Password</CardTitle>
-          <CardDescription>Enter your new password below</CardDescription>
+          <CardDescription>
+            Enter your new password below
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div className="space-y-2">
-              <Label>New Password</Label>
+              <Label htmlFor="password">New Password</Label>
               <Input
+                id="password"
                 type="password"
                 placeholder="Enter new password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
               />
             </div>
-
             <div className="space-y-2">
-              <Label>Confirm Password</Label>
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
               <Input
+                id="confirmPassword"
                 type="password"
-                placeholder="Confirm password"
+                placeholder="Confirm new password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                minLength={6}
               />
             </div>
-
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Updating..." : "Update Password"}
             </Button>
