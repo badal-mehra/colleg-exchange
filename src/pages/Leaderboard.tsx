@@ -1,13 +1,12 @@
-// Leaderboard.tsx - FINAL Fully Responsive & Professional Version (FIXED AVATAR URL LOGIC)
+// Leaderboard.tsx - ABSOLUTE FINAL: Bug-Fixed, Optimized, and Production-Grade
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Trophy,
-  Medal,
   Award,
   Star,
   Target,
@@ -16,14 +15,17 @@ import {
   Zap,
   User as UserIcon,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  Locate,
+  Users,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton'; 
 
-// --- Interfaces & Types (Unchanged) ---
+// --- Interfaces & Types ---
 interface LeaderboardEntry {
   user_id: string;
   full_name: string;
@@ -34,12 +36,18 @@ interface LeaderboardEntry {
   mck_id?: string;
 }
 
-// --- Custom Components for Redesign ---
+// --- Constants ---
+const LOAD_INCREMENT = 10;
+const MAX_VISIBLE_RANKS = 99;
+const SCROLL_THRESHOLD = 200;
+
+// --- Custom Components ---
 
 /**
- * Custom Rank Badge Component for the Top 3 (Metallic Effect - FIXED RESPONSIVENESS)
+ * Custom Rank Badge Component for the Top 3
  */
-const RankBadge: React.FC<{ rank: number }> = ({ rank }) => {
+const RankBadge: React.FC<{ rank: number }> = React.memo(({ rank }) => {
+  // ... (RankBadge component logic remains unchanged) ...
   const styles = {
     1: { color: 'text-yellow-400', bg: 'bg-gradient-to-br from-yellow-600 to-yellow-300', icon: Crown },
     2: { color: 'text-gray-400', bg: 'bg-gradient-to-br from-gray-500 to-gray-200', icon: ShieldCheck },
@@ -49,21 +57,22 @@ const RankBadge: React.FC<{ rank: number }> = ({ rank }) => {
   const currentStyle = styles[rank];
   const Icon = currentStyle.icon;
 
+  if (rank > 3) return null;
+
   return (
-    // FIXED: Responsive badge sizing and positioning
     <div className={`absolute -top-4 sm:-top-6 left-1/2 transform -translate-x-1/2 
       z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center 
       shadow-lg ${currentStyle.bg} border-2 border-white/50 ring-2 ring-background`}>
       <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" strokeWidth={3} />
     </div>
   );
-};
+});
 
 /**
- * Renders the custom card for the top 3 users (The Podium - FIXED RESPONSIVENESS).
+ * Renders the custom card for the top 3 users (The Podium).
  */
-const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number }> = ({ entry, rank }) => {
-  
+const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number; onClick: () => void }> = React.memo(({ entry, rank, onClick }) => {
+  // ... (TopRankCard component logic remains unchanged) ...
   const isChampion = rank === 1;
 
   const rankStyles = {
@@ -89,23 +98,20 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number }> = ({ entr
 
   const currentStyle = rankStyles[rank];
 
-  // 🔥 FIX: Directly use entry.avatar_url since it's a full Cloudinary/CDN URL, 
-  // removing the incorrect Supabase storage fetch.
   const avatarUrl = entry.avatar_url || undefined;
 
 
   return (
-    // FIXED: Removed fixed heights (md:h-[...]) and added responsive padding (p-4 sm:p-6) and min-heights.
     <Card 
-      className={`p-4 sm:p-6 flex flex-col items-center text-center
-        transition-all duration-500 transform 
+      onClick={onClick} 
+      className={`cursor-pointer p-4 sm:p-6 flex flex-col items-center text-center
+        transition-all duration-500 transform hover:shadow-2xl 
         ${currentStyle.scale} border-2 ${currentStyle.border} ${currentStyle.bg}
         w-full relative min-h-[280px] sm:min-h-[340px]`}
     >
       <RankBadge rank={rank} />
       
       <div className={`mt-6 sm:mt-8 mb-4 ${isChampion ? 'w-24 h-24 sm:w-28 sm:h-28' : 'w-20 h-20 sm:w-24 sm:h-24'} flex-shrink-0`}>
-        {/* Avatar */}
         <Avatar className={`h-full w-full border-4 ${currentStyle.border}`}>
           <AvatarImage src={avatarUrl} alt={entry.full_name} className="object-cover" />
           <AvatarFallback className="bg-primary/80 text-white text-2xl">
@@ -115,7 +121,6 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number }> = ({ entr
       </div>
       
       <div className="min-w-0 mb-3">
-        {/* FIXED: Scaled down text size for mobile */}
         <h3 className={`font-bold truncate text-lg sm:text-xl ${isChampion ? 'sm:text-2xl' : ''}`}>{entry.full_name}</h3>
         <p className="text-sm text-muted-foreground truncate">{entry.university || entry.mck_id}</p>
       </div>
@@ -123,7 +128,6 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number }> = ({ entr
       <Separator className="w-1/2 mb-3 bg-border/50" />
 
       <div className="flex flex-col items-center">
-        {/* FIXED: Scaled down points size for mobile */}
         <div className={`font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500 mb-1 ${isChampion ? 'text-4xl sm:text-5xl' : 'text-3xl sm:text-4xl'}`}>{entry.campus_points}</div>
         <div className="text-sm font-medium text-muted-foreground">Campus Points</div>
       </div>
@@ -135,21 +139,23 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number }> = ({ entr
       )}
     </Card>
   );
-};
+});
 
 
 /**
- * Renders the streamlined list item for ranks 4 onwards (FIXED RESPONSIVENESS).
+ * Renders the streamlined list item for ranks 4 onwards.
  */
-const ListItemCard: React.FC<{ entry: LeaderboardEntry; index: number }> = ({ entry, index }) => {
-
-  // 🔥 FIX: Directly use entry.avatar_url since it's a full Cloudinary/CDN URL, 
-  // removing the incorrect Supabase storage fetch.
+const ListItemCard: React.FC<{ entry: LeaderboardEntry; index: number; onClick: () => void }> = React.memo(({ entry, index, onClick }) => {
   const avatarUrl = entry.avatar_url || undefined;
 
+  // ❌ FIX 1 & 3: Removed useImperativeHandle and unused cardRef
+  
   return (
-    // FIXED: Responsive padding on list item card
-    <Card className="p-3 sm:p-4 border-border hover:border-primary/30 transition-all duration-200 hover:shadow-md bg-card/90">
+    <Card 
+      id={`rank-${index + 1}`} // ID for direct scrolling
+      onClick={onClick} 
+      className="cursor-pointer p-3 sm:p-4 border-border hover:border-primary/30 transition-all duration-200 hover:shadow-md bg-card/90"
+    >
       <div className="flex items-center justify-between">
         {/* LEFT: Rank, Avatar, Info */}
         <div className="flex items-center gap-4 min-w-0">
@@ -185,66 +191,213 @@ const ListItemCard: React.FC<{ entry: LeaderboardEntry; index: number }> = ({ en
       </div>
     </Card>
   );
-};
+});
+
+// --- Skeleton Components for UX (Unchanged) ---
+const TopRankCardSkeleton: React.FC = () => (
+  <Card className="p-4 sm:p-6 flex flex-col items-center text-center w-full min-h-[280px] sm:min-h-[340px] relative">
+    <Skeleton className="absolute -top-4 sm:-top-6 left-1/2 transform -translate-x-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full" />
+    <Skeleton className="mt-8 mb-4 w-20 h-20 sm:w-24 sm:h-24 rounded-full" />
+    <Skeleton className="w-3/4 h-6 mb-2" />
+    <Skeleton className="w-1/2 h-4 mb-3" />
+    <Separator className="w-1/2 mb-3 bg-border/50" />
+    <Skeleton className="w-1/3 h-8" />
+    <Skeleton className="w-1/4 h-3 mt-1" />
+  </Card>
+);
+
+const ListItemCardSkeleton: React.FC = () => (
+  <Card className="p-3 sm:p-4 border-border bg-card/90">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-4 min-w-0">
+        <Skeleton className="w-8 h-6" />
+        <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
+        <div className="min-w-0 space-y-1">
+          <Skeleton className="w-40 h-4" />
+          <Skeleton className="w-24 h-3" />
+        </div>
+      </div>
+      <div className="flex flex-col items-end text-right pl-4">
+        <Skeleton className="w-12 h-6" />
+        <Skeleton className="w-10 h-3" />
+      </div>
+    </div>
+  </Card>
+);
+
+const LeaderboardSkeleton: React.FC = () => (
+  <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-8 max-w-7xl mx-auto">
+    <div className="flex justify-between items-center mb-10">
+      <Skeleton className="w-40 h-8" />
+      <div className="text-center">
+        <Skeleton className="w-80 h-10 mx-auto mb-2" />
+        <Skeleton className="w-60 h-6 mx-auto" />
+      </div>
+      <div className="w-40 h-8 hidden sm:block"></div>
+    </div>
+    
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-stretch mb-10">
+      <TopRankCardSkeleton />
+      <TopRankCardSkeleton />
+      <TopRankCardSkeleton />
+    </div>
+
+    <Card className="shadow-2xl border-t-4 border-primary/50 bg-card/95">
+      <CardHeader className="py-4 px-6 border-b border-border/50">
+        <Skeleton className="w-48 h-6" />
+      </CardHeader>
+      <CardContent className="p-4 space-y-2">
+        {[...Array(5)].map((_, i) => <ListItemCardSkeleton key={i} />)}
+      </CardContent>
+    </Card>
+  </div>
+);
 
 
 // --- Main Leaderboard Component ---
 const Leaderboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]); 
   const [loading, setLoading] = useState(true);
+  const [globalRank, setGlobalRank] = useState<number | null>(null); 
+  const [visibleCount, setVisibleCount] = useState(LOAD_INCREMENT); 
+  const [pendingJumpRank, setPendingJumpRank] = useState<number | null>(null); // ✅ FIX 2: State for syncing scroll after render
+  const [disableAutoLoad, setDisableAutoLoad] = useState(false); // ✅ FIX 4: State for disabling scroll handler during jump
+
+  const scrollTimeoutRef = useRef<number | null>(null); 
+  
+  const handleCardClick = useCallback((userId: string) => {
+    navigate(`/profile/${userId}`);
+  }, [navigate]);
+
+  const fetchLeaderboard = async () => {
+    setLoading(true);
+    
+    const [{ data: boardData, error: boardError }, { data: userData }] = await Promise.all([
+      supabase.rpc('get_monthly_leaderboard'),
+      supabase.auth.getUser(),
+    ]);
+
+    if (boardError) {
+      console.error('Error fetching leaderboard:', boardError);
+      toast({ title: 'Error', description: 'Failed to load leaderboard', variant: 'destructive' });
+      setLeaderboard([]);
+    } else {
+      const fullList = boardData || [];
+      
+      const currentUserId = userData?.user?.id;
+      if (currentUserId) {
+        const userIndex = fullList.findIndex(u => u.user_id === currentUserId);
+        setGlobalRank(userIndex !== -1 ? userIndex + 1 : null); 
+      }
+
+      setLeaderboard(fullList.slice(0, MAX_VISIBLE_RANKS));
+    }
+    setLoading(false);
+  };
+
+  // ✅ FIX 2: Effect to watch for DOM update and then scroll (replaces unreliable setTimeout)
+  useEffect(() => {
+    if (pendingJumpRank) {
+      const el = document.getElementById(`rank-${pendingJumpRank}`);
+      if (el) {
+        // Scroll happens
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setPendingJumpRank(null);
+
+        // ✅ FIX 4: Re-enable auto-scroll after a delay to ensure jump-scroll has settled
+        setTimeout(() => setDisableAutoLoad(false), 500); 
+      }
+    }
+  }, [visibleCount, pendingJumpRank]); 
+
+
+  // Auto-load on scroll with Debounce
+  useEffect(() => {
+    if (loading || leaderboard.length <= 3 + visibleCount) return;
+    
+    const handleScroll = () => {
+      // ✅ FIX 4: Guard to prevent auto-loading when smooth scroll is active (e.g., from jump button)
+      if (disableAutoLoad) return; 
+
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
+      scrollTimeoutRef.current = setTimeout(() => {
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - SCROLL_THRESHOLD) {
+          setVisibleCount(prev => Math.min(prev + LOAD_INCREMENT, leaderboard.length - 3));
+        }
+      }, 100);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, [loading, leaderboard.length, visibleCount, disableAutoLoad]);
+
 
   useEffect(() => {
     fetchLeaderboard();
   }, []);
 
-  const fetchLeaderboard = async () => {
-    setLoading(true);
-    // NOTE: 'get_monthly_leaderboard' is a Supabase RPC (Remote Procedure Call/Function) which is correct for fetching data.
-    const { data, error } = await supabase.rpc('get_monthly_leaderboard');
+  /**
+   * Scroll function for "Jump to My Rank" button
+   */
+  const handleJumpToRank = () => {
+    if (globalRank && globalRank > 3) {
+      const targetRank = globalRank;
+      
+      // 1. Temporarily disable auto-loading
+      setDisableAutoLoad(true);
 
-    if (error) {
-      console.error('Error fetching leaderboard:', error);
-      toast({ title: 'Error', description: 'Failed to load leaderboard', variant: 'destructive' });
-    } else {
-      setLeaderboard(data || []);
+      // 2. Expand list to include the target rank if it's within 99
+      if (targetRank <= MAX_VISIBLE_RANKS) {
+        // Set visible count to include the target rank + 5 buffer
+        const newVisibleCount = Math.min(targetRank - 3 + 5, leaderboard.length - 3); 
+        setVisibleCount(newVisibleCount);
+
+        // 3. Set the pending jump rank. Effect will handle the scroll after render.
+        setPendingJumpRank(targetRank);
+      } else {
+        // If rank is > 99, the sticky card is shown, but we can't jump to a non-existent list item.
+        // We ensure auto-load is re-enabled if no scroll is triggered.
+        setTimeout(() => setDisableAutoLoad(false), 500);
+      }
     }
-    setLoading(false);
   };
 
+
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse space-y-4 w-full max-w-md p-6">
-          <div className="h-10 bg-muted rounded-lg"></div>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="h-40 bg-muted rounded-lg"></div>
-            <div className="h-60 bg-muted rounded-lg"></div>
-            <div className="h-40 bg-muted rounded-lg"></div>
-          </div>
-          <div className="h-16 bg-muted rounded-lg"></div>
-          <div className="h-16 bg-muted rounded-lg"></div>
-        </div>
-      </div>
-    );
+    return <LeaderboardSkeleton />; 
   }
 
   const topThree = leaderboard.slice(0, 3);
-  const remainingRanks = leaderboard.slice(3);
+  const remainingRanksToDisplay = leaderboard.slice(3, 3 + visibleCount);
+  const totalRanksFetched = leaderboard.length;
+  const hasMoreToLoad = totalRanksFetched > 3 + visibleCount;
+
+  // Check if user's rank is between 4 and 99, and is NOT currently visible
+  const showJumpButton = globalRank && globalRank > 3 && globalRank <= MAX_VISIBLE_RANKS && globalRank > 3 + visibleCount;
+
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 bg-dot-pattern">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 bg-dot-pattern pb-20">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         
-        {/* Header & Back Button - FIXED RESPONSIVENESS */}
+        {/* Header & Back Button */}
         <div className="flex flex-col gap-4 sm:flex-row sm:justify-between items-center mb-10 text-center sm:text-left">
           <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="text-muted-foreground hover:bg-primary/10 transition duration-300">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
           
-          {/* Main Title - Scaled */}
           <div className="text-center">
             <h1 className="text-4xl sm:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500 mb-2 tracking-tight">
               Campus Elite Leaderboard
@@ -252,33 +405,28 @@ const Leaderboard = () => {
             <p className="text-base sm:text-lg text-muted-foreground/80 font-medium">Monthly Top Performers - Ranked by Campus Points</p>
           </div>
           
-          <div className="w-24 hidden sm:block"></div> {/* Spacer for desktop symmetry */}
+          <div className="w-24 hidden sm:block"></div>
         </div>
 
         {/* --- MAIN CONTENT --- */}
         <div className="space-y-10">
           
-          {/* 🥇 The Podium (Top 3) - FIXED MOBILE-FIRST ORDERING */}
+          {/* 🥇 The Podium (Top 3) */}
           {topThree.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-stretch">
-              {/* Rank 1 (Centerpiece on Desktop / First on Mobile) */}
               {topThree[0] && (
                 <div className="order-1 sm:order-2">
-                  <TopRankCard entry={topThree[0]} rank={1} />
+                  <TopRankCard entry={topThree[0]} rank={1} onClick={() => handleCardClick(topThree[0].user_id)} />
                 </div>
               )}
-
-              {/* Rank 2 (Left on Desktop / Second on Mobile) */}
               {topThree[1] && (
                 <div className="order-2 sm:order-1">
-                  <TopRankCard entry={topThree[1]} rank={2} />
+                  <TopRankCard entry={topThree[1]} rank={2} onClick={() => handleCardClick(topThree[1].user_id)} />
                 </div>
               )}
-
-              {/* Rank 3 (Right on Desktop / Last on Mobile) */}
               {topThree[2] && (
                 <div className="order-3 sm:order-3">
-                  <TopRankCard entry={topThree[2]} rank={3} />
+                  <TopRankCard entry={topThree[2]} rank={3} onClick={() => handleCardClick(topThree[2].user_id)} />
                 </div>
               )}
             </div>
@@ -294,26 +442,47 @@ const Leaderboard = () => {
           )}
           
           {/* 🏆 Ranks 4+ List */}
-          {remainingRanks.length > 0 && (
+          {remainingRanksToDisplay.length > 0 && (
             <Card className="shadow-2xl border-t-4 border-primary/50 bg-card/95">
               <CardHeader className="py-4 px-6 border-b border-border/50">
                 <CardTitle className="text-xl font-semibold flex items-center gap-2 text-primary">
-                  <Trophy className="h-5 w-5" /> All Other Ranks
+                  <Users className="h-5 w-5" /> Ranks 4 - {3 + remainingRanksToDisplay.length}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 space-y-2">
-                {remainingRanks.map((entry, index) => (
+                {remainingRanksToDisplay.map((entry, index) => (
                   <ListItemCard 
                     key={entry.user_id} 
                     entry={entry} 
                     index={index + 3} 
+                    onClick={() => handleCardClick(entry.user_id)} 
                   />
                 ))}
+                
+                {/* Manual Load More Button */}
+                {hasMoreToLoad && (
+                  <div className="flex justify-center pt-4">
+                    <Button
+                      onClick={() => setVisibleCount(prev => Math.min(prev + LOAD_INCREMENT, totalRanksFetched - 3))}
+                      variant="outline"
+                      className="text-primary hover:bg-primary/10 border-primary/50"
+                    >
+                      Load More
+                    </Button>
+                  </div>
+                )}
+                
+                {/* End of list indicator */}
+                {!hasMoreToLoad && remainingRanksToDisplay.length > 0 && (
+                   <div className="text-center py-4 text-sm text-muted-foreground">
+                       You've reached the end of the Top {MAX_VISIBLE_RANKS}
+                   </div>
+                )}
               </CardContent>
             </Card>
           )}
 
-          {/* 🌟 Rewards & Points Section - FIXED RESPONSIVENESS */}
+          {/* Rewards & Points Section (Unchanged) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card className="bg-gradient-to-br from-primary/5 to-background border-primary/20">
               <CardHeader>
@@ -376,6 +545,32 @@ const Leaderboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Sticky "My Rank" Card (Appears if rank > 3) */}
+      {globalRank !== null && globalRank > 3 && (
+        <div className={`fixed bottom-0 md:bottom-4 left-0 md:left-1/2 md:transform md:-translate-x-1/2 w-full md:w-auto 
+            bg-primary text-primary-foreground p-4 md:rounded-xl shadow-2xl z-50 transition-all duration-300
+            block`} 
+        >
+          <div className="flex justify-between items-center text-lg font-medium max-w-lg mx-auto md:min-w-[300px]">
+            <span className="flex items-center gap-2">
+                <Crown className="h-5 w-5 fill-primary-foreground" /> Your Global Rank
+            </span>
+            <span className="font-extrabold text-2xl">#{globalRank}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Floating "Jump to My Rank" Button */}
+      {showJumpButton && (
+        <Button
+            onClick={handleJumpToRank}
+            className="fixed bottom-20 right-4 md:bottom-20 md:right-8 z-50 rounded-full h-12 w-12 p-0 shadow-lg 
+                       bg-blue-500 hover:bg-blue-600 text-white animate-bounce-slow"
+        >
+            <Locate className="h-5 w-5" />
+        </Button>
+      )}
     </div>
   );
 };
