@@ -1,4 +1,4 @@
-// TransactionConfirmation.tsx (Final Version)
+// TransactionConfirmation.tsx (Final Version with Corrected RPC Logic)
 
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +8,7 @@ import { CheckCircle2, Clock, AlertCircle, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface Order {
-  id: string;
+  id: string; // This holds the transaction ID (txn_id)
   status: string;
   seller_confirmed: boolean;
   buyer_confirmed: boolean;
@@ -43,43 +43,65 @@ export function TransactionConfirmation({
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
+  // 🔥 FINAL, CORRECTED handleConfirm FUNCTION
   const handleConfirm = async () => {
     try {
       setConfirming(true);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      // Get logged-in user
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error("Please log in to confirm transaction");
         return;
       }
 
-      // Call RPC for confirmation (incorporates stale data and race condition fix)
-      const { data, error } = await supabase.rpc(
-        "complete_order_with_confirmation",
+      // STEP 1 → Call correct RPC: confirm_transaction (Updates confirmation flags)
+      const { data: confirmData, error: confirmError } = await supabase.rpc(
+        "confirm_transaction",
         {
-          order_id: order.id,
-          confirming_user_id: user.id,
-          user_type: userType,
+          txn_id: order.id, // Using order.id as it holds the transaction ID
+          role: userType    // "buyer" or "seller"
         }
       );
 
-      if (error) throw error;
-
-      if (data?.success) {
-        toast.success(data.message);
-        onConfirm(); // Refresh orders list
-      } else {
-        toast.error(data?.error || "Failed to confirm transaction");
+      if (confirmError) {
+        console.error("Confirm RPC Error:", confirmError);
+        toast.error("Failed to confirm transaction");
+        return;
       }
-    } catch (error: any) {
-      console.error("Error confirming transaction:", error);
-      toast.error(error.message || "Failed to confirm transaction");
+
+      // Show message from backend (e.g., "Confirmation recorded.")
+      if (confirmData?.message) {
+        toast.success(confirmData.message);
+      }
+
+      // STEP 2 → If BOTH parties have confirmed (requires backend RPC fix)
+      if (confirmData?.both_confirmed === true) {
+        
+        // RPC to mark the item as SOLD in the 'items' table
+        const { error: soldError } = await supabase.rpc(
+          "complete_transaction_and_mark_sold",
+          { txn_id: order.id }
+        );
+
+        if (soldError) {
+          console.error("Item SOLD RPC Error:", soldError);
+        } else {
+          toast.success("Item successfully marked as SOLD 🎉");
+        }
+      }
+
+      // Refresh UI (fetches updated status)
+      onConfirm();
+
+    } catch (err: any) {
+      console.error("Unexpected error:", err);
+      toast.error(err.message || "Unexpected error");
     } finally {
       setConfirming(false);
     }
   };
+  // 🔥 FINAL, CORRECTED handleConfirm FUNCTION ENDS
 
   const handleCancel = async () => {
     if (!window.confirm("Are you sure you want to cancel this order? This action is permanent.")) {
@@ -269,7 +291,7 @@ export function TransactionConfirmation({
                 </div>
             )}
 
-            {/* Show Cancel Button if Seller AND status is PENDING. */}
+            /* Show Cancel Button if Seller AND status is PENDING. */
             {userType === "seller" && order.status === "pending" && (
                 <Button
                     onClick={handleCancel}
