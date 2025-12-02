@@ -1,102 +1,123 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * @fileoverview Component for handling password reset after a user clicks a recovery link.
+ * It verifies the session and allows the user to set a new password via Supabase.
+ */
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client'; // Assuming correct path to Supabase client
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import logoSrc from 'src/assets/mycampuskart-logo.png'; // Import the logo source
+import { Lock, Loader2 } from 'lucide-react';
 
-// --- Logo Component for Reusability ---
-const AppLogo = ({ className = "h-12 w-12" }: { className?: string }) => (
-  <div className={`mx-auto mb-6 ${className} flex items-center justify-center`}>
-    {/* Adjust className for size and style */}
-    <img src={logoSrc} alt="MyCampuskart Logo" className="h-full w-auto object-contain" />
-  </div>
-);
-// --- End Logo Component ---
+// Define minimum password length as a constant for clarity
+const MIN_PASSWORD_LENGTH = 6;
+// Define the redirection delay
+const REDIRECT_DELAY_MS = 2000;
 
 const ResetPassword = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isValidSession, setIsValidSession] = useState(false);
 
-  // Effect to check for a valid password recovery session
+  /**
+   * Effect to verify the recovery session immediately upon component mount.
+   * If no valid session is found, it shows an error toast and redirects.
+   */
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
       if (session) {
         setIsValidSession(true);
       } else {
         toast({
-          title: "Session Expired",
-          description: "Your password reset link is invalid or expired. Please request a new one.",
-          variant: "destructive",
+          title: 'Authentication Required',
+          description: 'The password reset link is invalid or expired. Please request a new link.',
+          variant: 'destructive',
         });
-        // Redirect to the authentication page after a short delay
-        setTimeout(() => navigate('/auth'), 2000);
+        // Use a state transition or a cleaner way to handle redirection after component load
+        setTimeout(() => navigate('/auth/sign-in'), REDIRECT_DELAY_MS);
       }
-    });
+    };
+
+    checkSession();
   }, [navigate, toast]);
 
-  const handleResetPassword = async (e: React.FormEvent) => {
+  /**
+   * Handle the password reset submission.
+   * Performs client-side validation before attempting the Supabase API call.
+   * @param e - The form submission event.
+   */
+  const handleResetPassword = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Client-side validation
-    if (password !== confirmPassword) {
-      toast({
-        title: "Validation Error",
-        description: "The new passwords you entered do not match.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      toast({
-        title: "Validation Error",
-        description: "Your new password must be at least 6 characters long.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
 
-    // Update user password via Supabase
-    const { error } = await supabase.auth.updateUser({ password: password });
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: 'Validation Error',
+        description: 'The new passwords entered do not match.',
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      toast({
+        title: 'Validation Error',
+        description: `Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`,
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // Call Supabase to update the user's password using the active session
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
 
     if (error) {
-      console.error("Password Update Error:", error);
       toast({
-        title: "Password Reset Failed",
-        description: error.message || "An unexpected error occurred during the update.",
-        variant: "destructive",
+        title: 'Password Update Failed',
+        description: error.message || 'An unexpected error occurred during the update.',
+        variant: 'destructive',
       });
     } else {
       toast({
-        title: "Success",
-        description: "Password updated successfully. You are being redirected to the dashboard.",
+        title: 'Success!',
+        description: 'Your password has been updated. Redirecting to your dashboard...',
       });
-      // Redirect to the dashboard upon successful update
-      setTimeout(() => navigate('/dashboard'), 2000);
+      // Redirect to the protected dashboard page after a successful update
+      setTimeout(() => navigate('/dashboard'), REDIRECT_DELAY_MS);
     }
+    
     setIsLoading(false);
-  };
+  }, [newPassword, confirmPassword, navigate, toast]);
 
-  // Render state for an invalid session
+  // Determine button state and text
+  const isFormValid = useMemo(
+    () => newPassword.length >= MIN_PASSWORD_LENGTH && newPassword === confirmPassword,
+    [newPassword, confirmPassword]
+  );
+
+  // Render a loading/redirect state if the session is not yet valid
   if (!isValidSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-        <Card className="w-full max-w-md shadow-xl">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <Card className="w-full max-w-sm">
           <CardHeader className="text-center">
-            <AppLogo className="h-10 w-10" />
-            <CardTitle className="text-2xl font-bold">Session Check</CardTitle>
+            <Loader2 className="h-8 w-8 text-primary animate-spin mx-auto mb-2" />
+            <CardTitle className="text-xl">Verifying Session</CardTitle>
             <CardDescription>
-              Verifying your reset link. Redirecting if invalid...
+              Please wait while we validate your reset link.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -104,53 +125,57 @@ const ResetPassword = () => {
     );
   }
 
-  // Main password reset form
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-2xl border-2 border-primary/10">
-        <CardHeader className="text-center">
-          <AppLogo />
-          <CardTitle className="text-3xl font-extrabold text-gray-900 dark:text-gray-50">
-            Secure Password Reset
-          </CardTitle>
-          <CardDescription className="text-gray-600 dark:text-gray-400 mt-2">
-            Please enter and confirm your new password to regain access to your account.
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-900">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="text-center pb-6">
+          <div className="mx-auto mb-4 h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
+            <Lock className="h-8 w-8 text-primary" />
+          </div>
+          <CardTitle className="text-2xl font-bold">Reset Your Password</CardTitle>
+          <CardDescription>
+            Enter a strong, new password below.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleResetPassword} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="password">New Password</Label>
+              <Label htmlFor="newPassword">New Password</Label>
               <Input
-                id="password"
+                id="newPassword"
                 type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                placeholder={`Minimum ${MIN_PASSWORD_LENGTH} characters`}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
                 required
-                minLength={6}
-                autoComplete="new-password"
+                minLength={MIN_PASSWORD_LENGTH}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
               <Input
                 id="confirmPassword"
                 type="password"
-                placeholder="••••••••"
+                placeholder="Re-enter new password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                minLength={6}
-                autoComplete="new-password"
+                minLength={MIN_PASSWORD_LENGTH}
               />
             </div>
             <Button 
               type="submit" 
-              className="w-full text-lg py-2 transition-all duration-300 hover:shadow-lg" 
-              disabled={isLoading || !password || !confirmPassword}
+              className="w-full" 
+              disabled={isLoading || !isFormValid}
             >
-              {isLoading ? "Updating Password..." : "Update Password"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating Password...
+                </>
+              ) : (
+                'Update Password'
+              )}
             </Button>
           </form>
         </CardContent>
