@@ -139,9 +139,13 @@ const Chat = () => {
   }, [conversation, user]);
 
   const getOtherUserAvatarUrl = useMemo(() => {
-    if (!otherUser?.avatar_url) return undefined;
-    return supabase.storage.from('avatars').getPublicUrl(otherUser.avatar_url).data.publicUrl;
-  }, [otherUser]);
+    return otherUser?.avatar_url || undefined;
+}, [otherUser]);
+
+  // const getOtherUserAvatarUrl = useMemo(() => {
+  //   if (!otherUser?.avatar_url) return undefined;
+  //   return supabase.storage.from('avatars').getPublicUrl(otherUser.avatar_url).data.publicUrl;
+  // }, [otherUser]);
 
   // Utility Functions ----------------------------------------------------------------
 
