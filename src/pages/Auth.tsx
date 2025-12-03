@@ -191,20 +191,8 @@ const Auth = () => {
         {isLoading && <LoadingOverlay />}
         {/* ---------------------------------- */}
         
-      {/* Container for the Auth Card with Fade-In Animation */}
-      <div
-        className="
-          w-full
-          max-w-md
-          transition-all
-          duration-500
-          ease-out
-          opacity-0
-          translate-y-4
-          md:opacity-100 md:translate-y-0
-        "
-        style={{ animation: 'fadeInUp 0.7s ease-out 0.1s forwards' }}
-      >
+      {/* Container for the Auth Card with **FIXED** classes */}
+      <div className="w-full max-w-md">
         {/* --- ADDED: Disable interaction while loading (subtle freeze) --- */}
         <div className={`${isLoading ? "pointer-events-none opacity-80 transition-opacity duration-300" : ""}`}> 
             <Card className="w-full shadow-2xl bg-white/90 backdrop-blur-sm"> {/* Kept card styling for contrast */}
