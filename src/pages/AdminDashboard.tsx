@@ -244,28 +244,77 @@ const AdminDashboard = () => {
       return;
     }
 
-    // Get unique user IDs for reporter and target
+    // Separate listing reports from seller/other reports
+    const listingReports = reportsData.filter(r => r.report_type === 'listing');
+    const sellerReports = reportsData.filter(r => r.report_type === 'seller');
+    
+    // Get unique IDs
     const reporterIds = [...new Set(reportsData.map(r => r.reported_by).filter(Boolean))];
-    const targetIds = [...new Set(reportsData.map(r => r.target_id).filter(Boolean))];
-    const allUserIds = [...new Set([...reporterIds, ...targetIds])];
+    const sellerTargetIds = [...new Set(sellerReports.map(r => r.target_id).filter(Boolean))];
+    const listingIds = [...new Set(listingReports.map(r => r.target_id).filter(Boolean))];
 
-    // Fetch profiles for all relevant users
+    // Fetch profiles for reporters and seller targets
     const { data: profilesData } = await supabase
       .from('profiles')
       .select('user_id, full_name, email, avatar_url, mck_id')
-      .in('user_id', allUserIds);
+      .in('user_id', [...reporterIds, ...sellerTargetIds]);
 
-    // Create a map for quick lookup
     const profilesMap = new Map(
       (profilesData || []).map(p => [p.user_id, p])
     );
 
-    // Combine reports with profile data
-    const enrichedReports = reportsData.map(report => ({
-      ...report,
-      reporter: profilesMap.get(report.reported_by) || null,
-      reported_user: profilesMap.get(report.target_id) || null
-    }));
+    // Fetch items (listings) for listing reports
+    let itemsMap = new Map();
+    let sellerIdsFromItems: string[] = [];
+    
+    if (listingIds.length > 0) {
+      const { data: itemsData } = await supabase
+        .from('items')
+        .select('id, title, price, seller_id, images, is_sold')
+        .in('id', listingIds);
+      
+      if (itemsData) {
+        itemsData.forEach(item => itemsMap.set(item.id, item));
+        sellerIdsFromItems = [...new Set(itemsData.map(i => i.seller_id).filter(Boolean))];
+      }
+    }
+
+    // Fetch seller profiles for listings
+    if (sellerIdsFromItems.length > 0) {
+      const { data: sellerProfiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email, avatar_url, mck_id')
+        .in('user_id', sellerIdsFromItems);
+      
+      if (sellerProfiles) {
+        sellerProfiles.forEach(p => profilesMap.set(p.user_id, p));
+      }
+    }
+
+    // Combine reports with profile and listing data
+    const enrichedReports = reportsData.map(report => {
+      const reporter = profilesMap.get(report.reported_by) || null;
+      
+      if (report.report_type === 'listing') {
+        const listing = itemsMap.get(report.target_id);
+        const seller = listing ? profilesMap.get(listing.seller_id) : null;
+        return {
+          ...report,
+          reporter,
+          reported_user: null,
+          reported_listing: listing || null,
+          reported_seller: seller || null
+        };
+      } else {
+        return {
+          ...report,
+          reporter,
+          reported_user: profilesMap.get(report.target_id) || null,
+          reported_listing: null,
+          reported_seller: null
+        };
+      }
+    });
 
     setReports(enrichedReports);
   };
@@ -643,6 +692,47 @@ const AdminDashboard = () => {
                                           )}
                                         </div>
                                       </div>
+                                    </div>
+                                  )}
+                                  
+                                  {report.report_type === 'listing' && report.reported_listing && (
+                                    <div className="col-span-1 md:col-span-2 space-y-3">
+                                      <div>
+                                        <p className="text-xs font-medium text-muted-foreground mb-1">Reported Listing:</p>
+                                        <div className="flex items-center gap-3 p-2 bg-background rounded border">
+                                          {report.reported_listing.images?.[0] && (
+                                            <img 
+                                              src={report.reported_listing.images[0]} 
+                                              alt={report.reported_listing.title}
+                                              className="h-12 w-12 object-cover rounded"
+                                            />
+                                          )}
+                                          <div className="flex-1">
+                                            <p className="text-sm font-medium">{report.reported_listing.title}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                              ₹{report.reported_listing.price} • {report.reported_listing.is_sold ? 'Sold' : 'Available'}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      
+                                      {report.reported_seller && (
+                                        <div>
+                                          <p className="text-xs font-medium text-muted-foreground mb-1">Seller:</p>
+                                          <div className="flex items-center gap-2">
+                                            <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center text-xs font-semibold text-destructive">
+                                              {report.reported_seller.full_name?.charAt(0) || 'U'}
+                                            </div>
+                                            <div>
+                                              <p className="text-sm font-medium">{report.reported_seller.full_name || 'Unknown'}</p>
+                                              <p className="text-xs text-muted-foreground">{report.reported_seller.email}</p>
+                                              {report.reported_seller.mck_id && (
+                                                <p className="text-xs font-mono text-primary">{report.reported_seller.mck_id}</p>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>

@@ -800,15 +800,7 @@ export type Database = {
           target_id?: string | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "reports_target_id_fkey"
-            columns: ["target_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-        ]
+        Relationships: []
       }
       static_pages: {
         Row: {
