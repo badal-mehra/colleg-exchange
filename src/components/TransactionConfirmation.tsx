@@ -55,23 +55,15 @@ export function TransactionConfirmation({
         return;
       }
 
-      // STEP 1 → Call correct RPC: confirm_transaction (Updates confirmation flags)
+      // STEP 1 → Call RPC to confirm transaction
       const { data: confirmData, error: confirmError } = await supabase.rpc(
-  "complete_order_with_confirmation",
-  {
-    order_id: order.id,
-    confirming_user_id: user.id,
-    user_type: userType
-  }
-);
-
-      // const { data: confirmData, error: confirmError } = await supabase.rpc(
-      //   "confirm_transaction",
-      //   {
-      //     txn_id: order.id, // Using order.id as it holds the transaction ID
-      //     role: userType    // "buyer" or "seller"
-      //   }
-      // );
+        "complete_order_with_confirmation",
+        {
+          order_id: order.id,
+          confirming_user_id: user.id,
+          user_type: userType
+        }
+      );
 
       if (confirmError) {
         console.error("Confirm RPC Error:", confirmError);
@@ -79,26 +71,20 @@ export function TransactionConfirmation({
         return;
       }
 
-      // Show message from backend (e.g., "Confirmation recorded.")
-      if (confirmData?.message) {
-        toast.success(confirmData.message);
+      // Type cast the response
+      const response = confirmData as { success?: boolean; message?: string; both_confirmed?: boolean; error?: string } | null;
+
+      if (!response?.success) {
+        toast.error(response?.error || "Failed to confirm transaction");
+        return;
       }
 
-      // STEP 2 → If BOTH parties have confirmed (requires backend RPC fix)
-      if (confirmData?.both_confirmed === true) {
-        
-        // RPC to mark the item as SOLD in the 'items' table
-        const { error: soldError } = await supabase.rpc(
-          "complete_transaction_and_mark_sold",
-          { txn_id: order.id }
-        );
-
-        if (soldError) {
-          console.error("Item SOLD RPC Error:", soldError);
-        } else {
-          toast.success("Item successfully marked as SOLD 🎉");
-        }
+      // Show message from backend
+      if (response?.message) {
+        toast.success(response.message);
       }
+
+      // If BOTH parties confirmed, the RPC already marked item as sold
 
       // Refresh UI (fetches updated status)
       onConfirm();
@@ -136,11 +122,14 @@ export function TransactionConfirmation({
 
         if (error) throw error;
 
-        if (data?.success) {
-            toast.success(data.message);
+        // Type cast the response
+        const response = data as { success?: boolean; message?: string; error?: string } | null;
+
+        if (response?.success) {
+            toast.success(response.message || "Order cancelled");
             onConfirm(); // Refresh orders list
         } else {
-            toast.error(data?.error || "Failed to cancel order");
+            toast.error(response?.error || "Failed to cancel order");
         }
     } catch (error: any) {
         console.error("Error cancelling order:", error);

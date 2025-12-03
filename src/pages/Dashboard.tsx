@@ -71,7 +71,7 @@ interface EnrichedItem extends RawItem {
 }
 
 interface SliderImage {
-  id: number;
+  id: string;
   image_url: string;
   title: string | null;
   description: string | null;
@@ -282,12 +282,9 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
       <div className="relative">
         <div className="aspect-square w-full rounded-t-xl overflow-hidden">
           <ImageCarousel 
-            images={thumbnailImages} // ✅ Use thumbnail URLs
+            images={thumbnailImages}
             alt={item.title} 
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
-            // Note: Lazy loading should be handled by ImageCarousel internally for best UX, but passing a prop for safety.
-            // This is the fastest way to implement STEP 3's goal without modifying ImageCarousel source.
-            loading="lazy" 
           />
         </div>
 

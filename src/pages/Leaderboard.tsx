@@ -261,7 +261,7 @@ const Leaderboard = () => {
   const [pendingJumpRank, setPendingJumpRank] = useState<number | null>(null);
   const [disableAutoLoad, setDisableAutoLoad] = useState(false); 
 
-  const scrollTimeoutRef = useRef<number | null>(null); 
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); 
   
   const handleCardClick = useCallback((entry: LeaderboardEntry) => {
     // 🔥 CRITICAL FIX: Strict MCK-ID enforcement. No fallback to user_id.
