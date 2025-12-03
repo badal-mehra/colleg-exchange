@@ -180,117 +180,60 @@ const ImageSliderSectionComponent = () => {
       window.open(currentImage.link_url, '_blank', "noopener,noreferrer");
     }
   };
-// Replace the whole return(...) inside ImageSliderSectionComponent with this:
 
-return (
-  <section className="py-12 bg-card/50">
-    <div className="container mx-auto px-4">
-      <div className="relative carousel-container rounded-2xl overflow-hidden shadow-xl h-60 sm:h-80 md:h-96">
-        <div
-          className={`absolute inset-0 z-10 ${currentImage.link_url ? 'cursor-pointer' : ''}`}
-          onClick={handleSlideClick}
-        >
-          <img
-            src={currentImage.image_url}
-            alt={currentImage.title || `Slide ${currentSlide + 1}`}
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
-          {/* Title overlay kept minimal and non-black (optional) */}
-          {currentImage.title && (
-            <div className="absolute left-4 top-4 text-white bg-black/25 rounded px-3 py-1">
-              <h2 className="text-sm sm:text-base md:text-lg font-semibold">{currentImage.title}</h2>
-            </div>
-          )}
-        </div>
-
-        {sliderImages.length > 1 && (
-          <>
-            <button
-              onClick={e => { e.stopPropagation(); prevSlide(); }}
-              className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white p-2 sm:p-3 rounded-full transition-all z-20 hidden sm:block"
-              aria-label="Previous slide"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <button
-              onClick={e => { e.stopPropagation(); nextSlide(); }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white p-2 sm:p-3 rounded-full transition-all z-20 hidden sm:block"
-              aria-label="Next slide"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </>
-        )}
-
-        <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 z-20">
-          {sliderImages.map((_, index) => (
-            <button
-              key={index}
-              onClick={e => { e.stopPropagation(); setCurrentSlide(index); }}
-              className={`h-2 rounded-full transition-all ${index === currentSlide ? 'bg-white w-6' : 'bg-white/50 w-2'}`}
-              aria-label={`Go to slide ${index + 1}`}
+  return (
+    <section className="py-12 bg-card/50">
+      <div className="container mx-auto px-4">
+        <div className="relative carousel-container rounded-2xl overflow-hidden shadow-xl h-60 sm:h-80 md:h-96 group">
+          <div
+            className={`absolute inset-0 transition-opacity duration-500 opacity-100 z-10 ${currentImage.link_url ? 'cursor-pointer' : ''}`}
+            onClick={handleSlideClick}
+          >
+            <img
+              src={currentImage.image_url}
+              alt={currentImage.title || `Slide ${currentSlide + 1}`}
+              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-[1.02]"
+              loading="lazy"
             />
-          ))}
+            {/* <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-8 sm:pb-12">
+              <div className="text-center text-white space-y-2 max-w-3xl px-4">
+                {currentImage.title && <h2 className="text-xl sm:text-3xl lg:text-5xl font-extrabold drop-shadow-lg">{currentImage.title}</h2>}
+                {currentImage.link_url && <Button variant="secondary" className="mt-4 animate-bounce-slow">Explore Now</Button>}
+              </div>
+            </div> */}
+          </div>
+          {sliderImages.length > 1 && (
+            <>
+              <button
+                onClick={e => { e.stopPropagation(); prevSlide(); }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/70 text-white p-2 sm:p-3 rounded-full transition-all z-20 opacity-0 group-hover:opacity-100 transform -translate-x-10 group-hover:translate-x-0 hidden sm:block"
+                aria-label="Previous slide"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); nextSlide(); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/70 text-white p-2 sm:p-3 rounded-full transition-all z-20 opacity-0 group-hover:opacity-100 transform translate-x-10 group-hover:translate-x-0 hidden sm:block"
+                aria-label="Next slide"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </>
+          )}
+          <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 z-20">
+            {sliderImages.map((_, index) => (
+              <button
+                key={index}
+                onClick={e => { e.stopPropagation(); setCurrentSlide(index); }}
+                className={`h-2 rounded-full transition-all ${index === currentSlide ? 'bg-white w-6' : 'bg-white/50 w-2'}`}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
+          </div>
         </div>
       </div>
-    </div>
-  </section>
-);
-
-  // return (
-  //   <section className="py-12 bg-card/50">
-  //     <div className="container mx-auto px-4">
-  //       <div className="relative carousel-container rounded-2xl overflow-hidden shadow-xl h-60 sm:h-80 md:h-96 group">
-  //         <div
-  //           className={`absolute inset-0 transition-opacity duration-500 opacity-100 z-10 ${currentImage.link_url ? 'cursor-pointer' : ''}`}
-  //           onClick={handleSlideClick}
-  //         >
-  //           <img
-  //             src={currentImage.image_url}
-  //             alt={currentImage.title || `Slide ${currentSlide + 1}`}
-  //             className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-[1.02]"
-  //             loading="lazy"
-  //           />
-  //           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-8 sm:pb-12">
-  //             <div className="text-center text-white space-y-2 max-w-3xl px-4">
-  //               {currentImage.title && <h2 className="text-xl sm:text-3xl lg:text-5xl font-extrabold drop-shadow-lg">{currentImage.title}</h2>}
-  //               {currentImage.link_url && <Button variant="secondary" className="mt-4 animate-bounce-slow">Explore Now</Button>}
-  //             </div>
-  //           </div>
-  //         </div>
-  //         {sliderImages.length > 1 && (
-  //           <>
-  //             <button
-  //               onClick={e => { e.stopPropagation(); prevSlide(); }}
-  //               className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/70 text-white p-2 sm:p-3 rounded-full transition-all z-20 opacity-0 group-hover:opacity-100 transform -translate-x-10 group-hover:translate-x-0 hidden sm:block"
-  //               aria-label="Previous slide"
-  //             >
-  //               <ChevronLeft className="h-5 w-5" />
-  //             </button>
-  //             <button
-  //               onClick={e => { e.stopPropagation(); nextSlide(); }}
-  //               className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/70 text-white p-2 sm:p-3 rounded-full transition-all z-20 opacity-0 group-hover:opacity-100 transform translate-x-10 group-hover:translate-x-0 hidden sm:block"
-  //               aria-label="Next slide"
-  //             >
-  //               <ChevronRight className="h-5 w-5" />
-  //             </button>
-  //           </>
-  //         )}
-  //         <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 z-20">
-  //           {sliderImages.map((_, index) => (
-  //             <button
-  //               key={index}
-  //               onClick={e => { e.stopPropagation(); setCurrentSlide(index); }}
-  //               className={`h-2 rounded-full transition-all ${index === currentSlide ? 'bg-white w-6' : 'bg-white/50 w-2'}`}
-  //               aria-label={`Go to slide ${index + 1}`}
-  //             />
-  //           ))}
-  //         </div>
-  //       </div>
-  //     </div>
-  //   </section>
-  // );
+    </section>
+  );
 };
 const ImageSliderSection = memo(ImageSliderSectionComponent);
 
