@@ -68,12 +68,12 @@ interface Message {
 // --- UTILITY COMPONENTS (Same) ---
 const MessageStatus: React.FC<{ isRead: boolean, isSending: boolean }> = ({ isRead, isSending }) => {
     if (isSending) {
-        return <Loader2 className="h-3.5 w-3.5 text-primary-foreground/70 animate-spin flex-shrink-0" title="Sending" />;
+        return <Loader2 className="h-3.5 w-3.5 text-primary-foreground/70 animate-spin flex-shrink-0" />;
     }
     return isRead ? (
-        <CheckCheck className="h-3.5 w-3.5 text-blue-300 flex-shrink-0" title="Read" />
+        <CheckCheck className="h-3.5 w-3.5 text-blue-300 flex-shrink-0" />
     ) : (
-        <Check className="h-3.5 w-3.5 text-primary-foreground/70 flex-shrink-0" title="Sent" />
+        <Check className="h-3.5 w-3.5 text-primary-foreground/70 flex-shrink-0" />
     );
 };
 // ... formatLastSeen utility (same as original) ...
@@ -344,6 +344,7 @@ const Chat = () => {
 
         setConversation({
           ...conversationData,
+          items: { ...conversationData.items, id: conversationData.item_id } as Item,
           buyer_profile: buyerProfile as Profile,
           seller_profile: sellerProfile as Profile
         });

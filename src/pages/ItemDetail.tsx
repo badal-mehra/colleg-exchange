@@ -375,10 +375,13 @@ const ItemDetail = () => {
       return;
     }
     
+    // Type cast the response
+    const response = rpcResponse as { success?: boolean; message?: string; error?: string } | null;
+
     // Handle business logic failure (e.g., duplicate order check from RPC, for current user)
-    if (!rpcResponse?.success) {
+    if (!response?.success) {
         sonnerToast.error(
-            rpcResponse?.error ||
+            response?.error ||
             "You already reserved this item. Go to My Orders to complete it."
         );
         // Redirect buyer to My Orders for smoother UX
@@ -387,7 +390,7 @@ const ItemDetail = () => {
     }
 
     // Success case
-    sonnerToast.success(rpcResponse.message || "Item reserved successfully! Complete the transaction in My Orders.");
+    sonnerToast.success(response.message || "Item reserved successfully! Complete the transaction in My Orders.");
     navigate("/my-orders");
     
     // Optimistic update: set state immediately, though the real-time listener will confirm it.

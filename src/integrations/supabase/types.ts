@@ -998,6 +998,17 @@ export type Database = {
         }
         Returns: Json
       }
+      complete_transaction_and_mark_sold: {
+        Args: { txn_id: string }
+        Returns: {
+          message: string
+          success: boolean
+        }[]
+      }
+      confirm_transaction: {
+        Args: { role: string; txn_id: string }
+        Returns: Json
+      }
       create_new_order: {
         Args: {
           agreed_price_input: number
