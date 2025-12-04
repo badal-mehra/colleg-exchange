@@ -435,7 +435,9 @@ const Dashboard = () => {
     const PAGE_LIMIT = 20;
 
     let query = supabase.from('items').select(`*`)
-      .eq('is_sold', false).order('created_at', { ascending: false })
+      .eq('is_sold', false)
+      .order('ad_priority', { ascending: false })
+      .order('created_at', { ascending: false })
       .range(0, PAGE_LIMIT - 1); // Only fetch 20 items (0 to 19)
 
     if (selectedCategory !== 'all') {
