@@ -628,13 +628,38 @@ const Dashboard = () => {
                   Action Required: Please verify your student identity to unlock buying/selling features.
                 </span>
               </div>
-              <Button size="sm" variant="default" className="bg-warning text-white hover:bg-warning/90" onClick={() => navigate('/kyc')}>
+              {/* Button Color Changed Below */}
+              <Button 
+                size="sm" 
+                variant="default" 
+                className="bg-blue-600 text-white hover:bg-blue-700" 
+                onClick={() => navigate('/kyc')}
+              >
                 Verify Now
               </Button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Verification Alert */}
+      {/* {!isVerified && (
+        <div className="bg-orange-50 border-orange-200 border-b text-orange-700 sticky top-0 z-40">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center space-x-3">
+                <Upload className="h-5 w-5 text-warning" />
+                <span className="text-sm font-medium">
+                  Action Required: Please verify your student identity to unlock buying/selling features.
+                </span>
+              </div>
+              <Button size="sm" variant="default" className="bg-warning text-white hover:bg-warning/90" onClick={() => navigate('/kyc')}>
+                Verify Now
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}  */}
 
       {/* Image Slider Section */}
       <ImageSliderSection />
