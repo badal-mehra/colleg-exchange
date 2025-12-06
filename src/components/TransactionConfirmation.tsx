@@ -289,7 +289,7 @@ export function TransactionConfirmation({
                 </div>
             )}
 
-            /* Show Cancel Button if Seller AND status is PENDING. */
+            {/* /* Show Cancel Button if Seller AND status is PENDING. */ */}
             {userType === "seller" && order.status === "pending" && (
                 <Button
                     onClick={handleCancel}
