@@ -2,12 +2,11 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { 
-  ArrowLeft, Send, User, Shield, Package, Loader2, Check, CheckCheck, Circle, Clock, Info, MessageCircle,
+  ArrowLeft, Send, User, Shield, Loader2, Check, CheckCheck, Clock, Info, MessageCircle,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -17,7 +16,7 @@ import TypingIndicator from '@/components/TypingIndicator';
 const MESSAGES_PER_PAGE = 50;
 const TYPING_TIMEOUT = 2000; 
 
-// --- CRITICAL FIX: ADDED MISSING INTERFACES ---
+// --- CRITICAL FIX: ADDED mck_id TO INTERFACE ---
 interface Profile {
   id?: string;
   user_id: string;
@@ -26,6 +25,7 @@ interface Profile {
   is_verified?: boolean;
   verification_status?: string;
   avatar_url?: string | null; 
+  mck_id?: string; // <--- Added mck_id here
 }
 
 interface Item {
@@ -41,31 +41,31 @@ interface Conversation {
   seller_id: string;
   item_id: string;
   created_at: string;
-  updated_at?: string; // Added for completeness, though not strictly used here
+  updated_at?: string; 
   items: Item;
   buyer_profile: Profile;
   seller_profile: Profile;
-  last_message?: { // Only used in MyChats, but included for complete type definition
+  last_message?: { 
     content: string;
     created_at: string;
     sender_id: string;
   };
-  unread_count?: number; // Only used in MyChats, but included for complete type definition
+  unread_count?: number; 
 }
-// --- END CRITICAL FIX ---
+// --- END INTERFACE UPDATES ---
 
 
 interface Message {
-  id: string | number; // Updated to allow number for server ID
+  id: string | number; 
   content: string;
   sender_id: string;
   created_at: string;
   is_read: boolean;
-  is_optimistic?: boolean; // New flag for optimistic messages
+  is_optimistic?: boolean; 
 }
 
 
-// --- UTILITY COMPONENTS (Same) ---
+// --- UTILITY COMPONENTS ---
 const MessageStatus: React.FC<{ isRead: boolean, isSending: boolean }> = ({ isRead, isSending }) => {
     if (isSending) {
         return <Loader2 className="h-3.5 w-3.5 text-primary-foreground/70 animate-spin flex-shrink-0" />;
@@ -76,7 +76,7 @@ const MessageStatus: React.FC<{ isRead: boolean, isSending: boolean }> = ({ isRe
         <Check className="h-3.5 w-3.5 text-primary-foreground/70 flex-shrink-0" />
     );
 };
-// ... formatLastSeen utility (same as original) ...
+
 const formatLastSeen = (timestamp: string | null): string => {
     if (!timestamp) return 'Offline';
     const date = new Date(timestamp);
@@ -123,7 +123,7 @@ const Chat = () => {
   const previousScrollHeightRef = useRef(0); 
   const channelsRef = useRef<any[]>([]);
 
-  // Memoize Other User Data for cleaner rendering and performance
+  // Memoize Other User Data
   const otherUser = useMemo(() => {
     if (!conversation || !user) return null;
     return user.id === conversation.buyer_id 
@@ -142,10 +142,6 @@ const Chat = () => {
     return otherUser?.avatar_url || undefined;
 }, [otherUser]);
 
-  // const getOtherUserAvatarUrl = useMemo(() => {
-  //   if (!otherUser?.avatar_url) return undefined;
-  //   return supabase.storage.from('avatars').getPublicUrl(otherUser.avatar_url).data.publicUrl;
-  // }, [otherUser]);
 
   // Utility Functions ----------------------------------------------------------------
 
@@ -155,8 +151,6 @@ const Chat = () => {
 
   const markMessagesAsRead = useCallback(() => {
     if (!conversationId || !user) return;
-    // Debounce the RPC call to avoid excessive DB writes on component mount/update
-    // Use a unique timeout ID to prevent concurrent calls
     const timeoutId = `read-${conversationId}`;
     if ((window as any)[timeoutId]) clearTimeout((window as any)[timeoutId]);
     
@@ -176,14 +170,12 @@ const Chat = () => {
   const handleTyping = () => {
     if (!conversationId || !user) return;
 
-    // Broadcast isTyping: true
     supabase.channel(`typing-${conversationId}`).send({
       type: 'broadcast',
       event: 'typing',
       payload: { user_id: user.id, isTyping: true }
     });
 
-    // Clear previous timeout and set a new one to broadcast isTyping: false
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
@@ -203,19 +195,19 @@ const Chat = () => {
     if (!newMessage.trim() || !conversationId || !user || sending) return;
 
     const messageContent = newMessage.trim();
-    const tempId = Date.now(); // Use Date.now() as a temporary unique ID
+    const tempId = Date.now(); 
     
     // 1. Optimistically add message
     const optimisticMessage: Message = {
-      id: tempId, // Temporary number ID
+      id: tempId, 
       content: messageContent,
       sender_id: user.id,
       created_at: new Date().toISOString(),
       is_read: false,
-      is_optimistic: true, // Mark as optimistic
+      is_optimistic: true, 
     };
 
-    setMessages(prev => [...prev.filter(m => m.id !== tempId), optimisticMessage]); // Ensure no duplicates
+    setMessages(prev => [...prev.filter(m => m.id !== tempId), optimisticMessage]); 
     setNewMessage('');
     setSending(true);
 
@@ -245,16 +237,13 @@ const Chat = () => {
 
     if (error) {
       console.error('Error sending message:', error);
-      // Revert optimistic update on error
       setMessages(prev => {
         const remaining = prev.filter(m => m.id !== tempId);
         toast({ title: "Error", description: "Failed to send message. Please try again.", variant: "destructive" });
-        // Optional: Re-add the content to the input for retry
         setNewMessage(messageContent);
         return remaining;
       });
     } else if (data) {
-      // Replace optimistic message with server data
       setMessages(prev => prev.map(m => m.id === tempId ? { ...data, is_optimistic: false } : m));
     }
   };
@@ -284,13 +273,12 @@ const Chat = () => {
       console.error('Error fetching messages:', error);
       toast({ title: "Error", description: "Failed to load messages", variant: "destructive" });
     } else {
-      const newMessages = (data || []).reverse() as Message[]; // Add type assertion
+      const newMessages = (data || []).reverse() as Message[];
       
       setMessages(prev => {
         if (pageToFetch === 1) {
           return newMessages;
         } else {
-          // Filter out any messages from the new batch that might be in the current state (e.g., optimistic ones)
           const existingIds = new Set(prev.map(m => m.id));
           const uniqueNewMessages = newMessages.filter(m => !existingIds.has(m.id));
           return [...uniqueNewMessages, ...prev];
@@ -334,6 +322,7 @@ const Chat = () => {
         
         const userIdsToFetch = [conversationData.buyer_id, conversationData.seller_id];
 
+        // Fetches mck_id to allow correct profile navigation
         const { data: profilesData } = await supabase
           .from('profiles')
           .select('user_id, full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
@@ -361,12 +350,10 @@ const Chat = () => {
       fetchConversation();
       fetchMessages(1, true); 
     } else if (!conversationId) {
-        // Handle case where conversationId is missing (should be prevented by the corrected route)
         setConversationLoading(false);
         setMessagesLoading(false);
     }
 
-    // Cleanup typing timeout
     return () => {
         if (typingTimeoutRef.current) {
             clearTimeout(typingTimeoutRef.current);
@@ -376,13 +363,12 @@ const Chat = () => {
   }, [conversationId, user, fetchMessages, navigate, toast]);
   
 
-  // Effect to handle ALL Subscriptions once conversation details are available
+  // Effect to handle ALL Subscriptions
   useEffect(() => {
     if (!conversation || !user || !otherUserId) {
         return;
     }
     
-    // Cleanup function definition
     const cleanupChannels = () => {
         channelsRef.current.forEach(channel => {
             if (channel) {
@@ -398,13 +384,10 @@ const Chat = () => {
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` }, (payload) => {
             const newMessage = payload.new as Message;
             setMessages(prev => {
-                // Ignore if it's an optimistic message that is now confirmed (by id match)
                 if (prev.some(m => m.id === newMessage.id)) {
                     return prev;
                 }
-                // Also check if the message is a confirmed version of a temporary message
                 if (prev.some(m => m.sender_id === newMessage.sender_id && m.content === newMessage.content && m.is_optimistic)) {
-                    // Update the optimistic message with the server ID and remove flag
                     return prev.map(m => m.is_optimistic && m.sender_id === newMessage.sender_id && m.content === newMessage.content ? { ...newMessage, is_optimistic: false } : m);
                 }
                 return [...prev, newMessage];
@@ -465,29 +448,26 @@ const Chat = () => {
         })
         .subscribe();
 
-    // Store channels and mark messages as read on successful subscription
     channelsRef.current = [messageChannel, presenceChannel, typingChannel];
     markMessagesAsRead(); 
 
-    return cleanupChannels; // Use the defined cleanup function
-  }, [conversation, user, otherUserId, conversationId, markMessagesAsRead]); // Dependencies simplified
+    return cleanupChannels; 
+  }, [conversation, user, otherUserId, conversationId, markMessagesAsRead]); 
 
 
-  // Scroll Adjustments useEffect for New Messages
+  // Scroll Adjustments
   useEffect(() => {
     if (initialLoadComplete && messages.length > 0) {
       const container = messagesContainerRef.current;
-      // Check if the scroll is near the bottom (within 300px)
       const isNearBottom = container && (container.scrollHeight - container.scrollTop < container.clientHeight + 300);
 
-      // Scroll to bottom if user is near the bottom OR the new message is their own
       if (isNearBottom || messages[messages.length - 1].sender_id === user?.id) {
         scrollToBottom('smooth');
       }
     }
   }, [messages.length, user, initialLoadComplete, scrollToBottom]); 
   
-  // Adjust Scroll Position after Prepending Old Messages (same as original)
+  // Adjust Scroll Position after Prepending Old Messages
   useEffect(() => {
     if (fetchingOldMessages === false && page > 1) {
       const currentScrollHeight = messagesContainerRef.current?.scrollHeight || 0;
@@ -499,19 +479,25 @@ const Chat = () => {
     }
   }, [messages, fetchingOldMessages, page]);
 
-  // Handle Scroll Up for Loading Old Messages (same as original logic)
+  // Handle Scroll Up
   const handleScroll = () => {
     const container = messagesContainerRef.current;
     if (container && hasMoreMessages && !fetchingOldMessages && initialLoadComplete) {
-      // Trigger fetch when scroll position is in the top 10% of the container
       if (container.scrollTop < container.clientHeight * 0.1) {
         fetchMessages(page + 1, false);
       }
     }
   };
 
+  // Helper for Profile Navigation
+  const navigateToProfile = () => {
+    if (otherUser?.mck_id) {
+      navigate(`/profile/${otherUser.mck_id}`);
+    }
+  };
 
-  // RENDER LOGIC (simplified where possible) --------------------------------------------------------
+
+  // RENDER LOGIC --------------------------------------------------------
 
   if (conversationLoading) {
     return (
@@ -523,7 +509,6 @@ const Chat = () => {
   }
 
   if (!conversation || !otherUser) {
-    // Navigate back if conversation data is missing (should be caught by the fetchConversation logic)
     return (
         <div className="min-h-screen bg-background flex flex-col items-center justify-center text-center p-4">
             <Info className="h-10 w-10 text-destructive mb-3" />
@@ -539,7 +524,7 @@ const Chat = () => {
   return (
     <div className="flex flex-col h-screen bg-muted/10">
       
-      {/* HEADER: Clean and Soft */}
+      {/* HEADER: Updated with Clickable Profile Elements */}
       <header className="sticky top-0 z-50 w-full border-b bg-background shadow-md flex-shrink-0">
         <div className="px-3 sm:px-4 py-3">
           <div className="flex items-center gap-3">
@@ -554,7 +539,11 @@ const Chat = () => {
             
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className="relative flex-shrink-0">
-                <Avatar className="h-10 w-10 border border-border/70 shadow-sm">
+                <Avatar 
+                  // --- FIX: Added onClick and pointer cursor ---
+                  onClick={navigateToProfile}
+                  className="h-10 w-10 border border-border/70 shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
+                >
                   <AvatarImage src={getOtherUserAvatarUrl} alt={otherUser.full_name} />
                   <AvatarFallback className="bg-muted/50 text-foreground text-base font-medium">
                     {otherUser.full_name?.charAt(0) || <User className="h-5 w-5" />}
@@ -567,7 +556,13 @@ const Chat = () => {
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="font-semibold text-lg truncate text-foreground">{otherUser.full_name || 'User'}</h2>
+                  <h2 
+                    // --- FIX: Added onClick and pointer cursor ---
+                    onClick={navigateToProfile}
+                    className="font-semibold text-lg truncate text-foreground cursor-pointer hover:underline hover:text-primary transition-colors"
+                  >
+                    {otherUser.full_name || 'User'}
+                  </h2>
                   {otherUser.verification_status === 'approved' && (
                     <Badge variant="outline" title="Verified User" className="h-5 px-2 text-green-700 border-green-700/50 bg-green-50/50 font-medium">
                       <Shield className="h-3 w-3 mr-1 fill-green-500 text-green-500" />
@@ -588,16 +583,12 @@ const Chat = () => {
         </div>
       </header>
 
-      {/* Item Info Banner (same) */}
-      {/* AUTO-DELETE POLICY NOTICE (same) */}
-
       {/* Messages Container */}
       <div 
         ref={messagesContainerRef}
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-4 bg-background"
       >
-        {/* Loaders/Empty State (same) */}
         {fetchingOldMessages && (
           <div className="flex justify-center py-2">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -611,7 +602,6 @@ const Chat = () => {
         )}
 
         {messages.length === 0 && !messagesLoading ? (
-          // ... Empty State UI (same) ...
           <div className="h-full flex items-center justify-center px-4">
             <div className="text-center text-muted-foreground space-y-4 pt-16">
               <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto shadow-lg">
@@ -623,7 +613,6 @@ const Chat = () => {
           </div>
         ) : (
           <>
-            {/* Load previous messages button */}
             {!fetchingOldMessages && hasMoreMessages && (
                  <div className="text-center text-muted-foreground text-sm my-3 py-2 cursor-pointer hover:text-primary transition-colors font-medium"
                       onClick={() => fetchMessages(page + 1, false)}>
@@ -632,13 +621,10 @@ const Chat = () => {
                 </div>
             )}
             
-            {/* Message Bubbles */}
             {messages.map((message, index) => {
               const isOwnMessage = message.sender_id === user?.id;
-              const isOptimistic = message.is_optimistic || message.id.toString().startsWith('temp-'); // Use new flag
-              // Group messages: show avatar/gap only if sender is different from previous
+              const isOptimistic = message.is_optimistic || message.id.toString().startsWith('temp-');
               const showAvatar = index === 0 || messages[index - 1].sender_id !== message.sender_id;
-              // Determine if there should be extra space for grouping
               const isNextMessageSameSender = messages[index + 1]?.sender_id === message.sender_id;
               
               return (
@@ -647,10 +633,13 @@ const Chat = () => {
                   className={`flex gap-1.5 sm:gap-2 ${isOwnMessage ? 'justify-end' : 'justify-start'} ${isNextMessageSameSender ? 'mb-0.5' : 'mb-3'}`}
                 >
                   
-                  {/* Avatar/Spacer for the other user */}
                   {!isOwnMessage && (
                     <div className={showAvatar ? 'block' : 'invisible'}> 
-                      <Avatar className="h-8 w-8 mt-1 shadow-sm border border-border/70 flex-shrink-0">
+                      <Avatar 
+                        // --- FIX: Avatar in chat list also clickable ---
+                        onClick={navigateToProfile}
+                        className="h-8 w-8 mt-1 shadow-sm border border-border/70 flex-shrink-0 cursor-pointer hover:opacity-80"
+                      >
                          <AvatarImage src={getOtherUserAvatarUrl} alt={otherUser.full_name} />
                           <AvatarFallback className="bg-muted/50 text-foreground text-sm font-medium">
                             {otherUser.full_name?.charAt(0) || <User className="h-4 w-4" />}
@@ -658,7 +647,6 @@ const Chat = () => {
                       </Avatar>
                     </div>
                   )}
-                  {/* Invisible spacer for aligned messages when avatar is hidden */}
                   {!isOwnMessage && !showAvatar && <div className="w-8 flex-shrink-0" />} 
                   
                   <div className='flex flex-col max-w-[75%] sm:max-w-[60%]'>
@@ -677,7 +665,6 @@ const Chat = () => {
                       {message.content}
                     </div>
                     
-                    {/* Time and Status Indicator */}
                     <div className={`flex items-center gap-1 mt-1 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
                         <p className={`text-[10px] sm:text-xs font-normal ${isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground/70'}`}>
                             {new Date(message.created_at).toLocaleTimeString([], {
@@ -694,7 +681,6 @@ const Chat = () => {
               );
             })}
             
-            {/* Typing Indicator */}
             {isOtherUserTyping && (
               <div className="flex gap-1.5 sm:gap-2 justify-start mb-2">
                 <Avatar className="h-8 w-8 mt-1 shadow-sm border border-border/70">
@@ -711,7 +697,7 @@ const Chat = () => {
         )}
       </div>
 
-      {/* Message Input (same) */}
+      {/* Message Input */}
       <div className="border-t bg-card shadow-lg p-3 flex-shrink-0">
         <form onSubmit={sendMessage} className="flex gap-2">
           <Input
