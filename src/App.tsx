@@ -71,6 +71,8 @@ const App = () => (
     <Route path="/profile/:mckId" element={<PublicProfile />} />
 
     {/** PROTECTED NO-LAYOUT PAGES */}
+    <Route path="/kyc"element={<ProtectedRoute><KYC /></ProtectedRoute>}/>
+
     <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
     <Route path="/sell" element={<ProtectedRoute><SellItem /></ProtectedRoute>} />
     <Route path="/chat/:conversationId?" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
