@@ -209,10 +209,11 @@ const PublicProfile = () => {
                 
                 {/* Verification Badge */}
                 {profile.verification_status === 'approved' && (
-                  <Badge className="bg-success text-success-foreground px-4 py-1 text-sm flex items-center gap-1">
-                    <CheckCircle className="h-4 w-4" />
-                    Verified Student
-                  </Badge>
+                <Badge variant="success" className="px-4 py-1 text-sm flex items-center gap-1">
+                <CheckCircle className="h-4 w-4" />
+                Verified Student
+                </Badge>
+
                 )}
 
                 {/* Trusted Seller Badge */}
