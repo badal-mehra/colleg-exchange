@@ -138,7 +138,7 @@ export const Footer = () => {
         contactLinks: [
             { key: 'linkedin', value: 'MyCampusKart', link_url: 'https://www.linkedin.com/company/mycampuskart' },
             { key: 'instagram', value: '@mycampuskart', link_url: 'https://instagram.com/mycampuskart' },
-            { key: 'email', value: 'support@nycampuskart.com', link_url: 'mailto:support@mycampuskart.com' },
+            { key: 'email', value: 'teammycampuskart@gmail.com', link_url: 'mailto:teammycampuskart.com' },
         ] as CustomLink[],
 
         // Copyright Content: Find the unique 'copyright' page
