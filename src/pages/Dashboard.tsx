@@ -739,7 +739,7 @@ const Dashboard = () => {
             <p className="text-muted-foreground text-lg mb-4">
               Try adjusting your search terms or filters for better results.
             </p>
-            <Button size="lg" className="mt-4" onClick={() => navigate('/list-item')}>
+            <Button size="lg" className="mt-4" onClick={() => navigate('/sell')}>
               <Plus className="h-5 w-5 mr-2" />
               List an Item Now
             </Button>
