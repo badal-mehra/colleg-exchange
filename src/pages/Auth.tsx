@@ -316,7 +316,7 @@ const Auth = () => {
                         name="email"
                         type="email"
                         required
-                        pattern=".*@lpu\.in$"
+                        {/* pattern=".*@lpu\.in$" */}
                         placeholder="yourname@lpu.in"
                         disabled={isLoading}
                         />
