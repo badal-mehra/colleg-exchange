@@ -315,8 +315,9 @@ const Auth = () => {
                         id="signup-email"
                         name="email"
                         type="email"
-                        
-                        placeholder="yourname@example.com"
+                        required
+                        pattern=".+"
+                        placeholder="your.email@example.com"
                         disabled={isLoading}
                         />
                         <p className="text-xs text-muted-foreground">Student verification is done via email.</p>
