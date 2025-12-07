@@ -327,7 +327,46 @@ const KYC = () => {
                 <Label htmlFor="verification_document">
                   Upload Student ID Card or Aadhaar Card *
                 </Label>
-                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+                {/*  Upload here*/}
+                <div className="relative border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+
+  {/* FILE INPUT (now actually clickable on mobile) */}
+  <input
+    id="verification_document"
+    type="file"
+    accept="image/*,.pdf,.heic,.heif"
+    onChange={handleFileChange}
+    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+  />
+
+  {/* DISPLAY AREA */}
+  <div className="space-y-2 pointer-events-none">
+    {formData.verification_document ? (
+      <div className="flex items-center justify-center gap-2 text-primary">
+        <FileText className="h-8 w-8" />
+        <span className="font-medium">{formData.verification_document.name}</span>
+      </div>
+    ) : profile?.verification_document_url ? (
+      <div className="flex items-center justify-center gap-2 text-success">
+        <CheckCircle className="h-8 w-8" />
+        <span className="font-medium">Document uploaded</span>
+      </div>
+    ) : (
+      <>
+        <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+        <div>
+          <p className="font-medium">Tap to upload document</p>
+          <p className="text-sm text-muted-foreground">
+            JPG, PNG, PDF, HEIC allowed (Max 5MB)
+          </p>
+        </div>
+      </>
+    )}
+  </div>
+
+</div>
+
+                {/* <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
                   <input
                     id="verification_document"
                     type="file"
@@ -360,7 +399,7 @@ const KYC = () => {
                       )}
                     </div>
                   </label>
-                </div>
+                </div> */}
                 <p className="text-xs text-muted-foreground">
                   Please ensure your document is clear and all information is visible.
                 </p>
