@@ -310,7 +310,7 @@ const Auth = () => {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="signup-email">University Email</Label>
+                        <Label htmlFor="signup-email">Email</Label>
                         <Input
                         id="signup-email"
                         name="email"
@@ -324,7 +324,7 @@ const Auth = () => {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="signup-password">Password</Label>
+                        <Label htmlFor="signup-password">Create Password</Label>
                         <div className="relative">
                         <Input id="signup-password" name="password" type={showSignUpPassword ? "text" : "password"} required className="pr-10" disabled={isLoading} />
                         <PasswordToggle isVisible={showSignUpPassword} toggleVisibility={() => setShowSignUpPassword(!showSignUpPassword)} />
