@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { 
   Upload, 
   Shield, 
@@ -13,7 +12,6 @@ import {
   Clock, 
   AlertCircle,
   FileText,
-  Camera,
   ArrowLeft
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -39,6 +37,8 @@ const KYC = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  
+  // Initial state logic separated
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
@@ -47,16 +47,21 @@ const KYC = () => {
     verification_document: null as File | null
   });
 
+  // FIX 1: Dependency changed from [user] to [user?.id]
+  // This prevents re-running when the user object reference changes but ID is same
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchProfile();
     }
-  }, [user]);
+  }, [user?.id]);
 
   const fetchProfile = async () => {
     if (!user) return;
     
-    setLoading(true);
+    // Only set loading true if we don't have profile data yet
+    // This prevents the "blink" effect if it re-runs
+    if (!profile) setLoading(true);
+
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -67,13 +72,19 @@ const KYC = () => {
       console.error('Error fetching profile:', error);
     } else {
       setProfile(data);
-      setFormData({
-        full_name: data?.full_name || '',
-        phone: data?.phone || '',
-        college_name: data?.college_name || '',
-        student_id: data?.student_id || '',
-        verification_document: null
-      });
+      
+      // FIX 2: PRESERVE STATE (The Golden Fix)
+      // We use 'prev' to keep existing form data (like the selected file)
+      // and only fill in DB data if the user hasn't typed anything yet OR just to sync text fields.
+      // CRITICALLY: We DO NOT set verification_document to null here.
+      setFormData(prev => ({
+        ...prev, 
+        full_name: data?.full_name || prev.full_name || '',
+        phone: data?.phone || prev.phone || '',
+        college_name: data?.college_name || prev.college_name || '',
+        student_id: data?.student_id || prev.student_id || '',
+        // Note: verification_document is intentionally OMITTED here so it doesn't get reset
+      }));
     }
     setLoading(false);
   };
@@ -88,6 +99,7 @@ const KYC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // console.log("File selected:", file.name); // Debugging
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
         toast({
           title: "File too large",
@@ -96,6 +108,7 @@ const KYC = () => {
         });
         return;
       }
+      // Force update the state immediately
       setFormData(prev => ({
         ...prev,
         verification_document: file
@@ -135,11 +148,13 @@ const KYC = () => {
         const fileExt = formData.verification_document.name.split('.').pop();
         const fileName = `${user.id}/verification-${Date.now()}.${fileExt}`;
         
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        // Remove old file if exists (optional cleanup, good for storage)
+        // logic omitted to keep it simple, just uploading new one
+        
+        const { error: uploadError } = await supabase.storage
           .from('kyc-documents')
           .upload(fileName, formData.verification_document, {
             upsert: true,
-            // contentType: formData.verification_document.type
           });
 
         if (uploadError) {
@@ -173,17 +188,17 @@ const KYC = () => {
 
       toast({
         title: "KYC Submitted",
-        description: "Your verification is under review. You'll be notified once approved.",
+        description: "Your verification is under review.",
       });
 
-      // Refresh profile data
+      // Refresh profile data but keep local state consistent
       await fetchProfile();
 
     } catch (error) {
       console.error('Error submitting KYC:', error);
       toast({
         title: "Submission Failed",
-        description: "Please try again later",
+        description: error instanceof Error ? error.message : "Please try again later",
         variant: "destructive",
       });
     } finally {
@@ -191,7 +206,7 @@ const KYC = () => {
     }
   };
 
-  if (loading) {
+  if (loading && !profile) { // Only show full screen loader if we have NO data
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
@@ -201,27 +216,19 @@ const KYC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved':
-        return 'text-success';
-      case 'pending':
-        return 'text-warning';
-      case 'rejected':
-        return 'text-destructive';
-      default:
-        return 'text-muted-foreground';
+      case 'approved': return 'text-success';
+      case 'pending': return 'text-warning';
+      case 'rejected': return 'text-destructive';
+      default: return 'text-muted-foreground';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'approved':
-        return <CheckCircle className="h-5 w-5" />;
-      case 'pending':
-        return <Clock className="h-5 w-5" />;
-      case 'rejected':
-        return <AlertCircle className="h-5 w-5" />;
-      default:
-        return <Shield className="h-5 w-5" />;
+      case 'approved': return <CheckCircle className="h-5 w-5" />;
+      case 'pending': return <Clock className="h-5 w-5" />;
+      case 'rejected': return <AlertCircle className="h-5 w-5" />;
+      default: return <Shield className="h-5 w-5" />;
     }
   };
 
@@ -255,8 +262,8 @@ const KYC = () => {
                   </h3>
                   <p className="text-sm text-muted-foreground">
                     {profile.verification_status === 'approved' && "Your account is fully verified!"}
-                    {profile.verification_status === 'pending' && "Your documents are under review. This typically takes 24-48 hours."}
-                    {profile.verification_status === 'rejected' && "Your verification was not approved. Please update your information and try again."}
+                    {profile.verification_status === 'pending' && "Your documents are under review."}
+                    {profile.verification_status === 'rejected' && "Your verification was not approved. Please update your information."}
                   </p>
                 </div>
               </div>
@@ -272,7 +279,7 @@ const KYC = () => {
               Student Identity Verification
             </CardTitle>
             <p className="text-muted-foreground">
-              Complete your verification to start buying and selling on MyCampusKart
+              Complete your verification to start buying and selling
             </p>
           </CardHeader>
           <CardContent>
@@ -327,79 +334,49 @@ const KYC = () => {
                 <Label htmlFor="verification_document">
                   Upload Student ID Card or Aadhaar Card *
                 </Label>
-                {/*  Upload here*/}
+                
+                {/* Fixed File Upload Area */}
                 <div className="relative border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
-
-  {/* FILE INPUT (now actually clickable on mobile) */}
-  <input
-    id="verification_document"
-    type="file"
-    accept="image/*,.pdf,.heic,.heif"
-    onChange={handleFileChange}
-    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-  />
-
-  {/* DISPLAY AREA */}
-  <div className="space-y-2 pointer-events-none">
-    {formData.verification_document ? (
-      <div className="flex items-center justify-center gap-2 text-primary">
-        <FileText className="h-8 w-8" />
-        <span className="font-medium">{formData.verification_document.name}</span>
-      </div>
-    ) : profile?.verification_document_url ? (
-      <div className="flex items-center justify-center gap-2 text-success">
-        <CheckCircle className="h-8 w-8" />
-        <span className="font-medium">Document uploaded</span>
-      </div>
-    ) : (
-      <>
-        <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
-        <div>
-          <p className="font-medium">Tap to upload document</p>
-          <p className="text-sm text-muted-foreground">
-            JPG, PNG, PDF, HEIC allowed (Max 5MB)
-          </p>
-        </div>
-      </>
-    )}
-  </div>
-
-</div>
-
-                {/* <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+                  
+                  {/* The actual file input */}
                   <input
                     id="verification_document"
                     type="file"
-                    accept="image/*,.pdf"
+                    accept="image/*,.pdf,.heic,.heif"
                     onChange={handleFileChange}
-                    className="hidden"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" 
                   />
-                  <label htmlFor="verification_document" className="cursor-pointer">
-                    <div className="space-y-2">
-                      {formData.verification_document ? (
-                        <div className="flex items-center justify-center gap-2 text-primary">
-                          <FileText className="h-8 w-8" />
-                          <span className="font-medium">{formData.verification_document.name}</span>
+
+                  {/* Visual Display */}
+                  <div className="space-y-2 pointer-events-none relative z-10">
+                    {formData.verification_document ? (
+                      <div className="flex flex-col items-center justify-center gap-2 text-primary animate-in fade-in zoom-in duration-300">
+                        <FileText className="h-10 w-10" />
+                        <div className="text-sm font-medium break-all max-w-[200px]">
+                          {formData.verification_document.name}
                         </div>
-                      ) : profile?.verification_document_url ? (
-                        <div className="flex items-center justify-center gap-2 text-success">
-                          <CheckCircle className="h-8 w-8" />
-                          <span className="font-medium">Document uploaded</span>
+                        <p className="text-xs text-muted-foreground">Tap to change</p>
+                      </div>
+                    ) : profile?.verification_document_url ? (
+                      <div className="flex flex-col items-center justify-center gap-2 text-success">
+                        <CheckCircle className="h-10 w-10" />
+                        <span className="font-medium">Document uploaded</span>
+                        <p className="text-xs text-muted-foreground">Tap to replace</p>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">Tap to upload document</p>
+                          <p className="text-sm text-muted-foreground">
+                            JPG, PNG, PDF (Max 5MB)
+                          </p>
                         </div>
-                      ) : (
-                        <>
-                          <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
-                          <div>
-                            <p className="font-medium">Click to upload document</p>
-                            <p className="text-sm text-muted-foreground">
-                              Supported formats: JPG, PNG, PDF (Max 5MB)
-                            </p>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </label>
-                </div> */}
+                      </>
+                    )}
+                  </div>
+                </div>
+                
                 <p className="text-xs text-muted-foreground">
                   Please ensure your document is clear and all information is visible.
                 </p>
@@ -411,8 +388,7 @@ const KYC = () => {
                   <div className="text-sm">
                     <p className="font-medium text-info">Why do we need verification?</p>
                     <p className="text-muted-foreground mt-1">
-                      We verify all users to ensure a safe and trusted marketplace for students. 
-                      Your personal information is kept secure and private.
+                      We verify all users to ensure a safe and trusted marketplace.
                     </p>
                   </div>
                 </div>
@@ -435,12 +411,6 @@ const KYC = () => {
                   'Submit for Verification'
                 )}
               </Button>
-
-              {profile?.verification_status === 'pending' && (
-                <p className="text-center text-sm text-muted-foreground">
-                  You can update your information while verification is pending.
-                </p>
-              )}
             </form>
           </CardContent>
         </Card>
