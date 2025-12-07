@@ -7,14 +7,15 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, Users, ShoppingBag, CheckCircle, XCircle, Trash2, Eye, AlertTriangle, BookOpen, FileText } from 'lucide-react';
+import { Shield, Users, ShoppingBag, CheckCircle, XCircle, UserPlus, Trash2, Eye, AlertTriangle, Filter, BookOpen, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { uploadToCloudinary } from "@/utils/cloudinaryUpload"; 
+import { Footer } from '@/components/Footer'; // Import Footer for consistent styling (optional)
+import { uploadToCloudinary } from "@/utils/cloudinaryUpload"; // 1️⃣ ADDED CLOUDINARY IMPORT
 
-// ------------------- Interfaces -------------------
+// ------------------- Interfaces (Unchanged) -------------------
 interface Profile {
   id: string;
   user_id: string;
@@ -35,29 +36,17 @@ interface Item {
   created_at: string;
 }
 
+// NEW INTERFACE for consolidated static pages
 interface StaticPage {
   id: string;
   title: string;
-  slug: 'terms' | 'privacy' | 'about' | 'shipping' | 'help' | 'report' | string;
+  slug: 'terms' | 'privacy' | 'about' | 'shipping' | 'help' | 'report' | string; // ADDED help and report
   content: string;
   version: string;
   is_active: boolean;
   created_at: string;
 }
-
-// ------------------- Helper Function: Detect MIME Type -------------------
-const detectFileType = async (url: string) => {
-  try {
-    const res = await fetch(url, { method: "HEAD" });
-    const contentType = res.headers.get("content-type") || "";
-
-    if (contentType.includes("image")) return "image";
-    if (contentType.includes("pdf")) return "pdf";
-    return "other";
-  } catch {
-    return "other";
-  }
-};
+// -------------------------------------------------------------
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -73,11 +62,14 @@ const AdminDashboard = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [universities, setUniversities] = useState<any[]>([]);
+  const [newUniversity, setNewUniversity] = useState({ name: '', code: '', location: '' });
   
+  // OLD: Removed termsConditions and related state
+  // NEW: Consolidated Static Pages state
   const [staticPages, setStaticPages] = useState<StaticPage[]>([]);
   const [newStaticPage, setNewStaticPage] = useState<Omit<StaticPage, 'id' | 'is_active' | 'created_at'>>({ 
       title: '', 
-      slug: 'terms',
+      slug: 'terms', // Default to terms
       content: '', 
       version: '' 
   });
@@ -85,6 +77,9 @@ const AdminDashboard = () => {
   const [reports, setReports] = useState<any[]>([]);
   const [reportFilter, setReportFilter] = useState<string>('all');
   
+  // OLD: Removed footerSettings and related state
+  // const [footerSettings, setFooterSettings] = useState<any[]>([]); 
+
   useEffect(() => {
     checkAdminStatus();
   }, [user]);
@@ -117,8 +112,10 @@ const AdminDashboard = () => {
           fetchItems(), 
           fetchSliderImages(), 
           fetchUniversities(), 
+          // OLD: Removed fetchTermsConditions()
+          // OLD: Removed fetchFooterSettings()
           fetchReports(), 
-          fetchStaticPages()
+          fetchStaticPages() // NEW: Fetch all static pages
         ]);
     } catch (error) {
       console.error('Error checking admin status:', error);
@@ -128,6 +125,7 @@ const AdminDashboard = () => {
     }
   };
   
+  // ------------------- NEW STATIC CONTENT FETCH FUNCTION -------------------
   const fetchStaticPages = async () => {
       const { data, error } = await supabase
         .from('static_pages')
@@ -145,6 +143,10 @@ const AdminDashboard = () => {
         setStaticPages(data || []);
       }
     };
+  // --------------------------------------------------------------------------
+
+  // OLD: Removed fetchTermsConditions implementation
+  // OLD: Removed fetchFooterSettings implementation
 
   const fetchProfiles = async () => {
     const { data, error } = await supabase
@@ -217,6 +219,8 @@ const AdminDashboard = () => {
       setUniversities(data || []);
     }
   };
+
+  // OLD: Removed fetchTermsConditions function (Logic moved to fetchStaticPages)
 
   const fetchReports = async () => {
     // Fetch reports first
@@ -358,14 +362,17 @@ const AdminDashboard = () => {
     }
   };
 
+  // ------------------- NEW STATIC PAGE HANDLERS -------------------
   const handleStaticPageActivate = async (id: string, slug: string) => {
       try {
+          // 1. Deactivate all existing pages with the same slug
           await supabase
               .from('static_pages')
               .update({ is_active: false })
               .eq('slug', slug)
               .eq('is_active', true);
 
+          // 2. Activate the selected page
           const { error } = await supabase
               .from('static_pages')
               .update({ is_active: true })
@@ -398,18 +405,20 @@ const AdminDashboard = () => {
       }
 
       try {
+          // Deactivate all existing pages with the same slug before inserting the new one
           await supabase
               .from('static_pages')
               .update({ is_active: false })
               .eq('slug', newStaticPage.slug)
               .eq('is_active', true);
 
+          // Insert new page as active
           const { error } = await supabase
               .from('static_pages')
               .insert({
                   ...newStaticPage,
                   is_active: true,
-                  created_by: user?.id, 
+                  created_by: user?.id, // assuming you have a created_by column
               });
 
           if (error) throw error;
@@ -428,6 +437,7 @@ const AdminDashboard = () => {
           });
       }
   };
+  // --------------------------------------------------------------------------
 
   const filteredReports = reports.filter(report => {
     if (reportFilter === 'all') return true;
@@ -470,7 +480,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7"> 
+          <TabsList className="grid w-full grid-cols-7"> {/* FIX: Grid reduced from 8 to 7 columns */}
             <TabsTrigger value="users">
               <Users className="h-4 w-4 mr-2" />
               Users & KYC
@@ -485,6 +495,7 @@ const AdminDashboard = () => {
             </TabsTrigger>
             <TabsTrigger value="slider">Images</TabsTrigger>
             <TabsTrigger value="universities">Universities</TabsTrigger>
+            {/* FIX: Combined Terms and Footer Management into Content */}
             <TabsTrigger value="content">
                 <BookOpen className="h-4 w-4 mr-2" /> 
                 Content (CMS)
@@ -493,9 +504,11 @@ const AdminDashboard = () => {
               <Shield className="h-4 w-4 mr-2" />
               Admins
             </TabsTrigger>
+            {/* OLD: TabsTrigger value="footer" REMOVED */}
           </TabsList>
 
           <TabsContent value="users">
+            {/* ... User Management Code (Unchanged) ... */}
             <Card>
               <CardHeader>
                 <CardTitle>User Management & KYC Verification</CardTitle>
@@ -512,89 +525,29 @@ const AdminDashboard = () => {
                             <p className="text-xs text-muted-foreground">
                               {profile.college_name} • {profile.student_id}
                             </p>
-                            
-                            {/* 🔥 FIXED DOC VIEWER LOGIC */}
                             {profile.verification_document_url && (
-                              <div className="mt-3 space-y-2">
-                                {/* VIEW BUTTON */}
+                              <div className="mt-2 flex items-center gap-2">
                                 <a
                                   href={profile.verification_document_url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline"
+                                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                                 >
                                   <Eye className="h-3 w-3" />
-                                  Open Document
+                                  View Uploaded Document
                                 </a>
-
-                                {/* SMART PREVIEW */}
-                                {(() => {
-                                  // Clean URL to remove tokens/query params for extension checking
-                                  const url = profile.verification_document_url.split('?')[0].toLowerCase();
-
-                                  // EXTENSION-BASED CHECKS
-                                  const isImageExt = url.endsWith('.jpg') || url.endsWith('.jpeg') || url.endsWith('.png') || url.endsWith('.webp');
-                                  const isPdfExt = url.endsWith(".pdf");
-
-                                  if (isImageExt) {
-                                    return (
-                                      <img
-                                        src={profile.verification_document_url}
-                                        alt="Document"
-                                        className="max-w-xs rounded border shadow-sm"
-                                        onError={(e) => {
-                                          e.currentTarget.style.display = 'none';
-                                        }}
-                                      />
-                                    );
-                                  }
-
-                                  if (isPdfExt) {
-                                    return (
-                                      <div className="border rounded max-w-xs overflow-hidden h-48 bg-muted/20 relative group">
-                                         <iframe 
-                                          src={`${profile.verification_document_url}#toolbar=0`}
-                                          className="w-full h-full"
-                                          title="PDF Preview"
-                                        />
-                                        <div className="absolute inset-0 bg-transparent cursor-pointer" onClick={() => window.open(profile.verification_document_url, '_blank')} />
-                                      </div>
-                                    );
-                                  }
-
-                                  // MIME-BASED FALLBACK CHECK (For Mobile Uploads / No Extensions)
-                                  return (
-                                    <div className="flex items-center gap-2">
-                                      <Button
-                                        variant="secondary"
-                                        size="sm"
-                                        className="h-8 text-xs"
-                                        onClick={async () => {
-                                          toast({ title: "Checking file type...", duration: 2000 });
-                                          const type = await detectFileType(profile.verification_document_url);
-
-                                          if (type === "image" || type === "pdf") {
-                                            window.open(profile.verification_document_url, "_blank");
-                                          } else {
-                                            toast({
-                                              title: "Preview not supported",
-                                              description: "File downloaded in new tab.",
-                                            });
-                                            window.open(profile.verification_document_url, "_blank");
-                                          }
-                                        }}
-                                      >
-                                        <FileText className="h-3 w-3 mr-2" />
-                                        Identify & View File
-                                      </Button>
-                                    </div>
-                                  );
-                                })()}
+                                <img 
+                                  src={profile.verification_document_url} 
+                                  alt="Verification Document" 
+                                  className="max-w-xs rounded border mt-1"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
                               </div>
                             )}
-
                             {!profile.verification_document_url && profile.verification_status === 'pending' && (
-                              <p className="text-xs text-destructive mt-2 font-medium">No document uploaded</p>
+                              <p className="text-xs text-muted-foreground mt-2">No document uploaded</p>
                             )}
                           </div>
                           <Badge variant={
@@ -633,6 +586,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="listings">
+            {/* ... Listing Management Code (Unchanged) ... */}
              <Card>
               <CardHeader>
                 <CardTitle>Listing Management</CardTitle>
@@ -662,6 +616,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="reports">
+            {/* ... Reports Management Code (Unchanged) ... */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -715,9 +670,30 @@ const AdminDashboard = () => {
                                       <div>
                                         <p className="text-sm font-medium">{report.reporter?.full_name || 'Unknown'}</p>
                                         <p className="text-xs text-muted-foreground">{report.reporter_email}</p>
+                                        {report.reporter?.mck_id && (
+                                          <p className="text-xs font-mono text-primary">{report.reporter.mck_id}</p>
+                                        )}
                                       </div>
                                     </div>
                                   </div>
+                                  
+                                  {report.report_type === 'seller' && report.reported_user && (
+                                    <div>
+                                      <p className="text-xs font-medium text-muted-foreground mb-1">Reported User:</p>
+                                      <div className="flex items-center gap-2">
+                                        <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center text-xs font-semibold text-destructive">
+                                          {report.reported_user.full_name?.charAt(0) || 'U'}
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-medium">{report.reported_user.full_name || 'Unknown'}</p>
+                                          <p className="text-xs text-muted-foreground">{report.reported_user.email}</p>
+                                          {report.reported_user.mck_id && (
+                                            <p className="text-xs font-mono text-primary">{report.reported_user.mck_id}</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
                                   
                                   {report.report_type === 'listing' && report.reported_listing && (
                                     <div className="col-span-1 md:col-span-2 space-y-3">
@@ -739,9 +715,31 @@ const AdminDashboard = () => {
                                           </div>
                                         </div>
                                       </div>
+                                      
+                                      {report.reported_seller && (
+                                        <div>
+                                          <p className="text-xs font-medium text-muted-foreground mb-1">Seller:</p>
+                                          <div className="flex items-center gap-2">
+                                            <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center text-xs font-semibold text-destructive">
+                                              {report.reported_seller.full_name?.charAt(0) || 'U'}
+                                            </div>
+                                            <div>
+                                              <p className="text-sm font-medium">{report.reported_seller.full_name || 'Unknown'}</p>
+                                              <p className="text-xs text-muted-foreground">{report.reported_seller.email}</p>
+                                              {report.reported_seller.mck_id && (
+                                                <p className="text-xs font-mono text-primary">{report.reported_seller.mck_id}</p>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>
+
+                                <p className="text-xs text-muted-foreground">
+                                  Reported on: {new Date(report.created_at).toLocaleString()}
+                                </p>
                               </div>
                             </div>
 
@@ -750,6 +748,24 @@ const AdminDashboard = () => {
                               <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
                                 {report.reason}
                               </p>
+                            </div>
+
+                            <div>
+                              <Label htmlFor={`admin-notes-${report.id}`} className="text-sm font-medium mb-2 block">
+                                Admin Notes (visible to reported user):
+                              </Label>
+                              <Textarea
+                                id={`admin-notes-${report.id}`}
+                                placeholder="Add notes for this report (e.g., actions taken, warnings issued)..."
+                                defaultValue={report.admin_notes || ''}
+                                onBlur={(e) => {
+                                  if (e.target.value !== report.admin_notes) {
+                                    handleReportStatusUpdate(report.id, report.status, e.target.value);
+                                  }
+                                }}
+                                rows={3}
+                                className="resize-none"
+                              />
                             </div>
 
                             <div className="flex gap-2 pt-2 flex-wrap">
@@ -766,6 +782,31 @@ const AdminDashboard = () => {
                                   <SelectItem value="resolved">Resolved</SelectItem>
                                 </SelectContent>
                               </Select>
+                              
+                              {report.target_id && report.report_type === 'listing' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => navigate(`/item/${report.target_id}`)}
+                                >
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Listing
+                                </Button>
+                              )}
+                              
+                              {report.report_type === 'seller' && report.target_id && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    // Navigate to seller profile using target_id
+                                    navigate(`/profile/${report.reported_user?.mck_id}`);
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Seller
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </CardContent>
@@ -778,6 +819,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="slider">
+            {/* ... Slider Image Management Code (Unchanged) ... */}
             <Card>
               <CardHeader>
                 <CardTitle>Slider Image Management</CardTitle>
@@ -799,6 +841,7 @@ const AdminDashboard = () => {
                               const file = e.target.files?.[0];
                               if (!file) return;
 
+                              // Validate file type
                               if (!file.type.startsWith('image/')) {
                                 toast({
                                   title: "Error",
@@ -808,6 +851,7 @@ const AdminDashboard = () => {
                                 return;
                               }
 
+                              // Validate file size (10MB)
                               if (file.size > 10 * 1024 * 1024) {
                                 toast({
                                   title: "Error",
@@ -892,9 +936,12 @@ const AdminDashboard = () => {
                           try {
                             let imageUrl = newSliderImage.url;
 
+                            // 🔥 Upload file to Cloudinary (REPLACED SUPABASE LOGIC)
                             if (imageFile) {
                               imageUrl = await uploadToCloudinary(imageFile, "slider");
                             }
+
+                            console.log('Inserting into database with URL:', imageUrl);
 
                             const { data: insertData, error } = await supabase
                               .from('image_slidebar')
@@ -912,6 +959,8 @@ const AdminDashboard = () => {
                               throw error;
                             }
 
+                            console.log('Database insert success:', insertData);
+
                             toast({
                               title: "Success",
                               description: "Slider image added successfully",
@@ -923,7 +972,7 @@ const AdminDashboard = () => {
                             console.error('Error adding slider image:', error);
                             toast({
                               title: "Error",
-                              description: error?.message || "Failed to add slider image.",
+                              description: error?.message || "Failed to add slider image. Check console for details.",
                               variant: "destructive",
                             });
                           } finally {
@@ -991,6 +1040,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="universities">
+            {/* ... University Management Code (Unchanged) ... */}
             <Card>
               <CardHeader>
                 <CardTitle>University Management</CardTitle>
@@ -1012,6 +1062,7 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
+          {/* FIX: Content Management System (CMS) Tab */}
           <TabsContent value="content">
             <Card>
               <CardHeader>
@@ -1047,6 +1098,7 @@ const AdminDashboard = () => {
                               <SelectItem value="privacy">Privacy Policy (privacy)</SelectItem>
                               <SelectItem value="about">About Us (about)</SelectItem>
                               <SelectItem value="shipping">Shipping Info (shipping)</SelectItem>
+                              {/* FIX 1: Added Help and Report slugs to the selection dropdown */}
                               <SelectItem value="help">Help Center (help)</SelectItem> 
                               <SelectItem value="report">Report Issue (report)</SelectItem>
                             </SelectContent>
@@ -1081,6 +1133,7 @@ const AdminDashboard = () => {
                   {/* Existing Pages */}
                   <div className="space-y-4">
                     <h3 className="font-medium">Existing Static Pages</h3>
+                    {/* FIX 2: Added Help and Report slugs to the display list */}
                     {['terms', 'privacy', 'about', 'shipping', 'help', 'report'].map(slug => {
                         const pages = staticPages.filter(p => p.slug === slug);
                         if (pages.length === 0) return null;
@@ -1112,6 +1165,7 @@ const AdminDashboard = () => {
                                                 size="sm"
                                                 variant="outline"
                                                 onClick={() => {
+                                                    // Logic to view full content in new window (same as before)
                                                     const newWindow = window.open('', '_blank');
                                                     if (newWindow) {
                                                       newWindow.document.write(`
@@ -1180,6 +1234,8 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </TabsContent>
+          
+          {/* OLD: TabsContent value="footer" REMOVED */}
           
         </Tabs>
       </div>
