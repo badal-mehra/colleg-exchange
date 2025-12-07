@@ -136,7 +136,7 @@ const KYC = () => {
         const fileName = `${user.id}/verification-${Date.now()}.${fileExt}`;
         
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('avatars')
+          .from('kyc-documents')
           .upload(fileName, formData.verification_document, {
             upsert: true,
             // contentType: formData.verification_document.type
@@ -147,7 +147,7 @@ const KYC = () => {
         }
 
         const { data: urlData } = supabase.storage
-          .from('avatars')
+          .from('kyc-documents')
           .getPublicUrl(fileName);
         
         verification_document_url = urlData.publicUrl;
