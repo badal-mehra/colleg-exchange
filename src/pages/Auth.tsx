@@ -100,7 +100,7 @@ const Auth = () => {
       // SUCCESS: Add an explicit toast for user clarity (Supabase usually requires email verification)
       toast({ 
         title: "Account Created! 🎉", 
-        description: "Check your @lpu.in email for the verification link. It may take 5-10 seconds.", // ADDED: Clear instructions
+        description: "Check your email for the verification link. It may take 5-10 seconds.", // ADDED: Clear instructions
       });
 
       const { data: activeTerms } = await supabase
@@ -235,7 +235,7 @@ const Auth = () => {
                     <form onSubmit={handleSignIn} className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="signin-email">Email</Label>
-                        <Input id="signin-email" name="email" type="email" placeholder="your.email@lpu.in" required disabled={isLoading} />
+                        <Input id="signin-email" name="email" type="email" placeholder="your.email@example.com" required disabled={isLoading} />
                     </div>
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
@@ -260,7 +260,7 @@ const Auth = () => {
                                     toast({ title: "Error", description: error.message, variant: "destructive" });
                                 } else {
                                     // IMPROVED TOAST: Better clarity for the user
-                                    toast({ title: "Email Sent", description: "Password reset link sent! Check your @lpu.in inbox. It may take 5–10 seconds." });
+                                    toast({ title: "Email Sent", description: "Password reset link sent! Check your inbox/spam. It may take 5–10 seconds." });
                                 }
                             }}
                         >
@@ -316,10 +316,10 @@ const Auth = () => {
                         name="email"
                         type="email"
                         
-                        placeholder="yourname@lpu.in"
+                        placeholder="yourname@example.com"
                         disabled={isLoading}
                         />
-                        <p className="text-xs text-muted-foreground">Student verification is done via your @lpu.in email.</p>
+                        <p className="text-xs text-muted-foreground">Student verification is done via email.</p>
                     </div>
 
                     <div className="space-y-2">
