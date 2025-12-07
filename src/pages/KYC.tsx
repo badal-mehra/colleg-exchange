@@ -152,7 +152,7 @@ const KYC = () => {
         // logic omitted to keep it simple, just uploading new one
         
         const { error: uploadError } = await supabase.storage
-          .from('kyc-documents')
+          .from('avatars')
           .upload(fileName, formData.verification_document, {
             upsert: true,
           });
@@ -162,7 +162,7 @@ const KYC = () => {
         }
 
         const { data: urlData } = supabase.storage
-          .from('kyc-documents')
+          .from('avatars')
           .getPublicUrl(fileName);
         
         verification_document_url = urlData.publicUrl;
