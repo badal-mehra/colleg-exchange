@@ -500,15 +500,15 @@ const Leaderboard = () => {
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
                   <div className="font-bold text-yellow-600 dark:text-yellow-400">🥇 1st Place</div>
-                  <div className="text-sm text-foreground text-right">₹500 Campus Voucher + Premium Badge</div>
+                  <div className="text-sm text-foreground text-right">MyCampusKart Campus Ambassador</div>
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-lg bg-gray-400/10 border border-gray-400/20">
                   <div className="font-bold text-gray-600 dark:text-gray-400">🥈 2nd Place</div>
-                  <div className="text-sm text-foreground text-right">₹300 Campus Voucher</div>
+                  <div className="text-sm text-foreground text-right">Elite Intern Certificate</div>
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-lg bg-amber-600/10 border border-amber-600/20">
                   <div className="font-bold text-amber-600 dark:text-amber-400">🥉 3rd Place</div>
-                  <div className="text-sm text-foreground text-right">₹200 Campus Voucher</div>
+                  <div className="text-sm text-foreground text-right">Top Contributor Certificate</div>
                 </div>
               </CardContent>
             </Card>
@@ -540,7 +540,7 @@ const Leaderboard = () => {
                     </h4>
                     <ul className="space-y-2 text-sm">
                       <li className='flex justify-between'>7+ deals: <span className="font-medium text-yellow-500">Trusted Seller Badge</span></li>
-                      <li className='flex justify-between'>Top 3 monthly: <span className="font-medium text-green-500">Cash Vouchers</span></li>
+                      <li className='flex justify-between'>Top 3 monthly: <span className="font-medium text-green-500">Awards</span></li>
                       <li className='flex justify-between'>100+ points: <span className="font-medium text-blue-500">Premium Features</span></li>
                       <li className='flex justify-between'>500+ points: <span className="font-medium text-yellow-600">VIP Status</span></li>
                     </ul>
