@@ -139,7 +139,7 @@ const KYC = () => {
           .from('avatars')
           .upload(fileName, formData.verification_document, {
             upsert: true,
-            contentType: formData.verification_document.type
+            // contentType: formData.verification_document.type
           });
 
         if (uploadError) {
