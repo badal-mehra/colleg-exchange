@@ -133,7 +133,7 @@ const Home = () => {
           <div className="flex justify-center flex-col sm:flex-row gap-4 mb-10">
             <Button size="lg" className="text-lg px-8 py-6 shadow-xl hover:shadow-2xl transition-all duration-300" onClick={() => navigate('/auth')}>
               <LogIn className="h-5 w-5 mr-2" />
-              Login with your University Email to Explore Deals
+              Login with your Email to Explore Deals
             </Button>
             <Button variant="outline" size="lg" className="text-lg px-8 py-6" onClick={() => navigate('/auth')}>
               <User className="h-5 w-5 mr-2" />
