@@ -40,3 +40,38 @@ root.render(
     </BrowserRouter>
   </React.StrictMode>
 );
+// SERVICE WORKER REGISTRATION
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js")
+      .then((reg) => {
+        console.log("SW Registered:", reg);
+
+        if (reg.waiting && window.onPwaUpdateAvailable) {
+          window.onPwaUpdateAvailable(reg);
+        }
+
+        reg.onupdatefound = () => {
+          const installing = reg.installing;
+          if (installing) {
+            installing.onstatechange = () => {
+              if (installing.state === "installed" && navigator.serviceWorker.controller) {
+                console.log("Update ready");
+                if (window.onPwaUpdateAvailable) window.onPwaUpdateAvailable(reg);
+              }
+            };
+          }
+        };
+      })
+      .catch((err) => console.error("SW registration failed:", err));
+  });
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
+}
+
