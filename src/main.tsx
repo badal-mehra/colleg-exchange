@@ -40,6 +40,14 @@ root.render(
     </BrowserRouter>
   </React.StrictMode>
 );
+
+// Extend Window interface for PWA
+declare global {
+  interface Window {
+    onPwaUpdateAvailable?: (reg: ServiceWorkerRegistration) => void;
+  }
+}
+
 // SERVICE WORKER REGISTRATION
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
