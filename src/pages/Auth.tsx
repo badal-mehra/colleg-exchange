@@ -62,23 +62,43 @@ const Auth = () => {
     setIsLoading(false);
   };
 
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`,
-      },
+  // const handleGoogleSignIn = async () => {
+  //   setIsLoading(true);
+  //   const { error } = await supabase.auth.signInWithOAuth({
+  //     provider: 'google',
+  //     options: {
+  //       redirectTo: `${window.location.origin}/dashboard`,
+  //     },
+  //   });
+  //   if (error) {
+  //     toast({
+  //       title: "Google Sign In Error",
+  //       description: error.message,
+  //       variant: "destructive",
+  //     });
+  //   }
+  //   setIsLoading(false);
+  // };
+const handleGoogleSignIn = async () => {
+  setIsLoading(true);
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    },
+  });
+
+  if (error) {
+    toast({
+      title: "Google Sign In Error",
+      description: error.message,
+      variant: "destructive",
     });
-    if (error) {
-      toast({
-        title: "Google Sign In Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-    setIsLoading(false);
-  };
+  }
+
+  setIsLoading(false);
+};
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
