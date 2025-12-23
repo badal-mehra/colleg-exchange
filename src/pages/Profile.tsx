@@ -2,19 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // Added CardDescription
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, CheckCircle, Clock, XCircle, User, Edit3, Save, X, Shield, Zap, Star, Settings, Award, Trophy, Target, Camera, Copy, AlertTriangle, Package } from 'lucide-react'; // Added Package
+import { ArrowLeft, CheckCircle, Clock, XCircle, User, Edit3, Save, X, Shield, Zap, Star, Settings, Award, Trophy, Target, Camera, Copy, AlertTriangle, Package } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ImageCropModal from '@/components/ImageCropModal';
-import { Separator } from '@/components/ui/separator'; // Added Separator
+import { Separator } from '@/components/ui/separator';
 import { uploadToCloudinary } from "@/utils/cloudinaryUpload";
-import { deleteFromCloudinary } from "@/utils/cloudinaryDelete"; // ✅ NEW IMPORT
+import { deleteFromCloudinary } from "@/utils/cloudinaryDelete";
+import AccountSettings from '@/components/AccountSettings';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Profile {
   id: string;
@@ -526,118 +528,137 @@ const Profile = () => {
             </Button>
           </div>
 
-          {/* Right Column: Personal Information Form */}
+          {/* Right Column: Tabbed Content */}
           <div className="lg:col-span-2">
-            <Card className="shadow-md">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg text-foreground">
-                  <Settings className="h-5 w-5 text-primary" />
-                  Contact & Academic Information
-                </CardTitle>
-                <CardDescription>
-                  Update your details. These fields are used for verification and deal coordination.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="full_name">Full Name</Label>
-                    <Input
-                      id="full_name"
-                      value={formData.full_name}
-                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                      disabled={!editMode}
-                      className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      disabled={!editMode}
-                      className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="university">University</Label>
-                    {editMode ? (
-                      <Select
-                        value={formData.university}
-                        onValueChange={(value) => setFormData({ ...formData, university: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select University" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {universities.map((university) => (
-                            <SelectItem key={university.id} value={university.name}>
-                              {university.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Input id="university" value={formData.university} disabled={true} className="bg-muted/50 cursor-not-allowed" />
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="college_name">College/Department</Label>
-                    <Input
-                      id="college_name"
-                      value={formData.college_name}
-                      onChange={(e) => setFormData({ ...formData, college_name: e.target.value })}
-                      disabled={!editMode}
-                      className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="student_id">Student ID</Label>
-                    <Input
-                      id="student_id"
-                      value={formData.student_id}
-                      onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
-                      disabled={!editMode}
-                      className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="course">Course</Label>
-                    <Input
-                      id="course"
-                      placeholder="e.g., B.Tech CSE"
-                      value={formData.course}
-                      onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-                      disabled={!editMode}
-                      className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="batch">Batch</Label>
-                    <Input
-                      id="batch"
-                      placeholder="e.g., 2021-2025"
-                      value={formData.batch}
-                      onChange={(e) => setFormData({ ...formData, batch: e.target.value })}
-                      disabled={!editMode}
-                      className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="hostel">Hostel/Residence</Label>
-                    <Input
-                      id="hostel"
-                      placeholder="e.g., Block A-1"
-                      value={formData.hostel}
-                      onChange={(e) => setFormData({ ...formData, hostel: e.target.value })}
-                      disabled={!editMode}
-                      className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <Tabs defaultValue="profile" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="profile" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Profile Info
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Account Settings
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="profile">
+                <Card className="shadow-md">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg text-foreground">
+                      <User className="h-5 w-5 text-primary" />
+                      Contact & Academic Information
+                    </CardTitle>
+                    <CardDescription>
+                      Update your details. These fields are used for verification and deal coordination.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="full_name">Full Name</Label>
+                        <Input
+                          id="full_name"
+                          value={formData.full_name}
+                          onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                          disabled={!editMode}
+                          className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Phone Number</Label>
+                        <Input
+                          id="phone"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          disabled={!editMode}
+                          className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="university">University</Label>
+                        {editMode ? (
+                          <Select
+                            value={formData.university}
+                            onValueChange={(value) => setFormData({ ...formData, university: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select University" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {universities.map((university) => (
+                                <SelectItem key={university.id} value={university.name}>
+                                  {university.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input id="university" value={formData.university} disabled={true} className="bg-muted/50 cursor-not-allowed" />
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="college_name">College/Department</Label>
+                        <Input
+                          id="college_name"
+                          value={formData.college_name}
+                          onChange={(e) => setFormData({ ...formData, college_name: e.target.value })}
+                          disabled={!editMode}
+                          className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="student_id">Student ID</Label>
+                        <Input
+                          id="student_id"
+                          value={formData.student_id}
+                          onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
+                          disabled={!editMode}
+                          className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="course">Course</Label>
+                        <Input
+                          id="course"
+                          placeholder="e.g., B.Tech CSE"
+                          value={formData.course}
+                          onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                          disabled={!editMode}
+                          className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="batch">Batch</Label>
+                        <Input
+                          id="batch"
+                          placeholder="e.g., 2021-2025"
+                          value={formData.batch}
+                          onChange={(e) => setFormData({ ...formData, batch: e.target.value })}
+                          disabled={!editMode}
+                          className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="hostel">Hostel/Residence</Label>
+                        <Input
+                          id="hostel"
+                          placeholder="e.g., Block A-1"
+                          value={formData.hostel}
+                          onChange={(e) => setFormData({ ...formData, hostel: e.target.value })}
+                          disabled={!editMode}
+                          className={!editMode ? 'bg-muted/50 cursor-not-allowed' : ''}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="settings">
+                <AccountSettings />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>
