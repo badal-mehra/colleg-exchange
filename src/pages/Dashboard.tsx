@@ -4,20 +4,17 @@ import React, { useEffect, useState, memo, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Search, Plus, User, Filter, Heart, MessageCircle, Eye, ShoppingBag,
+  Search, Plus, Filter, Heart, Eye, ShoppingBag,
   Upload, Star, MapPin, ChevronLeft, ChevronRight, Crown, Zap, Clock, Loader2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import ImageCarousel from '@/components/ImageCarousel';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-// ❌ VIRTUALIZATION IMPORT REMOVED: import { VirtuosoGrid } from 'react-virtuoso';
 
 
 // --- INTERFACES (Unchanged) ---
@@ -252,20 +249,11 @@ interface ItemCardProps {
 const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, navigate, handleStartConversation, handleFavoriteToggle }) => {
   const adBenefits = getAdTypeBenefits(item.ad_type);
   const [isFavoriting, setIsFavoriting] = useState(false);
-  const [isChatting, setIsChatting] = useState(false);
 
-  // ✅ STEP 4 FIX: Use memoized thumbnail URLs for ItemCard to save bandwidth
-  const thumbnailImages = useMemo(() => {
-    return item.images.map(getThumb);
+  // Get first thumbnail image
+  const thumbnailImage = useMemo(() => {
+    return item.images[0] ? getThumb(item.images[0]) : '/placeholder.svg';
   }, [item.images]);
-
-
-  const onChat = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsChatting(true);
-    await handleStartConversation(item);
-    setIsChatting(false);
-  };
 
   const onFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -274,94 +262,102 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
     setIsFavoriting(false);
   };
 
+  // Time ago helper
+  const timeAgo = useMemo(() => {
+    const now = new Date();
+    const created = new Date(item.created_at);
+    const diffMs = now.getTime() - created.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    
+    if (diffDays > 0) return `${diffDays}d ago`;
+    if (diffHours > 0) return `${diffHours}h ago`;
+    if (diffMinutes > 0) return `${diffMinutes}m ago`;
+    return 'Just now';
+  }, [item.created_at]);
+
   return (
-    <Card
-      className="group hover:shadow-2xl hover:shadow-primary/20 transition-transform duration-300 ease-in-out cursor-pointer border border-border hover:border-primary/50 overflow-hidden bg-white rounded-xl hover:-translate-y-1 w-full"
+    <div
+      className="group bg-card border border-border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-primary/30"
       onClick={() => navigate(`/item/${item.id}`)}
     >
-      <div className="relative">
-        <div className="aspect-square w-full rounded-t-xl overflow-hidden">
-          <ImageCarousel 
-            images={thumbnailImages}
-            alt={item.title} 
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
-          />
-        </div>
-
+      {/* Image Container - 4:3 aspect ratio like OLX */}
+      <div className="relative aspect-[4/3] bg-muted overflow-hidden">
+        <img
+          src={thumbnailImage}
+          alt={item.title}
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+        />
+        
+        {/* Ad Type Badge - Top Left */}
         {adBenefits && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge className={`absolute top-3 left-3 text-xs flex items-center gap-1 shadow-lg font-semibold ${adBenefits.color} cursor-help`}>
-                {adBenefits.icon}
-                {adBenefits.label}
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs font-medium">{adBenefits.benefits}</p>
-            </TooltipContent>
-          </Tooltip>
+          <Badge className={`absolute top-2 left-2 text-[10px] px-1.5 py-0.5 flex items-center gap-0.5 shadow-sm font-semibold ${adBenefits.color}`}>
+            {adBenefits.icon}
+            <span className="hidden sm:inline">{adBenefits.label}</span>
+          </Badge>
         )}
 
-        <Badge variant={item.condition === 'new' ? 'default' : 'secondary'} className="absolute top-3 right-3 text-xs shadow-lg">
-          {item.condition}
-        </Badge>
-        <div className="absolute bottom-2 left-2 bg-black/60 text-white rounded-lg px-2 py-1 flex items-center gap-1 shadow-md">
-          <Eye className="h-3 w-3" />
-          <span className="text-xs font-medium">{item.views.toLocaleString()} views</span>
-        </div>
+        {/* Favorite Button - Top Right */}
+        <button
+          onClick={onFavorite}
+          disabled={isFavoriting || !user || !isVerified}
+          className="absolute top-2 right-2 p-1.5 bg-card/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-card transition-colors disabled:opacity-50"
+        >
+          {isFavoriting ? (
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          ) : (
+            <Heart className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors" />
+          )}
+        </button>
+
+        {/* Image Count Badge - Bottom Right */}
+        {item.images.length > 1 && (
+          <div className="absolute bottom-2 right-2 bg-foreground/80 text-background text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5">
+            <Eye className="h-3 w-3" />
+            {item.images.length}
+          </div>
+        )}
       </div>
 
-      <CardContent className="p-4 space-y-2">
-        <h3 className="font-bold text-lg leading-snug line-clamp-2 text-gray-900">
+      {/* Content */}
+      <div className="p-3 space-y-1.5">
+        {/* Price */}
+        <p className="text-lg sm:text-xl font-bold text-foreground">
+          ₹{item.price.toLocaleString()}
+        </p>
+
+        {/* Title */}
+        <h3 className="text-sm text-foreground/90 line-clamp-2 leading-snug min-h-[2.5rem]">
           {item.title}
         </h3>
-        <div className="flex items-baseline gap-1">
-          <span className="text-3xl font-extrabold text-primary">₹{item.price.toLocaleString()}</span>
-          {item.is_negotiable && <Badge variant="outline" className="text-xs border-primary/50 text-primary/80">Negotiable</Badge>}
-        </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-border/70">
-          <div className="flex items-center gap-1">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="text-sm text-gray-600 truncate max-w-[100px] font-medium">
-                  {item.profiles?.full_name || 'Anonymous'}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>{item.profiles?.full_name || 'Anonymous'}</TooltipContent>
-            </Tooltip>
+        {/* Location & Time Row */}
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1.5 border-t border-border/50">
+          <div className="flex items-center gap-1 truncate max-w-[60%]">
+            <MapPin className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate">{item.location || 'Campus'}</span>
           </div>
           <div className="flex items-center gap-1">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-gray-600 truncate font-medium">
-              {item.location || 'Campus'}
-            </span>
+            <Clock className="h-3 w-3" />
+            <span>{timeAgo}</span>
           </div>
         </div>
 
-        <div className="flex gap-2 pt-3">
-          <Button
-            size="sm"
-            className="flex-1 h-9 text-sm font-semibold"
-            onClick={onChat}
-            disabled={item.seller_id === user?.id || isChatting || !isVerified}
-          >
-            {isChatting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MessageCircle className="h-4 w-4 mr-2" />}
-            {item.seller_id === user?.id ? 'Your Item' : isChatting ? 'Starting Chat...' : 'Chat'}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-9 px-3 border-primary text-primary hover:bg-primary/10"
-            onClick={onFavorite}
-            disabled={isFavoriting || !user || !isVerified}
-          >
-            {isFavoriting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Heart className="h-4 w-4" />}
-          </Button>
+        {/* Condition & Negotiable Tags */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
+            {item.condition === 'new' ? 'New' : item.condition === 'like_new' ? 'Like New' : item.condition}
+          </Badge>
+          {item.is_negotiable && (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-primary/40 text-primary">
+              Negotiable
+            </Badge>
+          )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 });
 
@@ -718,36 +714,36 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Items Grid (Standard Native Grid) */}
+        {/* Items Grid - OLX Style: 2 columns on mobile, 3 on tablet, 4 on desktop */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {[...Array(8)].map((_, i) => (
-              <Card key={i} className="animate-pulse overflow-hidden rounded-xl h-[350px]">
-                <div className="aspect-square w-full bg-gray-200"></div>
-                <CardContent className="p-4 space-y-3">
-                  <div className="h-5 bg-gray-300 rounded mb-2 w-3/4"></div>
-                  <div className="h-7 bg-primary/20 rounded w-1/3"></div>
-                  <div className="h-3 bg-gray-300 rounded w-1/2"></div>
-                </CardContent>
-              </Card>
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+            {[...Array(10)].map((_, i) => (
+              <div key={i} className="animate-pulse bg-card border border-border rounded-lg overflow-hidden">
+                <div className="aspect-[4/3] bg-muted"></div>
+                <div className="p-3 space-y-2">
+                  <div className="h-5 bg-muted rounded w-2/3"></div>
+                  <div className="h-4 bg-muted rounded w-full"></div>
+                  <div className="h-3 bg-muted rounded w-1/2"></div>
+                </div>
+              </div>
             ))}
           </div>
         ) : items.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl shadow-inner border border-dashed border-gray-300">
-            <ShoppingBag className="h-16 w-16 text-primary/70 mx-auto mb-4" />
-            <h3 className="text-2xl font-bold mb-2 text-gray-700">No matching items found</h3>
-            <p className="text-muted-foreground text-lg mb-4">
-              Try adjusting your search terms or filters for better results.
+          <div className="text-center py-16 bg-card rounded-xl border border-dashed border-border">
+            <ShoppingBag className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2 text-foreground">No items found</h3>
+            <p className="text-muted-foreground text-sm mb-4">
+              Try adjusting your search or filters
             </p>
-            <Button size="lg" className="mt-4" onClick={() => navigate('/sell')}>
-              <Plus className="h-5 w-5 mr-2" />
-              List an Item Now
+            <Button onClick={() => navigate('/sell')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Sell Something
             </Button>
           </div>
         ) : (
           <TooltipProvider>
-            {/* 🚀 NATIVE GRID REPLACEMENT: Fast and Build-Safe */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {/* OLX-Style Grid: 2 cols mobile, scales up */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
               {items.map((item) => (
                 <ItemCard
                   key={item.id}
