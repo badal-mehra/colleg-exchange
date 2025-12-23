@@ -3,26 +3,51 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" href="/favicon.png" type="image/png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>MyCampusKart - Verified Student Marketplace</title>
-<meta name="description" content="MyCampusKart - Verified Student Marketplace for buying and selling within your campus community. Verified students only.">
+    <meta name="description" content="MyCampusKart - Verified Student Marketplace for buying and selling within your campus community. Verified students only.">
 
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="shortcut icon" href="/favicon.ico">
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
     
-<link rel="manifest" href="/manifest.json" />
-<meta name="theme-color" content="#ffffff" />
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Theme & Status Bar -->
+    <meta name="theme-color" content="#4F46E5" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="MyCampusKart" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="MyCampusKart" />
+    <meta name="msapplication-TileColor" content="#4F46E5" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <meta name="format-detection" content="telephone=no" />
 
+    <!-- Open Graph -->
+    <meta property="og:title" content="MyCampusKart - Verified Student Marketplace">
+    <meta property="og:description" content="Buy and sell items securely within your campus community. Verified students only.">
+    <meta property="og:image" content="https://www.mycampuskart.com/mycampuskart-logo.png">
+    <meta property="og:type" content="website">
 
-<meta property="og:title" content="MyCampusKart - Verified Student Marketplace">
-<meta property="og:description" content="Buy and sell items securely within your campus community. Verified students only.">
-<meta property="og:image" content="https://www.mycampuskart.com/mycampuskart-logo.png">
-<meta property="og:type" content="website">
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://www.mycampuskart.com/mycampuskart-logo.png">
 
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://www.mycampuskart.com/mycampuskart-logo.png">
-
+    <!-- Splash Screen for iOS -->
+    <style>
+      html, body {
+        overscroll-behavior: none;
+        -webkit-overflow-scrolling: touch;
+      }
+      /* Safe area padding for notched devices */
+      body {
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      }
+    </style>
   </head>
 
   <body>

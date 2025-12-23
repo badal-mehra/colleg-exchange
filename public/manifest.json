@@ -1,28 +1,63 @@
 {
   "short_name": "MyCampusKart",
-  "name": "MyCampusKart App",
-  "id": "/?source=pwa",
-  "start_url": "/?source=pwa",
+  "name": "MyCampusKart - Student Marketplace",
+  "description": "Buy and sell items securely within your campus community. Verified students only.",
+  "id": "/",
+  "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#ffffff",
-  "theme_color": "#ffffff",
-  "orientation": "portrait",
+  "theme_color": "#4F46E5",
+  "orientation": "portrait-primary",
+  "categories": ["shopping", "lifestyle", "education"],
+  "lang": "en",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icons/icon-192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any"
     },
     {
       "src": "/icons/icon-512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any"
     },
     {
       "src": "/icons/maskable-512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
-  ]
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Sell Item",
+      "short_name": "Sell",
+      "description": "List a new item for sale",
+      "url": "/sell",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Chats",
+      "short_name": "Chats",
+      "description": "View your conversations",
+      "url": "/my-chats",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Orders",
+      "short_name": "Orders",
+      "description": "View your orders",
+      "url": "/my-orders",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "related_applications": [],
+  "handle_links": "preferred"
 }
