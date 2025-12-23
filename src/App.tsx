@@ -5,6 +5,8 @@ import { Routes, Route } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 
 // Import Pages
+import AuthCallback from "./pages/AuthCallback";
+
 import Index from "./pages/Index";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
