@@ -1,31 +1,33 @@
-// src/layouts/MainLayout.tsx (New File)
+// src/layouts/MainLayout.tsx
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
-import { Footer } from "@/components/Footer"; // Assuming Footer is a separate component
-import Header from "@/components/Header"; // ⭐ Imports the optimized Header
-
+import { Footer } from "@/components/Footer";
+import Header from "@/components/Header";
 import SWUpdateToast from "@/components/SWUpdateToast";
 import InstallPrompt from "@/components/InstallPrompt";
 
 const MainLayout = () => {
+  const [isPWA, setIsPWA] = useState(false);
+
+  useEffect(() => {
+    // Check if running as installed PWA (standalone mode)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+      || (window.navigator as any).standalone === true;
+    setIsPWA(isStandalone);
+  }, []);
+
   return (
-    // Persistent Layout Wrapper
     <div className="min-h-screen flex flex-col">
-      
-      {/* Header stays mounted across all inner routes */}
       <Header /> 
-      
-      {/* Main content area */}
       <main className="flex-1">
-        {/* Outlet renders the specific page component (/dashboard, /item/:id, etc.) */}
         <Outlet />
       </main>
       <SWUpdateToast />
-      <InstallPrompt />
-      {/* Footer stays mounted across all inner routes */}
-      {/* Note: Footer was in Dashboard.tsx, now lives here consistently */}
-      <Footer /> 
+      {/* Hide install prompt in PWA mode */}
+      {!isPWA && <InstallPrompt />}
+      {/* Hide footer in PWA mode for native app feel */}
+      {!isPWA && <Footer />}
     </div>
   );
 };
