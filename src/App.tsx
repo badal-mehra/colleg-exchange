@@ -35,7 +35,7 @@ const App = () => (
     {/** ----------------------------------------------------- */}
     <Route element={<MainLayout />}>
 
-
+    <Route path="/auth/callback" element={<AuthCallback />} />
 
 
       {/** DASHBOARD ONLY (Protected) */}
@@ -85,6 +85,8 @@ const App = () => (
     <Route path="/scan-qr" element={<ProtectedRoute><ScanQR /></ProtectedRoute>} />
     <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
 
+
+    
     {/** NOT FOUND */}
     <Route path="*" element={<NotFound />} />
   </Routes>
