@@ -27,8 +27,10 @@ const MainLayout = () => {
       <SWUpdateToast />
       {/* Hide install prompt in PWA mode */}
       {!isPWA && <InstallPrompt />}
-      {/* Hide footer in PWA mode for native app feel */}
+      {/* Hide footer and headerin PWA mode for native app feel */}
       {!isPWA && <Footer />}
+      {!isPWA && <Header />}
+
       {/* Show bottom nav bar in PWA mode */}
       {isPWA && <BottomNavBar />}
     </div>
