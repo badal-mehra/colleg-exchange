@@ -20,7 +20,7 @@ const MainLayout = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header /> 
+      
       <main className={isPWA ? "flex-1 pb-20" : "flex-1"}>
         <Outlet />
       </main>
