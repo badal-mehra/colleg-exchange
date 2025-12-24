@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import Header from "@/components/Header";
 import SWUpdateToast from "@/components/SWUpdateToast";
 import InstallPrompt from "@/components/InstallPrompt";
+import BottomNavBar from "@/components/BottomNavBar";
 
 const MainLayout = () => {
   const [isPWA, setIsPWA] = useState(false);
@@ -20,7 +21,7 @@ const MainLayout = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header /> 
-      <main className="flex-1">
+      <main className={isPWA ? "flex-1 pb-20" : "flex-1"}>
         <Outlet />
       </main>
       <SWUpdateToast />
@@ -28,6 +29,8 @@ const MainLayout = () => {
       {!isPWA && <InstallPrompt />}
       {/* Hide footer in PWA mode for native app feel */}
       {!isPWA && <Footer />}
+      {/* Show bottom nav bar in PWA mode */}
+      {isPWA && <BottomNavBar />}
     </div>
   );
 };
