@@ -370,6 +370,7 @@ export type Database = {
           location: string | null
           price: number
           promotion_expires_at: string | null
+          rental_metadata: Json | null
           seller_id: string
           status: string | null
           tags: string[] | null
@@ -400,6 +401,7 @@ export type Database = {
           location?: string | null
           price: number
           promotion_expires_at?: string | null
+          rental_metadata?: Json | null
           seller_id: string
           status?: string | null
           tags?: string[] | null
@@ -430,6 +432,7 @@ export type Database = {
           location?: string | null
           price?: number
           promotion_expires_at?: string | null
+          rental_metadata?: Json | null
           seller_id?: string
           status?: string | null
           tags?: string[] | null
