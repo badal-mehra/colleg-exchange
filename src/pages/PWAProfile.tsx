@@ -224,7 +224,7 @@ import {
   LogOut,
   ChevronRight,
   Star,
-  Loader2, // Added for loading spinner
+  Loader2,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -242,12 +242,63 @@ interface Profile {
 
 const PWAProfile = () => {
   const navigate = useNavigate();
-  // FIX: Destructure loading to prevent race conditions
   const { user, signOut, loading: authLoading } = useAuth();
+  
+  // State
   const [profile, setProfile] = useState<Profile | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
-  // FIX: Handle Auth Loading State immediately
+  // ------------------------------------------------------------------
+  // 1. AUTH GUARD EFFECT (The Robust Fix)
+  // Handles redirects automatically without rendering a "dead" UI
+  // ------------------------------------------------------------------
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth", { replace: true });
+    }
+  }, [authLoading, user, navigate]);
+
+  // ------------------------------------------------------------------
+  // 2. DATA FETCH EFFECT
+  // Only runs when we have a valid user
+  // ------------------------------------------------------------------
+  useEffect(() => {
+    // If auth is loading or no user, skip fetch (handled by effect above)
+    if (authLoading || !user) return;
+
+    const fetchProfile = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("full_name, avatar_url, university, points, is_verified, mck_id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (error) {
+          console.error("Error fetching profile:", error);
+        } else {
+          setProfile(data);
+        }
+      } catch (err) {
+        console.error("Unexpected error:", err);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [user, authLoading]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth", { replace: true });
+  };
+
+  // ------------------------------------------------------------------
+  // 3. RENDER GUARDS
+  // ------------------------------------------------------------------
+
+  // Guard A: Still checking Auth State
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -256,45 +307,25 @@ const PWAProfile = () => {
     );
   }
 
-  // FIX: Redirect if no user (Since we removed ProtectedRoute in App.tsx)
+  // Guard B: Auth failed (Redirecting via useEffect, return null to avoid flash)
   if (!user) {
-    // Optional: You can use a useEffect to navigate to avoid render-phase side effects
-    // but returning the Unauthenticated view or null + navigate is safer here.
+    return null; 
+  }
+
+  // Guard C: Auth passed, but Profile Data is fetching
+  // (Prevents "undefined" text or layout shifts)
+  if (dataLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-6">
-        <User className="h-16 w-16 text-muted-foreground mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Not Signed In</h2>
-        <p className="text-muted-foreground text-center mb-6">
-          Sign in to access your profile and settings
-        </p>
-        <Button onClick={() => navigate("/auth")} className="w-full max-w-xs">
-          Sign In
-        </Button>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Loading profile...</p>
       </div>
     );
   }
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      // User is guaranteed to exist here due to checks above
-      const { data } = await supabase
-        .from("profiles")
-        .select("full_name, avatar_url, university, points, is_verified, mck_id")
-        .eq("user_id", user.id)
-        .single();
-
-      setProfile(data);
-      setDataLoading(false);
-    };
-
-    fetchProfile();
-  }, [user]);
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/auth");
-  };
-
+  // ------------------------------------------------------------------
+  // 4. MAIN RENDER
+  // ------------------------------------------------------------------
   const menuItems = [
     {
       icon: User,
@@ -361,7 +392,7 @@ const PWAProfile = () => {
                   Verified
                 </Badge>
               )}
-              {profile?.points !== null && profile.points > 0 && (
+              {profile?.points !== null && (profile?.points ?? 0) > 0 && (
                 <Badge variant="outline" className="text-xs">
                   <Star className="h-3 w-3 mr-1" />
                   {profile.points} pts
