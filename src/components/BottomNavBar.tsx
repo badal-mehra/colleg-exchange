@@ -7,7 +7,7 @@ const navItems = [
   { to: "/my-chats", icon: MessageCircle, label: "Chats" },
   { to: "/sell", icon: PlusCircle, label: "Sell" },
   { to: "/my-orders", icon: ShoppingBag, label: "Orders" },
-  { to: "/profile", icon: User, label: "Profile" },
+  { to: "/pwa-profile", icon: User, label: "Me" },
 ];
 
 const BottomNavBar = () => {
