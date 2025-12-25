@@ -257,7 +257,7 @@ const AccountSettings = () => {
       </Card>
 
       {/* Notification Preferences */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Bell className="h-5 w-5 text-primary" />
@@ -296,10 +296,10 @@ const AccountSettings = () => {
             />
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Privacy & Security */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Shield className="h-5 w-5 text-primary" />
@@ -329,10 +329,10 @@ const AccountSettings = () => {
             <Switch defaultChecked />
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Danger Zone */}
-      <Card className="border-destructive/50">
+      {/* <Card className="border-destructive/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg text-destructive">
             <Trash2 className="h-5 w-5" />
@@ -391,7 +391,7 @@ const AccountSettings = () => {
             </AlertDialog>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 };
