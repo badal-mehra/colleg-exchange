@@ -13,6 +13,7 @@ import {
   X
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { subscribeToPush } from "@/hooks/usePushNotifications";
 
 interface Item {
   id: string;
