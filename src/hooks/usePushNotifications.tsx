@@ -6,7 +6,7 @@ export async function subscribeToPush(userId: string) {
 
   const sub = await reg.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: import.meta.env.VAPID_PUBLIC_KEY
+    applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY
   });
 
   await fetch("/api/save-push", {
