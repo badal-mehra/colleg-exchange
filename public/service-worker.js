@@ -115,19 +115,39 @@ self.addEventListener('fetch', (event) => {
 });
 // Notification
 
+// self.addEventListener("push", (event) => {
+//   if (!event.data) return;
+
+//   const data = event.data.json();
+
+//   const options = {
+//     body: data.body,
+//     icon: "/icons/icon-192.png",
+//     badge: "/icons/icon-192.png",
+//     data: {
+//       url: data.url || "/"
+//     }
+//   };
 self.addEventListener("push", (event) => {
-  if (!event.data) return;
+  let data = { title: "Notification", body: "New update", url: "/" };
 
-  const data = event.data.json();
-
-  const options = {
-    body: data.body,
-    icon: "/icons/icon-192.png",
-    badge: "/icons/icon-192.png",
-    data: {
-      url: data.url || "/"
+  if (event.data) {
+    try {
+      data = event.data.json(); // real push (JSON)
+    } catch {
+      data.body = event.data.text(); // DevTools test push
     }
-  };
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: "/icons/icon-192.png",
+      data: { url: data.url || "/" },
+    })
+  );
+});
+
 
   event.waitUntil(
     self.registration.showNotification(data.title, options)
