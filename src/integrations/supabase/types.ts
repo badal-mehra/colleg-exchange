@@ -627,6 +627,95 @@ export type Database = {
           },
         ]
       }
+      pg_listings: {
+        Row: {
+          alcohol_allowed: boolean | null
+          amenities: Json | null
+          area_locality: string
+          contact_method: string | null
+          created_at: string
+          distance_from_campus: string | null
+          electricity_included: boolean | null
+          food_included: boolean | null
+          for_gender: string
+          gate_timing: string | null
+          id: string
+          images: string[]
+          is_active: boolean | null
+          landmark: string | null
+          property_type: string
+          rent_per_month: number
+          security_deposit: number | null
+          seller_id: string
+          sharing_type: string
+          smoking_allowed: boolean | null
+          status: string | null
+          updated_at: string
+          views: number | null
+          visitors_allowed: boolean | null
+        }
+        Insert: {
+          alcohol_allowed?: boolean | null
+          amenities?: Json | null
+          area_locality: string
+          contact_method?: string | null
+          created_at?: string
+          distance_from_campus?: string | null
+          electricity_included?: boolean | null
+          food_included?: boolean | null
+          for_gender: string
+          gate_timing?: string | null
+          id?: string
+          images?: string[]
+          is_active?: boolean | null
+          landmark?: string | null
+          property_type: string
+          rent_per_month: number
+          security_deposit?: number | null
+          seller_id: string
+          sharing_type: string
+          smoking_allowed?: boolean | null
+          status?: string | null
+          updated_at?: string
+          views?: number | null
+          visitors_allowed?: boolean | null
+        }
+        Update: {
+          alcohol_allowed?: boolean | null
+          amenities?: Json | null
+          area_locality?: string
+          contact_method?: string | null
+          created_at?: string
+          distance_from_campus?: string | null
+          electricity_included?: boolean | null
+          food_included?: boolean | null
+          for_gender?: string
+          gate_timing?: string | null
+          id?: string
+          images?: string[]
+          is_active?: boolean | null
+          landmark?: string | null
+          property_type?: string
+          rent_per_month?: number
+          security_deposit?: number | null
+          seller_id?: string
+          sharing_type?: string
+          smoking_allowed?: boolean | null
+          status?: string | null
+          updated_at?: string
+          views?: number | null
+          visitors_allowed?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pg_listings_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       points_history: {
         Row: {
           created_at: string | null

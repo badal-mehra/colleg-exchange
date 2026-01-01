@@ -367,15 +367,26 @@ const Dashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Tab state for Products vs PG/Rooms
+  const [activeTab, setActiveTab] = useState<'products' | 'pg'>('products');
+
   // States
   const [profile, setProfile] = useState<Profile | null>(null);
   const [items, setItems] = useState<EnrichedItem[]>([]);
+  const [pgListings, setPgListings] = useState<any[]>([]);
   const [allCategories, setAllCategories] = useState<MinimalCategory[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
     searchTerm: '',
     selectedCategory: 'all',
     priceRange: 'all',
+  });
+
+  // PG Filters
+  const [pgFilters, setPgFilters] = useState({
+    propertyType: 'all',
+    sharingType: 'all',
+    rentRange: 'all',
   });
 
   const { searchTerm, selectedCategory, priceRange } = filters;
@@ -458,6 +469,36 @@ const Dashboard = () => {
     setLoading(false);
   }, [searchTerm, selectedCategory, priceRange, enrichItemsWithDetails, toast, categoriesLoaded]);
 
+  // Fetch PG Listings
+  const fetchPGListings = useCallback(async () => {
+    setLoading(true);
+    let query = supabase
+      .from('pg_listings')
+      .select('*')
+      .eq('is_active', true)
+      .neq('status', 'rented')
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (pgFilters.propertyType !== 'all') {
+      query = query.eq('property_type', pgFilters.propertyType);
+    }
+    if (pgFilters.sharingType !== 'all') {
+      query = query.eq('sharing_type', pgFilters.sharingType);
+    }
+    if (pgFilters.rentRange !== 'all') {
+      const [min, max] = pgFilters.rentRange.split('-').map(Number);
+      query = max ? query.gte('rent_per_month', min).lte('rent_per_month', max) : query.gte('rent_per_month', min);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('Error fetching PG listings:', error);
+    } else {
+      setPgListings(data || []);
+    }
+    setLoading(false);
+  }, [pgFilters]);
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase.from('profiles').select('*').eq('user_id', userId).single();
@@ -488,13 +529,25 @@ const Dashboard = () => {
   // Debounced Item Fetch on Filter/Search Change (Waits for categories to load)
   useEffect(() => {
     if (!categoriesLoaded) return;
+    if (activeTab !== 'products') return;
 
     const debounceTimer = setTimeout(() => {
       fetchItems();
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [searchTerm, selectedCategory, priceRange, fetchItems, categoriesLoaded]);
+  }, [searchTerm, selectedCategory, priceRange, fetchItems, categoriesLoaded, activeTab]);
+
+  // Fetch PG listings when tab changes or filters change
+  useEffect(() => {
+    if (activeTab !== 'pg') return;
+
+    const debounceTimer = setTimeout(() => {
+      fetchPGListings();
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [activeTab, pgFilters, fetchPGListings]);
 
 
   // --- HANDLERS (Wrapped in useCallback for memoization stability) ---
@@ -661,58 +714,75 @@ const Dashboard = () => {
       <ImageSliderSection />
 
       <div className="container mx-auto px-4 py-12">
-        {/* Search and Filters */}
-        <div className="mb-10 space-y-4 p-6 rounded-2xl shadow-xl bg-white/95 backdrop-blur-sm border border-gray-100">
-          <h2 className="text-3xl font-extrabold text-gray-800 flex items-center gap-2">
-            <Search className="h-7 w-7 text-primary" />
-            Discover Campus Deals
-          </h2>
+        {/* Tab Switcher */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'products' | 'pg')} className="mb-6">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="products" className="flex items-center gap-2">
+              <ShoppingBag className="h-4 w-4" />
+              Products
+            </TabsTrigger>
+            <TabsTrigger value="pg" className="flex items-center gap-2">
+              <Home className="h-4 w-4" />
+              PG / Rooms
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
-          {/* Desktop Filters */}
-          <div className="hidden lg:flex gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                placeholder="Search for items, categories, descriptions..."
-                value={searchTerm}
-                onChange={e => handleFilterChange('searchTerm', e.target.value)}
-                className="pl-10 h-11 border-gray-300 focus:border-primary/50 text-base"
-              />
-            </div>
-            <CategorySelect className="lg:w-60" />
-            <PriceRangeSelect className="lg:w-60" />
-          </div>
+        {/* Products Tab Content */}
+        {activeTab === 'products' && (
+          <>
+            {/* Search and Filters */}
+            <div className="mb-10 space-y-4 p-6 rounded-2xl shadow-xl bg-white/95 backdrop-blur-sm border border-gray-100">
+              <h2 className="text-3xl font-extrabold text-gray-800 flex items-center gap-2">
+                <Search className="h-7 w-7 text-primary" />
+                Discover Campus Deals
+              </h2>
 
-          {/* Mobile Filters */}
-          <div className="lg:hidden flex gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search items..."
-                value={searchTerm}
-                onChange={e => handleFilterChange('searchTerm', e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="flex-shrink-0">
-                  <Filter className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right">
-                <SheetHeader>
-                  <SheetTitle className="flex items-center gap-2"><Filter /> Advanced Filters</SheetTitle>
-                </SheetHeader>
-                <div className="flex flex-col gap-4 mt-6">
-                  <CategorySelect />
-                  <PriceRangeSelect />
-                  <Button>Apply Filters</Button>
+              {/* Desktop Filters */}
+              <div className="hidden lg:flex gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search for items, categories, descriptions..."
+                    value={searchTerm}
+                    onChange={e => handleFilterChange('searchTerm', e.target.value)}
+                    className="pl-10 h-11 border-gray-300 focus:border-primary/50 text-base"
+                  />
                 </div>
-              </SheetContent>
-            </Sheet>
-          </div>
-        </div>
+                <CategorySelect className="lg:w-60" />
+                <PriceRangeSelect className="lg:w-60" />
+              </div>
+
+              {/* Mobile Filters */}
+              <div className="lg:hidden flex gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search items..."
+                    value={searchTerm}
+                    onChange={e => handleFilterChange('searchTerm', e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="icon" className="flex-shrink-0">
+                      <Filter className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right">
+                    <SheetHeader>
+                      <SheetTitle className="flex items-center gap-2"><Filter /> Advanced Filters</SheetTitle>
+                    </SheetHeader>
+                    <div className="flex flex-col gap-4 mt-6">
+                      <CategorySelect />
+                      <PriceRangeSelect />
+                      <Button>Apply Filters</Button>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
+            </div>
 
         {/* Items Grid - OLX Style: 2 columns on mobile, 3 on tablet, 4 on desktop */}
         {loading ? (
@@ -744,19 +814,113 @@ const Dashboard = () => {
           <TooltipProvider>
             {/* OLX-Style Grid: 2 cols mobile, scales up */}
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-              {items.map((item) => (
-                <ItemCard
-                  key={item.id}
-                  item={item}
-                  user={user}
-                  isVerified={isVerified}
-                  navigate={navigate}
-                  handleStartConversation={handleStartConversation}
-                  handleFavoriteToggle={handleFavoriteToggle}
-                />
-              ))}
+                {items.map((item) => (
+                  <ItemCard
+                    key={item.id}
+                    item={item}
+                    user={user}
+                    isVerified={isVerified}
+                    navigate={navigate}
+                    handleStartConversation={handleStartConversation}
+                    handleFavoriteToggle={handleFavoriteToggle}
+                  />
+                ))}
+              </div>
+            </TooltipProvider>
+          )}
+          </>
+        )}
+
+        {/* PG/Rooms Tab Content */}
+        {activeTab === 'pg' && (
+          <>
+            {/* PG Filters */}
+            <div className="mb-10 space-y-4 p-6 rounded-2xl shadow-xl bg-white/95 backdrop-blur-sm border border-gray-100">
+              <h2 className="text-3xl font-extrabold text-gray-800 flex items-center gap-2">
+                <Home className="h-7 w-7 text-orange-500" />
+                Find PG & Rooms
+              </h2>
+
+              <div className="flex flex-wrap gap-4">
+                <Select value={pgFilters.propertyType} onValueChange={(v) => setPgFilters(prev => ({ ...prev, propertyType: v }))}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Property Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="pg">PG</SelectItem>
+                    <SelectItem value="room">Room</SelectItem>
+                    <SelectItem value="hostel">Hostel</SelectItem>
+                    <SelectItem value="flat">Flat</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={pgFilters.sharingType} onValueChange={(v) => setPgFilters(prev => ({ ...prev, sharingType: v }))}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Sharing Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sharing</SelectItem>
+                    <SelectItem value="single">Single</SelectItem>
+                    <SelectItem value="double">Double</SelectItem>
+                    <SelectItem value="triple">Triple</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={pgFilters.rentRange} onValueChange={(v) => setPgFilters(prev => ({ ...prev, rentRange: v }))}>
+                  <SelectTrigger className="w-44">
+                    <SelectValue placeholder="Rent Range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Prices</SelectItem>
+                    <SelectItem value="0-3000">Under ₹3,000</SelectItem>
+                    <SelectItem value="3000-5000">₹3,000 - ₹5,000</SelectItem>
+                    <SelectItem value="5000-8000">₹5,000 - ₹8,000</SelectItem>
+                    <SelectItem value="8000-12000">₹8,000 - ₹12,000</SelectItem>
+                    <SelectItem value="12000">₹12,000+</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </TooltipProvider>
+
+            {/* PG Listings Grid */}
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="animate-pulse bg-card border border-border rounded-xl overflow-hidden">
+                    <div className="aspect-[4/3] bg-muted"></div>
+                    <div className="p-4 space-y-3">
+                      <div className="h-6 bg-muted rounded w-1/2"></div>
+                      <div className="h-4 bg-muted rounded w-3/4"></div>
+                      <div className="h-4 bg-muted rounded w-1/3"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : pgListings.length === 0 ? (
+              <div className="text-center py-16 bg-card rounded-xl border border-dashed border-border">
+                <Home className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2 text-foreground">No PG/Rooms found</h3>
+                <p className="text-muted-foreground text-sm mb-4">
+                  Try adjusting your filters or be the first to list
+                </p>
+                <Button onClick={() => navigate('/sell')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  List a PG/Room
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {pgListings.map((listing) => (
+                  <PGListingCard
+                    key={listing.id}
+                    listing={listing}
+                    onClick={() => navigate(`/pg/${listing.id}`)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
