@@ -37,14 +37,24 @@ import Header from "@/components/Header";
 import SWUpdateToast from "@/components/SWUpdateToast";
 import InstallPrompt from "@/components/InstallPrompt";
 import BottomNavBar from "@/components/BottomNavBar";
-import { Loader2 } from "lucide-react"; // Optional: for a nice spinner in fallback
+import { Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { subscribeToPush } from "@/hooks/usePushNotifications";
 
 const MainLayout = () => {
   const [isPWA, setIsPWA] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     setIsPWA(window.matchMedia("(display-mode: standalone)").matches);
   }, []);
+
+  // Subscribe to push notifications when user logs in (PWA mode)
+  useEffect(() => {
+    if (user && isPWA && "Notification" in window && "serviceWorker" in navigator) {
+      subscribeToPush(user.id).catch(console.error);
+    }
+  }, [user, isPWA]);
 
   return (
     <div className="min-h-screen flex flex-col">
