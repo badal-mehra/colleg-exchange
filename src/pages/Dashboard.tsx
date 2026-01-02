@@ -9,12 +9,14 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Search, Plus, Filter, Heart, Eye, ShoppingBag,
-  Upload, Star, MapPin, ChevronLeft, ChevronRight, Crown, Zap, Clock, Loader2
+  Upload, Star, MapPin, ChevronLeft, ChevronRight, Crown, Zap, Clock, Loader2, Home
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import PGListingCard from '@/components/PGListingCard';
 
 
 // --- INTERFACES (Unchanged) ---
