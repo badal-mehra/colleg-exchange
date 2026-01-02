@@ -103,6 +103,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import ItemDetail from "./pages/ItemDetail";
+import PGDetail from "./pages/PGDetail";
 import KYC from "./pages/KYC";
 import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
@@ -110,6 +111,7 @@ import SellItem from "./pages/SellItem";
 import Chat from "./pages/Chat";
 import MyChats from "./pages/MyChats";
 import MyListings from "./pages/MyListings";
+import MyPGListings from "./pages/MyPGListings";
 import Leaderboard from "./pages/Leaderboard";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -157,6 +159,7 @@ const App = () => (
 
     {/** PUBLIC NO-LAYOUT PAGES */}
     <Route path="/item/:id" element={<ItemDetail />} />
+    <Route path="/pg/:id" element={<PGDetail />} />
     <Route path="/profile/:mckId" element={<PublicProfile />} />
 
     {/** PROTECTED NO-LAYOUT PAGES */}
@@ -167,6 +170,7 @@ const App = () => (
     <Route path="/my-cart" element={<ProtectedRoute><MyCart /></ProtectedRoute>} />
     <Route path="/my-reports" element={<ProtectedRoute><MyReports /></ProtectedRoute>} />
     <Route path="/my-listings" element={<ProtectedRoute><MyListings /></ProtectedRoute>} />
+    <Route path="/my-pg-listings" element={<ProtectedRoute><MyPGListings /></ProtectedRoute>} />
     <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
     <Route path="/scan-qr" element={<ProtectedRoute><ScanQR /></ProtectedRoute>} />
     <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
