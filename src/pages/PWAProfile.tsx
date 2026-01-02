@@ -225,6 +225,7 @@ import {
   ChevronRight,
   Star,
   Loader2,
+  Home,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -338,6 +339,12 @@ const PWAProfile = () => {
       label: "My Listings",
       description: "View and manage your items",
       path: "/my-listings",
+    },
+    {
+      icon: Home,
+      label: "My PG Listings",
+      description: "Manage your PG/Room listings",
+      path: "/my-pg-listings",
     },
     {
       icon: Heart,
