@@ -1,215 +1,3 @@
-// import React from "react";
-// import { useNavigate } from "react-router-dom";
-// import { useAuth } from "@/contexts/AuthContext";
-// import { supabase } from "@/integrations/supabase/client";
-// import { useEffect, useState } from "react";
-// import {
-//   User,
-//   Trophy,
-//   Package,
-//   Heart,
-//   ClipboardList,
-//   Shield,
-//   Flag,
-//   LogOut,
-//   ChevronRight,
-//   Settings,
-//   Star,
-// } from "lucide-react";
-// import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-// import { Button } from "@/components/ui/button";
-// import { Separator } from "@/components/ui/separator";
-// import { Badge } from "@/components/ui/badge";
-
-// interface Profile {
-//   full_name: string | null;
-//   avatar_url: string | null;
-//   university: string | null;
-//   points: number | null;
-//   is_verified: boolean | null;
-//   mck_id: string | null;
-// }
-
-// const PWAProfile = () => {
-//   const navigate = useNavigate();
-//   const { user, signOut } = useAuth();
-//   const [profile, setProfile] = useState<Profile | null>(null);
-//   const [loading, setLoading] = useState(true);
-
-//   useEffect(() => {
-//     const fetchProfile = async () => {
-//       if (!user) {
-//         setLoading(false);
-//         return;
-//       }
-
-//       const { data } = await supabase
-//         .from("profiles")
-//         .select("full_name, avatar_url, university, points, is_verified, mck_id")
-//         .eq("user_id", user.id)
-//         .single();
-
-//       setProfile(data);
-//       setLoading(false);
-//     };
-
-//     fetchProfile();
-//   }, [user]);
-
-//   const handleSignOut = async () => {
-//     await signOut();
-//     navigate("/auth");
-//   };
-
-//   const menuItems = [
-//     {
-//       icon: User,
-//       label: "Edit Profile",
-//       description: "Update your personal info",
-//       path: "/profile",
-//     },
-//     {
-//       icon: Package,
-//       label: "My Listings",
-//       description: "View and manage your items",
-//       path: "/my-listings",
-//     },
-//     {
-//       icon: Heart,
-//       label: "My Cart",
-//       description: "Your saved favorites",
-//       path: "/my-cart",
-//     },
-//     {
-//       icon: Trophy,
-//       label: "Leaderboard",
-//       description: "See top sellers",
-//       path: "/leaderboard",
-//     },
-//     {
-//       icon: ClipboardList,
-//       label: "My Reports",
-//       description: "View submitted reports",
-//       path: "/my-reports",
-//     },
-//     {
-//       icon: Shield,
-//       label: "KYC Verification",
-//       description: "Verify your identity",
-//       path: "/kyc",
-//     },
-//   ];
-
-//   if (!user) {
-//     return (
-//       <div className="flex flex-col items-center justify-center min-h-[60vh] p-6">
-//         <User className="h-16 w-16 text-muted-foreground mb-4" />
-//         <h2 className="text-xl font-semibold mb-2">Not Signed In</h2>
-//         <p className="text-muted-foreground text-center mb-6">
-//           Sign in to access your profile and settings
-//         </p>
-//         <Button onClick={() => navigate("/auth")} className="w-full max-w-xs">
-//           Sign In
-//         </Button>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="min-h-screen bg-background">
-//       {/* Profile Header */}
-//       <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6 pt-8">
-//         <div className="flex items-center gap-4">
-//           <Avatar className="h-20 w-20 ring-4 ring-background shadow-lg">
-//             <AvatarImage src={profile?.avatar_url || ""} />
-//             <AvatarFallback className="text-2xl bg-primary/20 text-primary">
-//               {profile?.full_name?.charAt(0) || user.email?.charAt(0)?.toUpperCase()}
-//             </AvatarFallback>
-//           </Avatar>
-//           <div className="flex-1 min-w-0">
-//             <h1 className="text-xl font-bold truncate">
-//               {profile?.full_name || "User"}
-//             </h1>
-//             {profile?.mck_id && (
-//               <p className="text-sm text-muted-foreground">
-//                 @{profile.mck_id}
-//               </p>
-//             )}
-//             <div className="flex items-center gap-2 mt-1">
-//               {profile?.is_verified && (
-//                 <Badge variant="secondary" className="text-xs">
-//                   <Shield className="h-3 w-3 mr-1" />
-//                   Verified
-//                 </Badge>
-//               )}
-//               {profile?.points !== null && profile.points > 0 && (
-//                 <Badge variant="outline" className="text-xs">
-//                   <Star className="h-3 w-3 mr-1" />
-//                   {profile.points} pts
-//                 </Badge>
-//               )}
-//             </div>
-//           </div>
-//         </div>
-//         {profile?.university && (
-//           <p className="text-sm text-muted-foreground mt-3 truncate">
-//             {profile.university}
-//           </p>
-//         )}
-//       </div>
-
-//       {/* Menu Items */}
-//       <div className="p-4">
-//         <div className="bg-card rounded-xl border border-border overflow-hidden">
-//           {menuItems.map((item, index) => {
-//             const Icon = item.icon;
-//             return (
-//               <React.Fragment key={item.path}>
-//                 <button
-//                   onClick={() => navigate(item.path)}
-//                   className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 active:bg-muted transition-colors text-left"
-//                 >
-//                   <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-//                     <Icon className="h-5 w-5 text-primary" />
-//                   </div>
-//                   <div className="flex-1 min-w-0">
-//                     <p className="font-medium">{item.label}</p>
-//                     <p className="text-sm text-muted-foreground truncate">
-//                       {item.description}
-//                     </p>
-//                   </div>
-//                   <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-//                 </button>
-//                 {index < menuItems.length - 1 && (
-//                   <Separator className="mx-4" />
-//                 )}
-//               </React.Fragment>
-//             );
-//           })}
-//         </div>
-
-//         {/* Sign Out Button */}
-//         <div className="mt-6">
-//           <Button
-//             variant="outline"
-//             onClick={handleSignOut}
-//             className="w-full h-12 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-//           >
-//             <LogOut className="h-5 w-5 mr-2" />
-//             Sign Out
-//           </Button>
-//         </div>
-
-//         {/* App Version */}
-//         <p className="text-center text-xs text-muted-foreground mt-6">
-//           MyCampusKart v1.0.0
-//         </p>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default PWAProfile;
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -226,11 +14,17 @@ import {
   Star,
   Loader2,
   Home,
+  Settings,
+  HelpCircle,
+  Bell,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 interface Profile {
   full_name: string | null;
@@ -239,49 +33,56 @@ interface Profile {
   points: number | null;
   is_verified: boolean | null;
   mck_id: string | null;
+  deals_completed: number | null;
+  average_rating: number | null;
+}
+
+interface MenuItem {
+  icon: React.ElementType;
+  label: string;
+  description?: string;
+  path?: string;
+  action?: () => void;
+  badge?: string | number;
+  rightElement?: React.ReactNode;
+}
+
+interface MenuSection {
+  title: string;
+  items: MenuItem[];
 }
 
 const PWAProfile = () => {
   const navigate = useNavigate();
   const { user, signOut, loading: authLoading } = useAuth();
-  
-  // State
   const [profile, setProfile] = useState<Profile | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
 
-  // ------------------------------------------------------------------
-  // 1. AUTH GUARD EFFECT (The Robust Fix)
-  // Handles redirects automatically without rendering a "dead" UI
-  // ------------------------------------------------------------------
+  // Auth guard
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth", { replace: true });
     }
   }, [authLoading, user, navigate]);
 
-  // ------------------------------------------------------------------
-  // 2. DATA FETCH EFFECT
-  // Only runs when we have a valid user
-  // ------------------------------------------------------------------
+  // Fetch profile
   useEffect(() => {
-    // If auth is loading or no user, skip fetch (handled by effect above)
     if (authLoading || !user) return;
 
     const fetchProfile = async () => {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("full_name, avatar_url, university, points, is_verified, mck_id")
+          .select("full_name, avatar_url, university, points, is_verified, mck_id, deals_completed, average_rating")
           .eq("user_id", user.id)
           .single();
 
-        if (error) {
-          console.error("Error fetching profile:", error);
-        } else {
+        if (!error && data) {
           setProfile(data);
         }
       } catch (err) {
-        console.error("Unexpected error:", err);
+        console.error("Error fetching profile:", err);
       } finally {
         setDataLoading(false);
       }
@@ -290,16 +91,25 @@ const PWAProfile = () => {
     fetchProfile();
   }, [user, authLoading]);
 
+  // Check dark mode
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains("dark");
+    setDarkMode(isDark);
+  }, []);
+
+  const toggleDarkMode = () => {
+    const newMode = !darkMode;
+    setDarkMode(newMode);
+    document.documentElement.classList.toggle("dark", newMode);
+    localStorage.setItem("theme", newMode ? "dark" : "light");
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth", { replace: true });
   };
 
-  // ------------------------------------------------------------------
-  // 3. RENDER GUARDS
-  // ------------------------------------------------------------------
-
-  // Guard A: Still checking Auth State
+  // Loading states
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -308,13 +118,8 @@ const PWAProfile = () => {
     );
   }
 
-  // Guard B: Auth failed (Redirecting via useEffect, return null to avoid flash)
-  if (!user) {
-    return null; 
-  }
+  if (!user) return null;
 
-  // Guard C: Auth passed, but Profile Data is fetching
-  // (Prevents "undefined" text or layout shifts)
   if (dataLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-4">
@@ -324,141 +129,220 @@ const PWAProfile = () => {
     );
   }
 
-  // ------------------------------------------------------------------
-  // 4. MAIN RENDER
-  // ------------------------------------------------------------------
-  const menuItems = [
+  const menuSections: MenuSection[] = [
     {
-      icon: User,
-      label: "Edit Profile",
-      description: "Update your personal info",
-      path: "/profile",
+      title: "Listings",
+      items: [
+        {
+          icon: Package,
+          label: "My Listings",
+          description: "Manage your items for sale",
+          path: "/my-listings",
+        },
+        {
+          icon: Home,
+          label: "My PG Listings",
+          description: "Manage your PG/Room listings",
+          path: "/my-pg-listings",
+        },
+        {
+          icon: Heart,
+          label: "Saved Items",
+          description: "Your wishlisted items",
+          path: "/my-cart",
+        },
+      ],
     },
     {
-      icon: Package,
-      label: "My Listings",
-      description: "View and manage your items",
-      path: "/my-listings",
+      title: "Account",
+      items: [
+        {
+          icon: User,
+          label: "Edit Profile",
+          description: "Update your info & photo",
+          path: "/profile",
+        },
+        {
+          icon: Shield,
+          label: "KYC Verification",
+          description: profile?.is_verified ? "Verified ✓" : "Verify your identity",
+          path: "/kyc",
+          badge: profile?.is_verified ? undefined : "Required",
+        },
+        {
+          icon: ClipboardList,
+          label: "My Reports",
+          description: "View submitted reports",
+          path: "/my-reports",
+        },
+      ],
     },
     {
-      icon: Home,
-      label: "My PG Listings",
-      description: "Manage your PG/Room listings",
-      path: "/my-pg-listings",
-    },
-    {
-      icon: Heart,
-      label: "My Cart",
-      description: "Your saved favorites",
-      path: "/my-cart",
-    },
-    {
-      icon: Trophy,
-      label: "Leaderboard",
-      description: "See top sellers",
-      path: "/leaderboard",
-    },
-    {
-      icon: ClipboardList,
-      label: "My Reports",
-      description: "View submitted reports",
-      path: "/my-reports",
-    },
-    {
-      icon: Shield,
-      label: "KYC Verification",
-      description: "Verify your identity",
-      path: "/kyc",
+      title: "More",
+      items: [
+        {
+          icon: Trophy,
+          label: "Leaderboard",
+          description: "Top campus sellers",
+          path: "/leaderboard",
+        },
+        {
+          icon: Bell,
+          label: "Notifications",
+          description: "Manage notification settings",
+          path: "/profile",
+        },
+        {
+          icon: darkMode ? Sun : Moon,
+          label: "Dark Mode",
+          description: darkMode ? "Switch to light theme" : "Switch to dark theme",
+          rightElement: (
+            <Switch
+              checked={darkMode}
+              onCheckedChange={toggleDarkMode}
+              className="ml-auto"
+            />
+          ),
+        },
+        {
+          icon: HelpCircle,
+          label: "Help & Support",
+          description: "FAQ and contact us",
+          path: "/help",
+        },
+      ],
     },
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Profile Header */}
-      <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6 pt-8">
-        <div className="flex items-center gap-4">
-          <Avatar className="h-20 w-20 ring-4 ring-background shadow-lg">
-            <AvatarImage src={profile?.avatar_url || ""} />
-            <AvatarFallback className="text-2xl bg-primary/20 text-primary">
-              {profile?.full_name?.charAt(0) || user.email?.charAt(0)?.toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold truncate">
-              {profile?.full_name || "User"}
-            </h1>
-            {profile?.mck_id && (
-              <p className="text-sm text-muted-foreground">
-                @{profile.mck_id}
-              </p>
-            )}
-            <div className="flex items-center gap-2 mt-1">
-              {profile?.is_verified && (
-                <Badge variant="secondary" className="text-xs">
-                  <Shield className="h-3 w-3 mr-1" />
-                  Verified
-                </Badge>
+    <div className="min-h-screen bg-background pb-24">
+      {/* Profile Header Card */}
+      <div className="bg-gradient-to-br from-primary/15 via-primary/5 to-background">
+        <div className="px-5 pt-8 pb-6">
+          {/* Avatar & Info */}
+          <div className="flex items-center gap-4 mb-5">
+            <Avatar
+              className="h-20 w-20 ring-4 ring-background shadow-xl cursor-pointer active:scale-95 transition-transform"
+              onClick={() => navigate("/profile")}
+            >
+              <AvatarImage src={profile?.avatar_url || ""} />
+              <AvatarFallback className="text-2xl bg-primary/20 text-primary font-bold">
+                {profile?.full_name?.charAt(0) || user.email?.charAt(0)?.toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl font-bold truncate text-foreground">
+                {profile?.full_name || "User"}
+              </h1>
+              {profile?.mck_id && (
+                <p className="text-sm text-muted-foreground font-medium">
+                  @{profile.mck_id}
+                </p>
               )}
-              {profile?.points !== null && (profile?.points ?? 0) > 0 && (
-                <Badge variant="outline" className="text-xs">
-                  <Star className="h-3 w-3 mr-1" />
-                  {profile.points} pts
-                </Badge>
+              {profile?.university && (
+                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                  {profile.university}
+                </p>
               )}
             </div>
           </div>
+
+          {/* Stats Row */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-card rounded-xl p-3 text-center shadow-sm border border-border/50">
+              <p className="text-xl font-bold text-foreground">
+                {profile?.points || 0}
+              </p>
+              <p className="text-[11px] text-muted-foreground font-medium">Points</p>
+            </div>
+            <div className="bg-card rounded-xl p-3 text-center shadow-sm border border-border/50">
+              <p className="text-xl font-bold text-foreground">
+                {profile?.deals_completed || 0}
+              </p>
+              <p className="text-[11px] text-muted-foreground font-medium">Deals</p>
+            </div>
+            <div className="bg-card rounded-xl p-3 text-center shadow-sm border border-border/50">
+              <div className="flex items-center justify-center gap-1">
+                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                <p className="text-xl font-bold text-foreground">
+                  {profile?.average_rating?.toFixed(1) || "N/A"}
+                </p>
+              </div>
+              <p className="text-[11px] text-muted-foreground font-medium">Rating</p>
+            </div>
+          </div>
+
+          {/* Verification Badge */}
+          {profile?.is_verified && (
+            <div className="mt-4 flex items-center gap-2 bg-green-500/10 text-green-600 px-3 py-2 rounded-lg">
+              <Shield className="h-4 w-4" />
+              <span className="text-sm font-medium">Verified Student</span>
+            </div>
+          )}
         </div>
-        {profile?.university && (
-          <p className="text-sm text-muted-foreground mt-3 truncate">
-            {profile.university}
-          </p>
-        )}
       </div>
 
-      {/* Menu Items */}
-      <div className="p-4">
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
-          {menuItems.map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <React.Fragment key={item.path}>
-                <button
-                  onClick={() => navigate(item.path)}
-                  className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 active:bg-muted transition-colors text-left"
-                >
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium">{item.label}</p>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {item.description}
-                    </p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                </button>
-                {index < menuItems.length - 1 && (
-                  <Separator className="mx-4" />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
+      {/* Menu Sections */}
+      <div className="px-4 py-4 space-y-6">
+        {menuSections.map((section) => (
+          <div key={section.title}>
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-2">
+              {section.title}
+            </h2>
+            <div className="bg-card rounded-xl border border-border/50 overflow-hidden divide-y divide-border/50">
+              {section.items.map((item, index) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.label}
+                    onClick={() => item.path ? navigate(item.path) : item.action?.()}
+                    className={cn(
+                      "w-full flex items-center gap-3 p-4 text-left transition-colors",
+                      "hover:bg-muted/50 active:bg-muted",
+                      item.rightElement && "cursor-default hover:bg-transparent"
+                    )}
+                    disabled={!!item.rightElement}
+                  >
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Icon className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-foreground">{item.label}</p>
+                        {item.badge && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </div>
+                      {item.description && (
+                        <p className="text-sm text-muted-foreground truncate">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+                    {item.rightElement || (
+                      <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
 
         {/* Sign Out Button */}
-        <div className="mt-6">
-          <Button
-            variant="outline"
-            onClick={handleSignOut}
-            className="w-full h-12 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-          >
-            <LogOut className="h-5 w-5 mr-2" />
-            Sign Out
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          onClick={handleSignOut}
+          className="w-full h-12 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive rounded-xl"
+        >
+          <LogOut className="h-5 w-5 mr-2" />
+          Sign Out
+        </Button>
 
         {/* App Version */}
-        <p className="text-center text-xs text-muted-foreground mt-6">
+        <p className="text-center text-xs text-muted-foreground pt-2">
           MyCampusKart v1.0.0
         </p>
       </div>

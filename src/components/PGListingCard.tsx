@@ -8,20 +8,20 @@ interface PGListing {
   for_gender: string;
   sharing_type: string;
   rent_per_month: number;
-  security_deposit: number;
-  electricity_included: boolean;
-  food_included: boolean;
+  security_deposit?: number | null;
+  electricity_included?: boolean | null;
+  food_included?: boolean | null;
   area_locality: string;
-  distance_from_campus: string | null;
-  amenities: string[];
+  distance_from_campus?: string | null;
+  amenities?: any;
   images: string[];
-  views: number;
+  views?: number | null;
   created_at: string;
 }
 
 interface PGListingCardProps {
   listing: PGListing;
-  onClick: () => void;
+  onClick?: () => void;
 }
 
 const getThumb = (url: string) => {
@@ -31,7 +31,7 @@ const getThumb = (url: string) => {
   return url;
 };
 
-const PGListingCard: React.FC<PGListingCardProps> = memo(({ listing, onClick }) => {
+const PGListingCard: React.FC<PGListingCardProps> = memo(({ listing, onClick = () => {} }) => {
   const thumbnailImage = useMemo(() => {
     return listing.images[0] ? getThumb(listing.images[0]) : '/placeholder.svg';
   }, [listing.images]);
@@ -144,7 +144,7 @@ const PGListingCard: React.FC<PGListingCardProps> = memo(({ listing, onClick }) 
               <Utensils className="h-3 w-3" /> Food
             </span>
           )}
-          {listing.amenities?.includes('wifi') && (
+          {(Array.isArray(listing.amenities) ? listing.amenities.includes('wifi') : false) && (
             <span className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-full">
               <Wifi className="h-3 w-3" /> WiFi
             </span>
@@ -154,8 +154,8 @@ const PGListingCard: React.FC<PGListingCardProps> = memo(({ listing, onClick }) 
         {/* Footer */}
         <div className="flex items-center justify-between pt-2 border-t border-border/50 text-xs text-muted-foreground">
           <span>{timeAgo}</span>
-          {listing.security_deposit > 0 && (
-            <span>Deposit: ₹{listing.security_deposit.toLocaleString()}</span>
+          {(listing.security_deposit ?? 0) > 0 && (
+            <span>Deposit: ₹{listing.security_deposit?.toLocaleString()}</span>
           )}
         </div>
       </div>
