@@ -102,6 +102,7 @@ import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
+import PWADashboard from "./pages/PWADashboard";
 import ItemDetail from "./pages/ItemDetail";
 import PGDetail from "./pages/PGDetail";
 import KYC from "./pages/KYC";
@@ -122,6 +123,15 @@ import MyReports from "./pages/MyReports";
 import StaticPage from "./pages/StaticPage";
 import PWAProfile from "./pages/PWAProfile";
 
+// PWA Dashboard wrapper that checks display mode
+const SmartDashboard = () => {
+  const isPWA = typeof window !== 'undefined' && (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (window.navigator as any).standalone === true
+  );
+  return isPWA ? <PWADashboard /> : <Dashboard />;
+};
+
 const App = () => (
   <Routes>
     {/** ROUTES WITH HEADER + FOOTER (MainLayout) */}
@@ -131,7 +141,7 @@ const App = () => (
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <SmartDashboard />
           </ProtectedRoute>
         }
       />

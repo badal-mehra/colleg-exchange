@@ -31,7 +31,7 @@
 
 // export default MainLayout;
 import React, { useEffect, useState, Suspense } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { Footer } from "@/components/Footer";
 import Header from "@/components/Header";
 import SWUpdateToast from "@/components/SWUpdateToast";
@@ -44,9 +44,12 @@ import { subscribeToPush } from "@/hooks/usePushNotifications";
 const MainLayout = () => {
   const [isPWA, setIsPWA] = useState(false);
   const { user } = useAuth();
+  const location = useLocation();
 
   useEffect(() => {
-    setIsPWA(window.matchMedia("(display-mode: standalone)").matches);
+    const checkPWA = window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true;
+    setIsPWA(checkPWA);
   }, []);
 
   // Subscribe to push notifications when user logs in (PWA mode)
@@ -60,7 +63,7 @@ const MainLayout = () => {
     <div className="min-h-screen flex flex-col">
       {!isPWA && <Header />}
 
-      <main className={isPWA ? "flex-1 pb-20" : "flex-1"}>
+      <main className={isPWA ? "flex-1" : "flex-1"}>
         {/* FIX: Wrapped Outlet in Suspense to prevent white screen on async operations */}
         <Suspense 
           fallback={

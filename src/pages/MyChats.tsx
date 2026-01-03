@@ -387,28 +387,26 @@ const MyChats = () => {
   const sellingConversations = conversations.filter(c => c.seller_id === user?.id);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       
-      {/* HEADER: Clean and Simple */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background shadow-md">
-        <div className="container mx-auto px-4 py-4 max-w-4xl">
-          <div className="flex items-center">
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate('/dashboard')}
-              className="hover:bg-primary/10 hover:text-primary transition-colors flex-shrink-0"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              <span className="font-medium">Back</span>
-            </Button>
-            <h1 className="text-2xl font-bold ml-4 text-foreground">
-              Conversations
-            </h1>
-          </div>
+      {/* HEADER: Native PWA Style */}
+      <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur-md border-b border-border/50 safe-area-top">
+        <div className="flex items-center h-14 px-4">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => navigate('/dashboard')}
+            className="h-9 w-9 rounded-full hover:bg-muted/80 active:scale-95 transition-all flex-shrink-0"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-lg font-semibold ml-2 text-foreground">
+            Chats
+          </h1>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 max-w-4xl">
+      <div className="px-4 py-4 max-w-4xl mx-auto">
         {conversations.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6 shadow-xl">
