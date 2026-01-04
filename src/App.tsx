@@ -109,6 +109,7 @@ import KYC from "./pages/KYC";
 import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
 import SellItem from "./pages/SellItem";
+import PWASellItem from "./pages/PWASellItem";
 import Chat from "./pages/Chat";
 import MyChats from "./pages/MyChats";
 import MyListings from "./pages/MyListings";
@@ -123,14 +124,17 @@ import MyReports from "./pages/MyReports";
 import StaticPage from "./pages/StaticPage";
 import PWAProfile from "./pages/PWAProfile";
 
+// Check if running as PWA
+const isPWA = () => typeof window !== 'undefined' && (
+  window.matchMedia("(display-mode: standalone)").matches ||
+  (window.navigator as any).standalone === true
+);
+
 // PWA Dashboard wrapper that checks display mode
-const SmartDashboard = () => {
-  const isPWA = typeof window !== 'undefined' && (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    (window.navigator as any).standalone === true
-  );
-  return isPWA ? <PWADashboard /> : <Dashboard />;
-};
+const SmartDashboard = () => isPWA() ? <PWADashboard /> : <Dashboard />;
+
+// PWA Sell wrapper
+const SmartSellItem = () => isPWA() ? <PWASellItem /> : <SellItem />;
 
 const App = () => (
   <Routes>
@@ -175,7 +179,7 @@ const App = () => (
     {/** PROTECTED NO-LAYOUT PAGES */}
     <Route path="/kyc" element={<ProtectedRoute><KYC /></ProtectedRoute>} />
     <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-    <Route path="/sell" element={<ProtectedRoute><SellItem /></ProtectedRoute>} />
+    <Route path="/sell" element={<ProtectedRoute><SmartSellItem /></ProtectedRoute>} />
     <Route path="/chat/:conversationId?" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
     <Route path="/my-cart" element={<ProtectedRoute><MyCart /></ProtectedRoute>} />
     <Route path="/my-reports" element={<ProtectedRoute><MyReports /></ProtectedRoute>} />

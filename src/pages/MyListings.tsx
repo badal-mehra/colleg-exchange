@@ -272,11 +272,11 @@ const MyListings = () => {
                   key={item.id} 
                   className="group hover:shadow-xl hover:shadow-primary/10 transition-all duration-500 overflow-hidden bg-card hover-scale"
                 >
-                  <div className="relative">
+                  <div className="relative h-48">
                     <ImageCarousel 
                       images={item.images} 
                       alt={item.title}
-                      className="h-48"
+                      className="h-48 w-full"
                     />
                       <Badge 
                         variant={item.is_sold ? 'destructive' : 'default'}

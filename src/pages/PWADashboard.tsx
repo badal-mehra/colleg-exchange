@@ -7,13 +7,13 @@ import { Loader2, Package, Home, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import PWASearchBar from "@/components/PWASearchBar";
 import PWACategoryChip from "@/components/PWACategoryChip";
 import PWAListingCard from "@/components/PWAListingCard";
 import PGListingCard from "@/components/PGListingCard";
+import PWAImageSlider from "@/components/PWAImageSlider";
 
 // Interfaces
 interface Profile {
@@ -334,7 +334,10 @@ const PWADashboard = () => {
       </header>
 
       {/* Content */}
-      <main className="px-4 pt-4">
+      <main className="px-4 pt-4 space-y-4">
+        {/* Image Slider */}
+        <PWAImageSlider />
+
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
