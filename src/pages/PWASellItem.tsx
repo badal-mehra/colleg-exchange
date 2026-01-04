@@ -1,0 +1,609 @@
+import React, { useEffect, useState, useMemo } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
+import PWAPageWrapper from '@/components/PWAPageWrapper';
+import ListingTypeSelector, { ListingType } from '@/components/ListingTypeSelector';
+import PGListingForm from '@/components/PGListingForm';
+import { 
+  Camera, 
+  X, 
+  ChevronRight, 
+  Coins, 
+  Loader2,
+  Tag,
+  Star,
+  Crown,
+  Zap,
+  MapPin,
+  Check,
+  Image as ImageIcon
+} from 'lucide-react';
+
+interface Category {
+  id: string;
+  name: string;
+  icon: string;
+}
+
+interface AdPackage {
+  id: string;
+  name: string;
+  ad_type: 'basic' | 'premium' | 'featured' | 'urgent';
+  points_cost: number;
+  duration_days: number;
+}
+
+const AD_PRIORITY_MAP: Record<AdPackage['ad_type'], number> = {
+  featured: 3,
+  premium: 2,
+  urgent: 1,
+  basic: 0,
+};
+
+const uploadToCloudinary = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', 'mycampuskart');
+
+  const res = await fetch(
+    'https://api.cloudinary.com/v1_1/dj6q4dvre/image/upload',
+    { method: 'POST', body: formData }
+  );
+
+  const data = await res.json();
+  if (!data.secure_url) {
+    throw new Error(data.error?.message || 'Upload failed');
+  }
+  return data.secure_url;
+};
+
+const PWASellItem = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  // Steps: 'type' -> 'photos' -> 'details' -> 'package' -> 'review'
+  const [step, setStep] = useState<'type' | 'photos' | 'details' | 'package' | 'review'>('type');
+  const [listingType, setListingType] = useState<ListingType | null>(null);
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [adPackages, setAdPackages] = useState<AdPackage[]>([]);
+  const [images, setImages] = useState<string[]>([]);
+  const [userPoints, setUserPoints] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    price: '',
+    condition: '',
+    category_id: '',
+    location: '',
+    ad_type: 'basic' as AdPackage['ad_type'],
+    is_negotiable: true,
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    const [categoriesRes, packagesRes, pointsRes] = await Promise.all([
+      supabase.from('categories').select('id, name, icon').order('name'),
+      supabase.from('ad_packages').select('*').order('points_cost'),
+      user ? supabase.from('profiles').select('campus_points').eq('user_id', user.id).single() : null,
+    ]);
+
+    if (categoriesRes.data) setCategories(categoriesRes.data);
+    if (packagesRes.data) {
+      setAdPackages(packagesRes.data as AdPackage[]);
+      const basic = (packagesRes.data as AdPackage[]).find(p => p.ad_type === 'basic');
+      if (basic) setFormData(prev => ({ ...prev, ad_type: basic.ad_type }));
+    }
+    if (pointsRes?.data) setUserPoints(pointsRes.data.campus_points || 0);
+  };
+
+  const selectedPackage = useMemo(() => {
+    return adPackages.find(pkg => pkg.ad_type === formData.ad_type) || null;
+  }, [adPackages, formData.ad_type]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    setUploading(true);
+    const newImages: string[] = [];
+
+    for (const file of Array.from(files)) {
+      if (images.length + newImages.length >= 5) break;
+      if (file.size > 5 * 1024 * 1024) {
+        toast({ title: 'Image too large', description: 'Max 5MB per image', variant: 'destructive' });
+        continue;
+      }
+
+      try {
+        const url = await uploadToCloudinary(file);
+        const optimizedUrl = url.replace('/upload/', '/upload/f_auto,q_auto,w_800/');
+        newImages.push(optimizedUrl);
+      } catch (error: any) {
+        toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
+      }
+    }
+
+    setImages(prev => [...prev, ...newImages]);
+    setUploading(false);
+    e.target.value = '';
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async () => {
+    if (!user || !selectedPackage) return;
+
+    const cost = selectedPackage.points_cost;
+    if (userPoints < cost) {
+      toast({ title: 'Insufficient points', description: `Need ${cost} points`, variant: 'destructive' });
+      return;
+    }
+
+    setLoading(true);
+
+    // Deduct points
+    const { error: pointsError } = await supabase
+      .from('profiles')
+      .update({ campus_points: userPoints - cost })
+      .eq('user_id', user.id);
+
+    if (pointsError) {
+      toast({ title: 'Error', description: 'Failed to process transaction', variant: 'destructive' });
+      setLoading(false);
+      return;
+    }
+
+    // Create listing
+    const { error: insertError } = await supabase.from('items').insert({
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      price: parseFloat(formData.price),
+      condition: formData.condition,
+      category_id: formData.category_id || null,
+      location: formData.location.trim() || null,
+      images,
+      seller_id: user.id,
+      ad_type: selectedPackage.ad_type,
+      ad_duration_days: selectedPackage.duration_days,
+      expires_at: new Date(Date.now() + selectedPackage.duration_days * 24 * 60 * 60 * 1000).toISOString(),
+      is_negotiable: formData.is_negotiable,
+      ad_priority: AD_PRIORITY_MAP[selectedPackage.ad_type],
+    });
+
+    if (insertError) {
+      // Rollback points
+      await supabase.from('profiles').update({ campus_points: userPoints }).eq('user_id', user.id);
+      toast({ title: 'Error', description: 'Failed to create listing', variant: 'destructive' });
+      setLoading(false);
+      return;
+    }
+
+    toast({ title: 'Success!', description: 'Your item is now listed' });
+    navigate('/');
+    setLoading(false);
+  };
+
+  const handleTypeSelect = (type: ListingType) => {
+    setListingType(type);
+    if (type === 'sell') {
+      setStep('photos');
+    }
+  };
+
+  const conditions = [
+    { value: 'new', label: 'Brand New', emoji: '✨' },
+    { value: 'like-new', label: 'Like New', emoji: '🌟' },
+    { value: 'good', label: 'Good', emoji: '👍' },
+    { value: 'fair', label: 'Fair', emoji: '👌' },
+    { value: 'poor', label: 'Poor', emoji: '⚠️' },
+  ];
+
+  const canProceedToDetails = images.length > 0;
+  const canProceedToPackage = formData.title && formData.description && formData.price && formData.condition;
+  const canSubmit = canProceedToPackage && selectedPackage && userPoints >= (selectedPackage?.points_cost || 0);
+
+  // Show PG form if PG type selected
+  if (listingType === 'pg') {
+    return (
+      <PWAPageWrapper title="List PG/Room" showBack onBack={() => setListingType(null)}>
+        <PGListingForm onBack={() => setListingType(null)} />
+      </PWAPageWrapper>
+    );
+  }
+
+  return (
+    <PWAPageWrapper 
+      title={step === 'type' ? 'Create Listing' : step === 'photos' ? 'Add Photos' : step === 'details' ? 'Item Details' : step === 'package' ? 'Choose Package' : 'Review'} 
+      showBack 
+      onBack={() => {
+        if (step === 'type') navigate(-1);
+        else if (step === 'photos') { setListingType(null); setStep('type'); }
+        else if (step === 'details') setStep('photos');
+        else if (step === 'package') setStep('details');
+        else if (step === 'review') setStep('package');
+      }}
+      rightAction={
+        <Badge variant="secondary" className="flex items-center gap-1 px-2 py-1">
+          <Coins className="h-3 w-3 text-yellow-500" />
+          <span className="text-xs font-semibold">{userPoints}</span>
+        </Badge>
+      }
+    >
+      {/* Step 1: Type Selection */}
+      {step === 'type' && !listingType && (
+        <div className="p-4">
+          <p className="text-muted-foreground text-sm mb-6 text-center">
+            What would you like to list today?
+          </p>
+          <ListingTypeSelector onSelect={handleTypeSelect} />
+        </div>
+      )}
+
+      {/* Step 2: Photos */}
+      {step === 'photos' && (
+        <div className="p-4 space-y-6">
+          {/* Progress */}
+          <div className="flex gap-1">
+            {['photos', 'details', 'package', 'review'].map((s, i) => (
+              <div key={s} className={`h-1 flex-1 rounded-full ${i === 0 ? 'bg-primary' : 'bg-muted'}`} />
+            ))}
+          </div>
+
+          <div className="text-center">
+            <h2 className="text-lg font-semibold">Add up to 5 photos</h2>
+            <p className="text-sm text-muted-foreground">First photo will be the cover image</p>
+          </div>
+
+          {/* Image Grid */}
+          <div className="grid grid-cols-3 gap-3">
+            {images.map((img, index) => (
+              <div key={index} className="relative aspect-square rounded-xl overflow-hidden bg-muted">
+                <img src={img} alt="" className="w-full h-full object-cover" />
+                {index === 0 && (
+                  <div className="absolute top-1 left-1 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded">
+                    Cover
+                  </div>
+                )}
+                <button
+                  onClick={() => removeImage(index)}
+                  className="absolute top-1 right-1 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center"
+                >
+                  <X className="h-3 w-3 text-white" />
+                </button>
+              </div>
+            ))}
+
+            {images.length < 5 && (
+              <label className="aspect-square rounded-xl border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center cursor-pointer active:bg-muted/50 transition-colors">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  disabled={uploading}
+                />
+                {uploading ? (
+                  <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+                ) : (
+                  <>
+                    <Camera className="h-8 w-8 text-muted-foreground mb-1" />
+                    <span className="text-xs text-muted-foreground">Add Photo</span>
+                  </>
+                )}
+              </label>
+            )}
+          </div>
+
+          {images.length === 0 && (
+            <p className="text-center text-sm text-destructive">Add at least 1 photo to continue</p>
+          )}
+
+          <Button
+            className="w-full h-12 rounded-xl text-base font-semibold"
+            disabled={!canProceedToDetails}
+            onClick={() => setStep('details')}
+          >
+            Continue
+            <ChevronRight className="h-5 w-5 ml-1" />
+          </Button>
+        </div>
+      )}
+
+      {/* Step 3: Details */}
+      {step === 'details' && (
+        <div className="p-4 space-y-5">
+          {/* Progress */}
+          <div className="flex gap-1">
+            {['photos', 'details', 'package', 'review'].map((s, i) => (
+              <div key={s} className={`h-1 flex-1 rounded-full ${i <= 1 ? 'bg-primary' : 'bg-muted'}`} />
+            ))}
+          </div>
+
+          {/* Title */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Title *</Label>
+            <Input
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              placeholder="What are you selling?"
+              className="h-12 rounded-xl text-base"
+            />
+          </div>
+
+          {/* Price */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Price (₹) *</Label>
+            <Input
+              type="number"
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+              placeholder="0"
+              className="h-12 rounded-xl text-base"
+            />
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="negotiable"
+                checked={formData.is_negotiable}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_negotiable: !!checked })}
+              />
+              <Label htmlFor="negotiable" className="text-sm text-muted-foreground">
+                Price is negotiable
+              </Label>
+            </div>
+          </div>
+
+          {/* Condition */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Condition *</Label>
+            <div className="flex flex-wrap gap-2">
+              {conditions.map((c) => (
+                <button
+                  key={c.value}
+                  onClick={() => setFormData({ ...formData, condition: c.value })}
+                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                    formData.condition === c.value
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {c.emoji} {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Category */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Category</Label>
+            <div className="flex flex-wrap gap-2">
+              {categories.slice(0, 8).map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setFormData({ ...formData, category_id: cat.id })}
+                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                    formData.category_id === cat.id
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {cat.icon} {cat.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Description *</Label>
+            <Textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Describe your item..."
+              className="min-h-[100px] rounded-xl text-base resize-none"
+            />
+          </div>
+
+          {/* Location */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Location</Label>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                placeholder="e.g., Hostel A"
+                className="h-12 rounded-xl text-base pl-10"
+              />
+            </div>
+          </div>
+
+          <Button
+            className="w-full h-12 rounded-xl text-base font-semibold"
+            disabled={!canProceedToPackage}
+            onClick={() => setStep('package')}
+          >
+            Continue
+            <ChevronRight className="h-5 w-5 ml-1" />
+          </Button>
+        </div>
+      )}
+
+      {/* Step 4: Package Selection */}
+      {step === 'package' && (
+        <div className="p-4 space-y-5">
+          {/* Progress */}
+          <div className="flex gap-1">
+            {['photos', 'details', 'package', 'review'].map((s, i) => (
+              <div key={s} className={`h-1 flex-1 rounded-full ${i <= 2 ? 'bg-primary' : 'bg-muted'}`} />
+            ))}
+          </div>
+
+          <div className="text-center">
+            <h2 className="text-lg font-semibold">Choose a package</h2>
+            <p className="text-sm text-muted-foreground">Boost your listing visibility</p>
+          </div>
+
+          <div className="space-y-3">
+            {adPackages.map((pkg) => {
+              const isSelected = formData.ad_type === pkg.ad_type;
+              const canAfford = userPoints >= pkg.points_cost;
+
+              return (
+                <button
+                  key={pkg.id}
+                  onClick={() => setFormData({ ...formData, ad_type: pkg.ad_type })}
+                  disabled={!canAfford}
+                  className={`w-full p-4 rounded-2xl text-left transition-all ${
+                    isSelected
+                      ? 'bg-primary/10 border-2 border-primary'
+                      : canAfford
+                      ? 'bg-muted/50 border-2 border-transparent'
+                      : 'bg-muted/30 border-2 border-transparent opacity-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        pkg.ad_type === 'featured' ? 'bg-yellow-500/20' :
+                        pkg.ad_type === 'premium' ? 'bg-purple-500/20' :
+                        pkg.ad_type === 'urgent' ? 'bg-red-500/20' :
+                        'bg-muted'
+                      }`}>
+                        {pkg.ad_type === 'featured' && <Star className="h-5 w-5 text-yellow-500" />}
+                        {pkg.ad_type === 'premium' && <Crown className="h-5 w-5 text-purple-500" />}
+                        {pkg.ad_type === 'urgent' && <Zap className="h-5 w-5 text-red-500" />}
+                        {pkg.ad_type === 'basic' && <Tag className="h-5 w-5 text-muted-foreground" />}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">{pkg.name}</h3>
+                        <p className="text-xs text-muted-foreground">{pkg.duration_days} days listing</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`font-bold ${canAfford ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {pkg.points_cost} pts
+                      </span>
+                      {isSelected && (
+                        <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                          <Check className="h-4 w-4 text-primary-foreground" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <Button
+            className="w-full h-12 rounded-xl text-base font-semibold"
+            onClick={() => setStep('review')}
+          >
+            Review Listing
+            <ChevronRight className="h-5 w-5 ml-1" />
+          </Button>
+        </div>
+      )}
+
+      {/* Step 5: Review */}
+      {step === 'review' && (
+        <div className="p-4 space-y-5">
+          {/* Progress */}
+          <div className="flex gap-1">
+            {['photos', 'details', 'package', 'review'].map((s, i) => (
+              <div key={s} className="h-1 flex-1 rounded-full bg-primary" />
+            ))}
+          </div>
+
+          <div className="text-center">
+            <h2 className="text-lg font-semibold">Review your listing</h2>
+          </div>
+
+          {/* Preview Card */}
+          <div className="bg-card rounded-2xl overflow-hidden border border-border shadow-sm">
+            {images[0] && (
+              <img src={images[0]} alt="" className="w-full h-48 object-cover" />
+            )}
+            <div className="p-4 space-y-2">
+              <h3 className="font-semibold text-lg">{formData.title}</h3>
+              <p className="text-xl font-bold text-primary">₹{parseInt(formData.price).toLocaleString()}</p>
+              <p className="text-sm text-muted-foreground line-clamp-2">{formData.description}</p>
+              <div className="flex gap-2 flex-wrap">
+                <Badge variant="secondary">{formData.condition}</Badge>
+                {formData.is_negotiable && <Badge variant="outline">Negotiable</Badge>}
+                {formData.location && (
+                  <Badge variant="outline" className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3" /> {formData.location}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Package Summary */}
+          {selectedPackage && (
+            <div className="bg-muted/50 rounded-xl p-4 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Package:</span>
+                <span className="font-semibold">{selectedPackage.name}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Duration:</span>
+                <span>{selectedPackage.duration_days} days</span>
+              </div>
+              <div className="flex justify-between items-center border-t pt-2 mt-2">
+                <span className="font-semibold">Total Cost:</span>
+                <span className="font-bold text-primary">{selectedPackage.points_cost} points</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Your Balance:</span>
+                <span className={userPoints >= selectedPackage.points_cost ? 'text-green-600' : 'text-destructive'}>
+                  {userPoints} points
+                </span>
+              </div>
+            </div>
+          )}
+
+          <Button
+            className="w-full h-12 rounded-xl text-base font-semibold"
+            disabled={!canSubmit || loading}
+            onClick={handleSubmit}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                Publishing...
+              </>
+            ) : (
+              <>
+                Publish Listing
+                <Check className="h-5 w-5 ml-1" />
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+    </PWAPageWrapper>
+  );
+};
+
+export default PWASellItem;
