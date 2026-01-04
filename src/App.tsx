@@ -19,7 +19,9 @@ import PublicProfile from "./pages/PublicProfile";
 import SellItem from "./pages/SellItem";
 import PWASellItem from "./pages/PWASellItem";
 import Chat from "./pages/Chat";
+import PWAChat from "./pages/PWAChat";
 import MyChats from "./pages/MyChats";
+import PWAChats from "./pages/PWAChats";
 import MyListings from "./pages/MyListings";
 import MyPGListings from "./pages/MyPGListings";
 import Leaderboard from "./pages/Leaderboard";
@@ -44,6 +46,10 @@ const SmartDashboard = () => isPWA() ? <PWADashboard /> : <Dashboard />;
 // PWA Sell wrapper
 const SmartSellItem = () => isPWA() ? <PWASellItem /> : <SellItem />;
 
+// PWA Chat wrappers
+const SmartChat = () => isPWA() ? <PWAChat /> : <Chat />;
+const SmartChats = () => isPWA() ? <PWAChats /> : <MyChats />;
+
 const App = () => (
   <Routes>
     {/** ROUTES WITH HEADER + FOOTER (MainLayout) */}
@@ -61,7 +67,7 @@ const App = () => (
       {/* FIX: Removed ProtectedRoute wrapper. PWAProfile now handles its own auth check to prevent white-screen race conditions. */}
       <Route path="/pwa-profile" element={<PWAProfile />} />
       
-      <Route path="/my-chats" element={<ProtectedRoute><MyChats /></ProtectedRoute>} />
+      <Route path="/my-chats" element={<ProtectedRoute><SmartChats /></ProtectedRoute>} />
       <Route path="/my-orders" element={<ProtectedRoute><MyOrders /></ProtectedRoute>} />
     </Route>
 
@@ -88,7 +94,7 @@ const App = () => (
     <Route path="/kyc" element={<ProtectedRoute><KYC /></ProtectedRoute>} />
     <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
     <Route path="/sell" element={<ProtectedRoute><SmartSellItem /></ProtectedRoute>} />
-    <Route path="/chat/:conversationId?" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+    <Route path="/chat/:conversationId?" element={<ProtectedRoute><SmartChat /></ProtectedRoute>} />
     <Route path="/my-cart" element={<ProtectedRoute><MyCart /></ProtectedRoute>} />
     <Route path="/my-reports" element={<ProtectedRoute><MyReports /></ProtectedRoute>} />
     <Route path="/my-listings" element={<ProtectedRoute><MyListings /></ProtectedRoute>} />
