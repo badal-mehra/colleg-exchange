@@ -40,14 +40,14 @@ const PWAPageWrapper: React.FC<PWAPageWrapperProps> = ({
     <div
       className={cn(
         "min-h-screen bg-background",
-        "pb-20", // Space for bottom nav
+        "pb-20 md:pb-6", // Space for bottom nav on mobile, less on desktop
         className
       )}
     >
       {/* Header */}
       {(title || showBack || rightAction) && (
         <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/50 safe-area-top">
-          <div className="flex items-center justify-between h-14 px-4">
+          <div className="max-w-5xl mx-auto flex items-center justify-between h-14 md:h-16 px-4 md:px-6 lg:px-8">
             {/* Left - Back button */}
             <div className="flex-1 flex items-center">
               {showBack && (
@@ -62,7 +62,7 @@ const PWAPageWrapper: React.FC<PWAPageWrapperProps> = ({
 
             {/* Center - Title */}
             {title && (
-              <h1 className="text-base font-semibold text-foreground truncate">
+              <h1 className="text-base md:text-lg font-semibold text-foreground truncate">
                 {title}
               </h1>
             )}
@@ -76,7 +76,7 @@ const PWAPageWrapper: React.FC<PWAPageWrapperProps> = ({
       )}
 
       {/* Content */}
-      <div className={cn(!noPadding && !title && "px-4")}>
+      <div className={cn(!noPadding && !title && "px-4 md:px-6 lg:px-8")}>
         {children}
       </div>
     </div>

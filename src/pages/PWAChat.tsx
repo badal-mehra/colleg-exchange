@@ -509,7 +509,7 @@ const PWAChat = () => {
     <div className="flex flex-col h-screen bg-background">
       {/* Native-style Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-xl border-b safe-area-top">
-        <div className="flex items-center gap-3 px-2 py-3">
+        <div className="max-w-4xl mx-auto flex items-center gap-3 px-2 md:px-4 py-3">
           <Button 
             variant="ghost" 
             size="icon"
@@ -524,7 +524,7 @@ const PWAChat = () => {
             onClick={navigateToProfile}
           >
             <div className="relative">
-              <Avatar className="h-10 w-10 ring-2 ring-background shadow-md">
+              <Avatar className="h-10 w-10 md:h-12 md:w-12 ring-2 ring-background shadow-md">
                 <AvatarImage src={getOtherUserAvatarUrl} alt={otherUser.full_name} />
                 <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold">
                   {otherUser.full_name?.charAt(0) || <User className="h-5 w-5" />}
@@ -537,14 +537,14 @@ const PWAChat = () => {
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <h2 className="font-semibold text-base truncate">
+                <h2 className="font-semibold text-base md:text-lg truncate">
                   {otherUser.full_name || 'User'}
                 </h2>
                 {otherUser.verification_status === 'approved' && (
                   <Shield className="h-4 w-4 fill-green-500 text-green-500 flex-shrink-0" />
                 )}
               </div>
-              <p className={`text-xs truncate ${isOtherUserOnline ? 'text-green-500 font-medium' : 'text-muted-foreground'}`}>
+              <p className={`text-xs md:text-sm truncate ${isOtherUserOnline ? 'text-green-500 font-medium' : 'text-muted-foreground'}`}>
                 {isOtherUserOnline ? 'Online' : formatLastSeen(lastSeen)}
               </p>
             </div>
@@ -553,7 +553,7 @@ const PWAChat = () => {
           <Button 
             variant="ghost" 
             size="icon"
-            className="h-10 w-10 rounded-full hover:bg-muted"
+            className="h-10 w-10 rounded-full hover:bg-muted hidden md:flex"
           >
             <Phone className="h-5 w-5" />
           </Button>
@@ -569,10 +569,10 @@ const PWAChat = () => {
         {/* Item Preview Bar */}
         {conversation.items && (
           <div 
-            className="flex items-center gap-3 px-4 py-2 bg-muted/50 border-t cursor-pointer active:bg-muted transition-colors"
+            className="max-w-4xl mx-auto flex items-center gap-3 px-4 py-2 bg-muted/50 border-t cursor-pointer active:bg-muted transition-colors"
             onClick={() => navigate(`/item/${conversation.items.id}`)}
           >
-            <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
               {conversation.items.images?.[0] ? (
                 <img 
                   src={conversation.items.images[0]} 
@@ -586,8 +586,8 @@ const PWAChat = () => {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{conversation.items.title}</p>
-              <p className="text-xs text-primary font-semibold">₹{conversation.items.price.toLocaleString()}</p>
+              <p className="text-sm md:text-base font-medium truncate">{conversation.items.title}</p>
+              <p className="text-xs md:text-sm text-primary font-semibold">₹{conversation.items.price.toLocaleString()}</p>
             </div>
           </div>
         )}
@@ -597,11 +597,12 @@ const PWAChat = () => {
       <div 
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-3 py-4"
+        className="flex-1 overflow-y-auto px-3 md:px-6 py-4"
         style={{ 
           backgroundImage: 'radial-gradient(circle at 50% 50%, hsl(var(--muted)/0.3) 0%, transparent 100%)'
         }}
       >
+        <div className="max-w-4xl mx-auto">
         {fetchingOldMessages && (
           <div className="flex justify-center py-3">
             <div className="bg-muted/80 backdrop-blur-sm rounded-full px-4 py-2">
@@ -669,7 +670,7 @@ const PWAChat = () => {
                         </div>
                       )}
                       
-                      <div className={`max-w-[75%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+                      <div className={`max-w-[75%] md:max-w-[60%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
                         <div
                           className={`
                             px-4 py-2.5 text-sm leading-relaxed break-words whitespace-pre-wrap
@@ -718,11 +719,12 @@ const PWAChat = () => {
             <div ref={messagesEndRef} />
           </>
         )}
+        </div>
       </div>
 
       {/* Native-style Input */}
-      <div className="border-t bg-background/95 backdrop-blur-xl p-3 safe-area-bottom">
-        <form onSubmit={sendMessage} className="flex items-center gap-2">
+      <div className="border-t bg-background/95 backdrop-blur-xl p-3 md:p-4 safe-area-bottom">
+        <form onSubmit={sendMessage} className="max-w-4xl mx-auto flex items-center gap-2 md:gap-3">
           <div className="flex-1 relative">
             <Input
               ref={inputRef}
@@ -732,7 +734,7 @@ const PWAChat = () => {
                 handleTyping();
               }}
               placeholder="Message..."
-              className="w-full rounded-full pl-4 pr-12 py-3 h-12 bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary text-base"
+              className="w-full rounded-full pl-4 pr-12 py-3 h-12 md:h-14 bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary text-base md:text-lg"
               disabled={sending}
             />
           </div>
@@ -741,7 +743,7 @@ const PWAChat = () => {
             size="icon"
             disabled={sending || !newMessage.trim()}
             className={`
-              rounded-full h-12 w-12 transition-all duration-200 shadow-lg
+              rounded-full h-12 w-12 md:h-14 md:w-14 transition-all duration-200 shadow-lg
               ${newMessage.trim() 
                 ? 'bg-primary hover:bg-primary/90 scale-100' 
                 : 'bg-muted hover:bg-muted scale-95 opacity-50'
@@ -749,9 +751,9 @@ const PWAChat = () => {
             `}
           >
             {sending ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-5 w-5 md:h-6 md:w-6 animate-spin" />
             ) : (
-              <Send className="h-5 w-5" />
+              <Send className="h-5 w-5 md:h-6 md:w-6" />
             )}
           </Button>
         </form>

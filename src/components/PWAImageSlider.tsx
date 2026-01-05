@@ -69,7 +69,7 @@ const PWAImageSlider = () => {
 
   if (loading) {
     return (
-      <div className="w-full h-36 bg-muted/50 rounded-2xl animate-pulse" />
+      <div className="w-full h-36 md:h-48 lg:h-56 bg-muted/50 rounded-2xl animate-pulse" />
     );
   }
 
@@ -93,20 +93,20 @@ const PWAImageSlider = () => {
             <img
               src={image.image_url}
               alt={image.title || 'Promotional banner'}
-              className="w-full h-36 object-cover"
+              className="w-full h-36 md:h-48 lg:h-56 object-cover"
               loading={index === 0 ? 'eager' : 'lazy'}
             />
             {/* Overlay gradient */}
             {(image.title || image.description) && (
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent">
-                <div className="absolute bottom-3 left-3 right-3">
+                <div className="absolute bottom-3 md:bottom-4 left-3 md:left-4 right-3 md:right-4">
                   {image.title && (
-                    <h3 className="text-white font-semibold text-sm line-clamp-1">
+                    <h3 className="text-white font-semibold text-sm md:text-base lg:text-lg line-clamp-1">
                       {image.title}
                     </h3>
                   )}
                   {image.description && (
-                    <p className="text-white/80 text-xs line-clamp-1 mt-0.5">
+                    <p className="text-white/80 text-xs md:text-sm line-clamp-1 mt-0.5">
                       {image.description}
                     </p>
                   )}
@@ -122,15 +122,15 @@ const PWAImageSlider = () => {
         <>
           <button
             onClick={(e) => { e.stopPropagation(); goToPrevious(); }}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 w-7 h-7 md:w-9 md:h-9 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-lg active:scale-95 transition-transform hover:bg-background"
           >
-            <ChevronLeft className="h-4 w-4 text-foreground" />
+            <ChevronLeft className="h-4 w-4 md:h-5 md:w-5 text-foreground" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); goToNext(); }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 w-7 h-7 md:w-9 md:h-9 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-lg active:scale-95 transition-transform hover:bg-background"
           >
-            <ChevronRight className="h-4 w-4 text-foreground" />
+            <ChevronRight className="h-4 w-4 md:h-5 md:w-5 text-foreground" />
           </button>
         </>
       )}
