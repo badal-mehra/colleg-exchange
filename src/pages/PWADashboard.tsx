@@ -203,15 +203,15 @@ const PWADashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 md:pb-6">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/50 safe-area-top">
-        <div className="px-4 py-3">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-3">
           {/* Top Row - Profile & Actions */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <Avatar
-                className="h-10 w-10 ring-2 ring-primary/20 cursor-pointer active:scale-95 transition-transform"
+                className="h-10 w-10 md:h-12 md:w-12 ring-2 ring-primary/20 cursor-pointer active:scale-95 transition-transform"
                 onClick={() => navigate("/pwa-profile")}
               >
                 <AvatarImage src={profile?.avatar_url || ""} />
@@ -221,7 +221,7 @@ const PWADashboard = () => {
               </Avatar>
               <div>
                 <p className="text-sm text-muted-foreground">Welcome back,</p>
-                <h1 className="font-semibold text-foreground leading-tight">
+                <h1 className="font-semibold text-foreground leading-tight md:text-lg">
                   {profile?.full_name || "User"}
                 </h1>
               </div>
@@ -238,21 +238,23 @@ const PWADashboard = () => {
           </div>
 
           {/* Search Bar */}
-          <PWASearchBar
-            value={searchTerm}
-            onChange={setSearchTerm}
-            placeholder={activeTab === "products" ? "Search products..." : "Search PG/Rooms..."}
-            showFilter
-            onFilterClick={() => setFilterOpen(true)}
-          />
+          <div className="max-w-2xl">
+            <PWASearchBar
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder={activeTab === "products" ? "Search products..." : "Search PG/Rooms..."}
+              showFilter
+              onFilterClick={() => setFilterOpen(true)}
+            />
+          </div>
         </div>
 
         {/* Tab Switcher */}
-        <div className="px-4 pb-3">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pb-3">
           <Tabs
             value={activeTab}
             onValueChange={(v) => setActiveTab(v as "products" | "pg")}
-            className="w-full"
+            className="w-full max-w-md"
           >
             <TabsList className="grid w-full grid-cols-2 h-10 p-1 bg-muted/70 rounded-lg">
               <TabsTrigger
@@ -275,7 +277,7 @@ const PWADashboard = () => {
 
         {/* Category Pills - Products Tab Only */}
         {activeTab === "products" && categories.length > 0 && (
-          <div className="px-4 pb-3 overflow-x-auto scrollbar-hide">
+          <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pb-3 overflow-x-auto scrollbar-hide">
             <div className="flex gap-2">
               <PWACategoryChip
                 label="All"
@@ -297,7 +299,7 @@ const PWADashboard = () => {
 
         {/* PG Filters */}
         {activeTab === "pg" && (
-          <div className="px-4 pb-3 overflow-x-auto scrollbar-hide">
+          <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pb-3 overflow-x-auto scrollbar-hide">
             <div className="flex gap-2">
               <PWACategoryChip
                 label="All Types"
@@ -334,7 +336,7 @@ const PWADashboard = () => {
       </header>
 
       {/* Content */}
-      <main className="px-4 pt-4 space-y-4">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-4 space-y-4">
         {/* Image Slider */}
         <PWAImageSlider />
 
@@ -357,7 +359,7 @@ const PWADashboard = () => {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
                 {items.map((item) => (
                   <PWAListingCard
                     key={item.id}
@@ -393,7 +395,7 @@ const PWADashboard = () => {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {pgListings.map((pg) => (
                   <PGListingCard key={pg.id} listing={pg} onClick={() => navigate(`/pg/${pg.id}`)} />
                 ))}

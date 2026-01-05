@@ -249,8 +249,8 @@ const PWASellItem = () => {
     >
       {/* Step 1: Type Selection */}
       {step === 'type' && !listingType && (
-        <div className="p-4">
-          <p className="text-muted-foreground text-sm mb-6 text-center">
+        <div className="p-4 md:p-6 max-w-2xl mx-auto">
+          <p className="text-muted-foreground text-sm md:text-base mb-6 text-center">
             What would you like to list today?
           </p>
           <ListingTypeSelector onSelect={handleTypeSelect} />
@@ -259,7 +259,7 @@ const PWASellItem = () => {
 
       {/* Step 2: Photos */}
       {step === 'photos' && (
-        <div className="p-4 space-y-6">
+        <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
           {/* Progress */}
           <div className="flex gap-1">
             {['photos', 'details', 'package', 'review'].map((s, i) => (
@@ -268,31 +268,31 @@ const PWASellItem = () => {
           </div>
 
           <div className="text-center">
-            <h2 className="text-lg font-semibold">Add up to 5 photos</h2>
-            <p className="text-sm text-muted-foreground">First photo will be the cover image</p>
+            <h2 className="text-lg md:text-xl font-semibold">Add up to 5 photos</h2>
+            <p className="text-sm md:text-base text-muted-foreground">First photo will be the cover image</p>
           </div>
 
           {/* Image Grid */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 md:gap-4">
             {images.map((img, index) => (
               <div key={index} className="relative aspect-square rounded-xl overflow-hidden bg-muted">
                 <img src={img} alt="" className="w-full h-full object-cover" />
                 {index === 0 && (
-                  <div className="absolute top-1 left-1 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded">
+                  <div className="absolute top-1 left-1 bg-primary text-primary-foreground text-[10px] md:text-xs px-1.5 py-0.5 rounded">
                     Cover
                   </div>
                 )}
                 <button
                   onClick={() => removeImage(index)}
-                  className="absolute top-1 right-1 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center"
+                  className="absolute top-1 right-1 w-6 h-6 md:w-8 md:h-8 bg-black/60 rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
                 >
-                  <X className="h-3 w-3 text-white" />
+                  <X className="h-3 w-3 md:h-4 md:w-4 text-white" />
                 </button>
               </div>
             ))}
 
             {images.length < 5 && (
-              <label className="aspect-square rounded-xl border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center cursor-pointer active:bg-muted/50 transition-colors">
+              <label className="aspect-square rounded-xl border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center cursor-pointer active:bg-muted/50 hover:bg-muted/30 transition-colors">
                 <input
                   type="file"
                   accept="image/*"
@@ -302,11 +302,11 @@ const PWASellItem = () => {
                   disabled={uploading}
                 />
                 {uploading ? (
-                  <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+                  <Loader2 className="h-8 w-8 md:h-10 md:w-10 text-muted-foreground animate-spin" />
                 ) : (
                   <>
-                    <Camera className="h-8 w-8 text-muted-foreground mb-1" />
-                    <span className="text-xs text-muted-foreground">Add Photo</span>
+                    <Camera className="h-8 w-8 md:h-10 md:w-10 text-muted-foreground mb-1" />
+                    <span className="text-xs md:text-sm text-muted-foreground">Add Photo</span>
                   </>
                 )}
               </label>
@@ -318,7 +318,7 @@ const PWASellItem = () => {
           )}
 
           <Button
-            className="w-full h-12 rounded-xl text-base font-semibold"
+            className="w-full h-12 md:h-14 rounded-xl text-base md:text-lg font-semibold"
             disabled={!canProceedToDetails}
             onClick={() => setStep('details')}
           >
@@ -330,7 +330,7 @@ const PWASellItem = () => {
 
       {/* Step 3: Details */}
       {step === 'details' && (
-        <div className="p-4 space-y-5">
+        <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
           {/* Progress */}
           <div className="flex gap-1">
             {['photos', 'details', 'package', 'review'].map((s, i) => (
@@ -340,24 +340,24 @@ const PWASellItem = () => {
 
           {/* Title */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Title *</Label>
+            <Label className="text-sm md:text-base font-medium">Title *</Label>
             <Input
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               placeholder="What are you selling?"
-              className="h-12 rounded-xl text-base"
+              className="h-12 md:h-14 rounded-xl text-base md:text-lg"
             />
           </div>
 
           {/* Price */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Price (₹) *</Label>
+            <Label className="text-sm md:text-base font-medium">Price (₹) *</Label>
             <Input
               type="number"
               value={formData.price}
               onChange={(e) => setFormData({ ...formData, price: e.target.value })}
               placeholder="0"
-              className="h-12 rounded-xl text-base"
+              className="h-12 md:h-14 rounded-xl text-base md:text-lg"
             />
             <div className="flex items-center gap-2">
               <Checkbox
@@ -365,7 +365,7 @@ const PWASellItem = () => {
                 checked={formData.is_negotiable}
                 onCheckedChange={(checked) => setFormData({ ...formData, is_negotiable: !!checked })}
               />
-              <Label htmlFor="negotiable" className="text-sm text-muted-foreground">
+              <Label htmlFor="negotiable" className="text-sm md:text-base text-muted-foreground">
                 Price is negotiable
               </Label>
             </div>
@@ -373,13 +373,13 @@ const PWASellItem = () => {
 
           {/* Condition */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Condition *</Label>
+            <Label className="text-sm md:text-base font-medium">Condition *</Label>
             <div className="flex flex-wrap gap-2">
               {conditions.map((c) => (
                 <button
                   key={c.value}
                   onClick={() => setFormData({ ...formData, condition: c.value })}
-                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                  className={`px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-sm md:text-base font-medium transition-all hover:opacity-90 ${
                     formData.condition === c.value
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-muted-foreground'
@@ -393,13 +393,13 @@ const PWASellItem = () => {
 
           {/* Category */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Category</Label>
+            <Label className="text-sm md:text-base font-medium">Category</Label>
             <div className="flex flex-wrap gap-2">
               {categories.slice(0, 8).map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setFormData({ ...formData, category_id: cat.id })}
-                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                  className={`px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-sm md:text-base font-medium transition-all hover:opacity-90 ${
                     formData.category_id === cat.id
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-muted-foreground'
@@ -413,31 +413,31 @@ const PWASellItem = () => {
 
           {/* Description */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Description *</Label>
+            <Label className="text-sm md:text-base font-medium">Description *</Label>
             <Textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Describe your item..."
-              className="min-h-[100px] rounded-xl text-base resize-none"
+              className="min-h-[100px] md:min-h-[120px] rounded-xl text-base md:text-lg resize-none"
             />
           </div>
 
           {/* Location */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Location</Label>
+            <Label className="text-sm md:text-base font-medium">Location</Label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 placeholder="e.g., Hostel A"
-                className="h-12 rounded-xl text-base pl-10"
+                className="h-12 md:h-14 rounded-xl text-base md:text-lg pl-10"
               />
             </div>
           </div>
 
           <Button
-            className="w-full h-12 rounded-xl text-base font-semibold"
+            className="w-full h-12 md:h-14 rounded-xl text-base md:text-lg font-semibold"
             disabled={!canProceedToPackage}
             onClick={() => setStep('package')}
           >
@@ -449,7 +449,7 @@ const PWASellItem = () => {
 
       {/* Step 4: Package Selection */}
       {step === 'package' && (
-        <div className="p-4 space-y-5">
+        <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
           {/* Progress */}
           <div className="flex gap-1">
             {['photos', 'details', 'package', 'review'].map((s, i) => (
@@ -458,11 +458,11 @@ const PWASellItem = () => {
           </div>
 
           <div className="text-center">
-            <h2 className="text-lg font-semibold">Choose a package</h2>
-            <p className="text-sm text-muted-foreground">Boost your listing visibility</p>
+            <h2 className="text-lg md:text-xl font-semibold">Choose a package</h2>
+            <p className="text-sm md:text-base text-muted-foreground">Boost your listing visibility</p>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 md:space-y-4">
             {adPackages.map((pkg) => {
               const isSelected = formData.ad_type === pkg.ad_type;
               const canAfford = userPoints >= pkg.points_cost;
@@ -472,7 +472,7 @@ const PWASellItem = () => {
                   key={pkg.id}
                   onClick={() => setFormData({ ...formData, ad_type: pkg.ad_type })}
                   disabled={!canAfford}
-                  className={`w-full p-4 rounded-2xl text-left transition-all ${
+                  className={`w-full p-4 md:p-5 rounded-2xl text-left transition-all hover:shadow-md ${
                     isSelected
                       ? 'bg-primary/10 border-2 border-primary'
                       : canAfford
@@ -481,29 +481,29 @@ const PWASellItem = () => {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    <div className="flex items-center gap-3 md:gap-4">
+                      <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center ${
                         pkg.ad_type === 'featured' ? 'bg-yellow-500/20' :
                         pkg.ad_type === 'premium' ? 'bg-purple-500/20' :
                         pkg.ad_type === 'urgent' ? 'bg-red-500/20' :
                         'bg-muted'
                       }`}>
-                        {pkg.ad_type === 'featured' && <Star className="h-5 w-5 text-yellow-500" />}
-                        {pkg.ad_type === 'premium' && <Crown className="h-5 w-5 text-purple-500" />}
-                        {pkg.ad_type === 'urgent' && <Zap className="h-5 w-5 text-red-500" />}
-                        {pkg.ad_type === 'basic' && <Tag className="h-5 w-5 text-muted-foreground" />}
+                        {pkg.ad_type === 'featured' && <Star className="h-5 w-5 md:h-6 md:w-6 text-yellow-500" />}
+                        {pkg.ad_type === 'premium' && <Crown className="h-5 w-5 md:h-6 md:w-6 text-purple-500" />}
+                        {pkg.ad_type === 'urgent' && <Zap className="h-5 w-5 md:h-6 md:w-6 text-red-500" />}
+                        {pkg.ad_type === 'basic' && <Tag className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground" />}
                       </div>
                       <div>
-                        <h3 className="font-semibold">{pkg.name}</h3>
-                        <p className="text-xs text-muted-foreground">{pkg.duration_days} days listing</p>
+                        <h3 className="font-semibold md:text-lg">{pkg.name}</h3>
+                        <p className="text-xs md:text-sm text-muted-foreground">{pkg.duration_days} days listing</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`font-bold ${canAfford ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <span className={`font-bold md:text-lg ${canAfford ? 'text-primary' : 'text-muted-foreground'}`}>
                         {pkg.points_cost} pts
                       </span>
                       {isSelected && (
-                        <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                        <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-primary flex items-center justify-center">
                           <Check className="h-4 w-4 text-primary-foreground" />
                         </div>
                       )}
@@ -515,7 +515,7 @@ const PWASellItem = () => {
           </div>
 
           <Button
-            className="w-full h-12 rounded-xl text-base font-semibold"
+            className="w-full h-12 md:h-14 rounded-xl text-base md:text-lg font-semibold"
             onClick={() => setStep('review')}
           >
             Review Listing
@@ -526,7 +526,7 @@ const PWASellItem = () => {
 
       {/* Step 5: Review */}
       {step === 'review' && (
-        <div className="p-4 space-y-5">
+        <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
           {/* Progress */}
           <div className="flex gap-1">
             {['photos', 'details', 'package', 'review'].map((s, i) => (
@@ -535,23 +535,23 @@ const PWASellItem = () => {
           </div>
 
           <div className="text-center">
-            <h2 className="text-lg font-semibold">Review your listing</h2>
+            <h2 className="text-lg md:text-xl font-semibold">Review your listing</h2>
           </div>
 
           {/* Preview Card */}
           <div className="bg-card rounded-2xl overflow-hidden border border-border shadow-sm">
             {images[0] && (
-              <img src={images[0]} alt="" className="w-full h-48 object-cover" />
+              <img src={images[0]} alt="" className="w-full h-48 md:h-64 object-cover" />
             )}
-            <div className="p-4 space-y-2">
-              <h3 className="font-semibold text-lg">{formData.title}</h3>
-              <p className="text-xl font-bold text-primary">₹{parseInt(formData.price).toLocaleString()}</p>
-              <p className="text-sm text-muted-foreground line-clamp-2">{formData.description}</p>
+            <div className="p-4 md:p-5 space-y-2">
+              <h3 className="font-semibold text-lg md:text-xl">{formData.title}</h3>
+              <p className="text-xl md:text-2xl font-bold text-primary">₹{parseInt(formData.price).toLocaleString()}</p>
+              <p className="text-sm md:text-base text-muted-foreground line-clamp-2">{formData.description}</p>
               <div className="flex gap-2 flex-wrap">
-                <Badge variant="secondary">{formData.condition}</Badge>
-                {formData.is_negotiable && <Badge variant="outline">Negotiable</Badge>}
+                <Badge variant="secondary" className="md:text-sm">{formData.condition}</Badge>
+                {formData.is_negotiable && <Badge variant="outline" className="md:text-sm">Negotiable</Badge>}
                 {formData.location && (
-                  <Badge variant="outline" className="flex items-center gap-1">
+                  <Badge variant="outline" className="flex items-center gap-1 md:text-sm">
                     <MapPin className="h-3 w-3" /> {formData.location}
                   </Badge>
                 )}
@@ -561,22 +561,22 @@ const PWASellItem = () => {
 
           {/* Package Summary */}
           {selectedPackage && (
-            <div className="bg-muted/50 rounded-xl p-4 space-y-2">
+            <div className="bg-muted/50 rounded-xl p-4 md:p-5 space-y-2 md:space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Package:</span>
-                <span className="font-semibold">{selectedPackage.name}</span>
+                <span className="text-muted-foreground md:text-lg">Package:</span>
+                <span className="font-semibold md:text-lg">{selectedPackage.name}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Duration:</span>
-                <span>{selectedPackage.duration_days} days</span>
+                <span className="text-muted-foreground md:text-lg">Duration:</span>
+                <span className="md:text-lg">{selectedPackage.duration_days} days</span>
               </div>
               <div className="flex justify-between items-center border-t pt-2 mt-2">
-                <span className="font-semibold">Total Cost:</span>
-                <span className="font-bold text-primary">{selectedPackage.points_cost} points</span>
+                <span className="font-semibold md:text-lg">Total Cost:</span>
+                <span className="font-bold text-primary md:text-lg">{selectedPackage.points_cost} points</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Your Balance:</span>
-                <span className={userPoints >= selectedPackage.points_cost ? 'text-green-600' : 'text-destructive'}>
+                <span className="text-muted-foreground md:text-lg">Your Balance:</span>
+                <span className={`md:text-lg ${userPoints >= selectedPackage.points_cost ? 'text-green-600' : 'text-destructive'}`}>
                   {userPoints} points
                 </span>
               </div>
@@ -584,7 +584,7 @@ const PWASellItem = () => {
           )}
 
           <Button
-            className="w-full h-12 rounded-xl text-base font-semibold"
+            className="w-full h-12 md:h-14 rounded-xl text-base md:text-lg font-semibold"
             disabled={!canSubmit || loading}
             onClick={handleSubmit}
           >

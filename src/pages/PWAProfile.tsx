@@ -215,32 +215,32 @@ const PWAProfile = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-24 md:pb-8">
       {/* Profile Header Card */}
       <div className="bg-gradient-to-br from-primary/15 via-primary/5 to-background">
-        <div className="px-5 pt-8 pb-6">
+        <div className="max-w-3xl mx-auto px-5 md:px-8 pt-8 pb-6">
           {/* Avatar & Info */}
-          <div className="flex items-center gap-4 mb-5">
+          <div className="flex items-center gap-4 md:gap-6 mb-5">
             <Avatar
-              className="h-20 w-20 ring-4 ring-background shadow-xl cursor-pointer active:scale-95 transition-transform"
+              className="h-20 w-20 md:h-28 md:w-28 ring-4 ring-background shadow-xl cursor-pointer active:scale-95 transition-transform"
               onClick={() => navigate("/profile")}
             >
               <AvatarImage src={profile?.avatar_url || ""} />
-              <AvatarFallback className="text-2xl bg-primary/20 text-primary font-bold">
+              <AvatarFallback className="text-2xl md:text-4xl bg-primary/20 text-primary font-bold">
                 {profile?.full_name?.charAt(0) || user.email?.charAt(0)?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-bold truncate text-foreground">
+              <h1 className="text-xl md:text-2xl font-bold truncate text-foreground">
                 {profile?.full_name || "User"}
               </h1>
               {profile?.mck_id && (
-                <p className="text-sm text-muted-foreground font-medium">
+                <p className="text-sm md:text-base text-muted-foreground font-medium">
                   @{profile.mck_id}
                 </p>
               )}
               {profile?.university && (
-                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                <p className="text-xs md:text-sm text-muted-foreground truncate mt-0.5">
                   {profile.university}
                 </p>
               )}
@@ -248,27 +248,27 @@ const PWAProfile = () => {
           </div>
 
           {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-card rounded-xl p-3 text-center shadow-sm border border-border/50">
-              <p className="text-xl font-bold text-foreground">
+          <div className="grid grid-cols-3 gap-3 md:gap-4">
+            <div className="bg-card rounded-xl p-3 md:p-4 text-center shadow-sm border border-border/50">
+              <p className="text-xl md:text-2xl font-bold text-foreground">
                 {profile?.points || 0}
               </p>
-              <p className="text-[11px] text-muted-foreground font-medium">Points</p>
+              <p className="text-[11px] md:text-sm text-muted-foreground font-medium">Points</p>
             </div>
-            <div className="bg-card rounded-xl p-3 text-center shadow-sm border border-border/50">
-              <p className="text-xl font-bold text-foreground">
+            <div className="bg-card rounded-xl p-3 md:p-4 text-center shadow-sm border border-border/50">
+              <p className="text-xl md:text-2xl font-bold text-foreground">
                 {profile?.deals_completed || 0}
               </p>
-              <p className="text-[11px] text-muted-foreground font-medium">Deals</p>
+              <p className="text-[11px] md:text-sm text-muted-foreground font-medium">Deals</p>
             </div>
-            <div className="bg-card rounded-xl p-3 text-center shadow-sm border border-border/50">
+            <div className="bg-card rounded-xl p-3 md:p-4 text-center shadow-sm border border-border/50">
               <div className="flex items-center justify-center gap-1">
-                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                <p className="text-xl font-bold text-foreground">
+                <Star className="h-4 w-4 md:h-5 md:w-5 fill-yellow-400 text-yellow-400" />
+                <p className="text-xl md:text-2xl font-bold text-foreground">
                   {profile?.average_rating?.toFixed(1) || "N/A"}
                 </p>
               </div>
-              <p className="text-[11px] text-muted-foreground font-medium">Rating</p>
+              <p className="text-[11px] md:text-sm text-muted-foreground font-medium">Rating</p>
             </div>
           </div>
 
@@ -283,10 +283,10 @@ const PWAProfile = () => {
       </div>
 
       {/* Menu Sections */}
-      <div className="px-4 py-4 space-y-6">
+      <div className="max-w-3xl mx-auto px-4 md:px-8 py-4 md:py-6 space-y-6">
         {menuSections.map((section) => (
           <div key={section.title}>
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-2">
+            <h2 className="text-xs md:text-sm font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-2">
               {section.title}
             </h2>
             <div className="bg-card rounded-xl border border-border/50 overflow-hidden divide-y divide-border/50">
@@ -297,18 +297,18 @@ const PWAProfile = () => {
                     key={item.label}
                     onClick={() => item.path ? navigate(item.path) : item.action?.()}
                     className={cn(
-                      "w-full flex items-center gap-3 p-4 text-left transition-colors",
+                      "w-full flex items-center gap-3 md:gap-4 p-4 md:p-5 text-left transition-colors",
                       "hover:bg-muted/50 active:bg-muted",
                       item.rightElement && "cursor-default hover:bg-transparent"
                     )}
                     disabled={!!item.rightElement}
                   >
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Icon className="h-5 w-5 text-primary" />
+                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Icon className="h-5 w-5 md:h-6 md:w-6 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium text-foreground">{item.label}</p>
+                        <p className="font-medium text-foreground md:text-lg">{item.label}</p>
                         {item.badge && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
                             {item.badge}
@@ -316,7 +316,7 @@ const PWAProfile = () => {
                         )}
                       </div>
                       {item.description && (
-                        <p className="text-sm text-muted-foreground truncate">
+                        <p className="text-sm md:text-base text-muted-foreground truncate">
                           {item.description}
                         </p>
                       )}
@@ -335,7 +335,7 @@ const PWAProfile = () => {
         <Button
           variant="outline"
           onClick={handleSignOut}
-          className="w-full h-12 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive rounded-xl"
+          className="w-full h-12 md:h-14 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive rounded-xl text-base md:text-lg"
         >
           <LogOut className="h-5 w-5 mr-2" />
           Sign Out
