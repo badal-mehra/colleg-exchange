@@ -37,6 +37,7 @@ import Header from "@/components/Header";
 import SWUpdateToast from "@/components/SWUpdateToast";
 import InstallPrompt from "@/components/InstallPrompt";
 import BottomNavBar from "@/components/BottomNavBar";
+import DesktopSidebar from "@/components/DesktopSidebar";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { subscribeToPush } from "@/hooks/usePushNotifications";
@@ -63,18 +64,23 @@ const MainLayout = () => {
     <div className="min-h-screen flex flex-col">
       {!isPWA && <Header />}
 
-      <main className={isPWA ? "flex-1" : "flex-1"}>
-        {/* FIX: Wrapped Outlet in Suspense to prevent white screen on async operations */}
-        <Suspense 
-          fallback={
-            <div className="flex items-center justify-center w-full h-full min-h-[50vh]">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          }
-        >
-          <Outlet />
-        </Suspense>
-      </main>
+      <div className="flex flex-1 w-full">
+        {/* Desktop Sidebar - visible on md+ screens in PWA mode */}
+        {isPWA && user && <DesktopSidebar />}
+        
+        <main className="flex-1">
+          {/* FIX: Wrapped Outlet in Suspense to prevent white screen on async operations */}
+          <Suspense 
+            fallback={
+              <div className="flex items-center justify-center w-full h-full min-h-[50vh]">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            }
+          >
+            <Outlet />
+          </Suspense>
+        </main>
+      </div>
 
       <SWUpdateToast />
       {!isPWA && <InstallPrompt />}
