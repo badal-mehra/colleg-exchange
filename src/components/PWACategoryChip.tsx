@@ -18,13 +18,13 @@ const PWACategoryChip: React.FC<PWACategoryChipProps> = ({
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all active:scale-95",
+        "flex items-center gap-1 px-2.5 md:px-3 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-all active:scale-95",
         isActive
           ? "bg-primary text-primary-foreground shadow-sm"
           : "bg-muted/70 text-muted-foreground hover:bg-muted"
       )}
     >
-      {icon && <span className="text-base">{icon}</span>}
+      {icon && <span className="text-sm md:text-base">{icon}</span>}
       <span>{label}</span>
     </button>
   );
