@@ -40,6 +40,7 @@ interface Item {
   created_at: string;
   ad_type: string;
   seller_id: string;
+  views: number;
 }
 
 interface PGListing {
@@ -113,7 +114,7 @@ const PWADashboard = () => {
   const fetchItems = useCallback(async () => {
     let query = supabase
       .from("items")
-      .select("id, title, price, images, location, condition, is_negotiable, created_at, ad_type, seller_id")
+      .select("id, title, price, images, location, condition, is_negotiable, created_at, ad_type, seller_id, views")
       .eq("is_sold", false)
       .order("ad_priority", { ascending: false })
       .order("created_at", { ascending: false })
@@ -373,6 +374,7 @@ const PWADashboard = () => {
                     createdAt={item.created_at}
                     imageCount={item.images.length}
                     adType={item.ad_type}
+                    views={item.views || 0}
                     onClick={() => navigate(`/item/${item.id}`)}
                     onFavorite={(e) => handleFavorite(e, item.id)}
                     showFavorite={!!user && item.seller_id !== user.id}
