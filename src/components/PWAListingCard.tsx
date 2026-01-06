@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from "react";
-import { Heart, MapPin, Clock, Eye, Loader2 } from "lucide-react";
+import { Heart, MapPin, Clock, Eye, Image, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,7 @@ interface PWAListingCardProps {
   createdAt: string;
   imageCount?: number;
   adType?: string;
+  views?: number;
   onClick: () => void;
   onFavorite?: (e: React.MouseEvent) => void;
   isFavoriting?: boolean;
@@ -39,6 +40,7 @@ const PWAListingCard: React.FC<PWAListingCardProps> = memo(
     createdAt,
     imageCount = 1,
     adType,
+    views = 0,
     onClick,
     onFavorite,
     isFavoriting = false,
@@ -125,11 +127,19 @@ const PWAListingCard: React.FC<PWAListingCardProps> = memo(
             </button>
           )}
 
-          {/* Image Count */}
+          {/* Image Count Badge */}
           {imageCount > 1 && (
+            <div className="absolute bottom-2 left-2 bg-foreground/80 text-background text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5">
+              <Image className="h-3 w-3" />
+              {imageCount}
+            </div>
+          )}
+
+          {/* View Count Badge */}
+          {views > 0 && (
             <div className="absolute bottom-2 right-2 bg-foreground/80 text-background text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5">
               <Eye className="h-3 w-3" />
-              {imageCount}
+              {views}
             </div>
           )}
         </div>
