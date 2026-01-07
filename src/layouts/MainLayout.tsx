@@ -48,8 +48,26 @@ const MainLayout = () => {
   const location = useLocation();
 
   useEffect(() => {
-    const checkPWA = window.matchMedia("(display-mode: standalone)").matches ||
+    // const checkPWA = window.matchMedia("(display-mode: standalone)").matches ||
+    //   (window.navigator as any).standalone === true;
+    const [isPWA, setIsPWA] = useState(false);
+const [isDesktop, setIsDesktop] = useState(false);
+
+useEffect(() => {
+  const check = () => {
+    const pwa =
+      window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as any).standalone === true;
+
+    setIsPWA(pwa);
+    setIsDesktop(window.innerWidth >= 768);
+  };
+
+  check();
+  window.addEventListener("resize", check);
+  return () => window.removeEventListener("resize", check);
+}, []);
+
     setIsPWA(checkPWA);
   }, []);
 
