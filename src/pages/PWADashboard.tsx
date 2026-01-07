@@ -204,25 +204,25 @@ const PWADashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-6">
+    <div className="min-h-screen bg-background pb-16">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/50 safe-area-top">
-        <div className="max-w-7xl mx-auto px-3 md:px-6 lg:px-8 py-2 md:py-3">
+        <div className="max-w-7xl mx-auto px-2 py-1.5">
           {/* Top Row - Profile & Actions */}
-          <div className="flex items-center justify-between mb-2 md:mb-3">
-            <div className="flex items-center gap-2 md:gap-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-2">
               <Avatar
-                className="h-8 w-8 md:h-10 md:w-10 ring-2 ring-primary/20 cursor-pointer active:scale-95 transition-transform"
+                className="h-7 w-7 ring-1 ring-primary/20 cursor-pointer active:scale-95 transition-transform"
                 onClick={() => navigate("/pwa-profile")}
               >
                 <AvatarImage src={profile?.avatar_url || ""} />
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs md:text-sm">
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-[10px]">
                   {profile?.full_name?.charAt(0) || "U"}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-[10px] md:text-xs text-muted-foreground">Welcome back,</p>
-                <h1 className="font-semibold text-sm md:text-base text-foreground leading-tight">
+                <p className="text-[9px] text-muted-foreground leading-none">Welcome back,</p>
+                <h1 className="font-semibold text-xs text-foreground leading-tight">
                   {profile?.full_name || "User"}
                 </h1>
               </div>
@@ -232,45 +232,43 @@ const PWADashboard = () => {
               size="icon"
               onClick={handleRefresh}
               disabled={refreshing}
-              className="h-8 w-8 md:h-10 md:w-10 rounded-full"
+              className="h-7 w-7 rounded-full"
             >
-              <RefreshCw className={`h-4 w-4 md:h-5 md:w-5 ${refreshing ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
           </div>
 
           {/* Search Bar */}
-          <div className="max-w-2xl">
-            <PWASearchBar
-              value={searchTerm}
-              onChange={setSearchTerm}
-              placeholder={activeTab === "products" ? "Search products..." : "Search PG/Rooms..."}
-              showFilter
-              onFilterClick={() => setFilterOpen(true)}
-            />
-          </div>
+          <PWASearchBar
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder={activeTab === "products" ? "Search products..." : "Search PG/Rooms..."}
+            showFilter
+            onFilterClick={() => setFilterOpen(true)}
+          />
         </div>
 
         {/* Tab Switcher */}
-        <div className="max-w-7xl mx-auto px-3 md:px-6 lg:px-8 pb-2 md:pb-3">
+        <div className="max-w-7xl mx-auto px-2 py-1.5">
           <Tabs
             value={activeTab}
             onValueChange={(v) => setActiveTab(v as "products" | "pg")}
-            className="w-full max-w-xs md:max-w-md"
+            className="w-full max-w-[200px]"
           >
-            <TabsList className="grid w-full grid-cols-2 h-8 md:h-10 p-0.5 md:p-1 bg-muted/70 rounded-lg">
+            <TabsList className="grid w-full grid-cols-2 h-7 p-0.5 bg-muted/70 rounded-md">
               <TabsTrigger
                 value="products"
-                className="flex items-center gap-1 text-xs md:text-sm font-medium data-[state=active]:shadow-sm rounded-md"
+                className="flex items-center gap-1 text-[10px] font-medium data-[state=active]:shadow-sm rounded-sm"
               >
-                <Package className="h-3 w-3 md:h-4 md:w-4" />
+                <Package className="h-3 w-3" />
                 Products
               </TabsTrigger>
               <TabsTrigger
                 value="pg"
-                className="flex items-center gap-1 text-xs md:text-sm font-medium data-[state=active]:shadow-sm rounded-md"
+                className="flex items-center gap-1 text-[10px] font-medium data-[state=active]:shadow-sm rounded-sm"
               >
-                <Home className="h-3 w-3 md:h-4 md:w-4" />
-                PG / Rooms
+                <Home className="h-3 w-3" />
+                PG
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -278,8 +276,8 @@ const PWADashboard = () => {
 
         {/* Category Pills - Products Tab Only */}
         {activeTab === "products" && categories.length > 0 && (
-          <div className="max-w-7xl mx-auto px-3 md:px-6 lg:px-8 pb-2 md:pb-3 overflow-x-auto scrollbar-hide">
-            <div className="flex gap-1.5 md:gap-2">
+          <div className="max-w-7xl mx-auto px-2 pb-1.5 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-1">
               <PWACategoryChip
                 label="All"
                 isActive={selectedCategory === "all"}
@@ -300,8 +298,8 @@ const PWADashboard = () => {
 
         {/* PG Filters */}
         {activeTab === "pg" && (
-          <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pb-3 overflow-x-auto scrollbar-hide">
-            <div className="flex gap-2">
+          <div className="max-w-7xl mx-auto px-2 pb-1.5 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-1">
               <PWACategoryChip
                 label="All Types"
                 isActive={pgPropertyType === "all"}
@@ -337,30 +335,30 @@ const PWADashboard = () => {
       </header>
 
       {/* Content */}
-      <main className="max-w-7xl mx-auto px-2 md:px-6 lg:px-8 pt-3 md:pt-4 space-y-3 md:space-y-4">
+      <main className="max-w-7xl mx-auto px-1.5 pt-2 space-y-2">
         {/* Image Slider */}
         <PWAImageSlider />
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-12 md:py-20">
-            <Loader2 className="h-6 w-6 md:h-8 md:w-8 animate-spin text-primary mb-2" />
-            <p className="text-xs md:text-sm text-muted-foreground">Loading...</p>
+          <div className="flex flex-col items-center justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-primary mb-1" />
+            <p className="text-[10px] text-muted-foreground">Loading...</p>
           </div>
         ) : activeTab === "products" ? (
           <>
             {items.length === 0 ? (
-              <div className="text-center py-12 md:py-16">
-                <Package className="h-12 w-12 md:h-16 md:w-16 mx-auto mb-3 md:mb-4 text-muted-foreground/50" />
-                <h3 className="font-semibold text-base md:text-lg mb-1 md:mb-2">No items found</h3>
-                <p className="text-muted-foreground text-xs md:text-sm mb-3 md:mb-4">
-                  Try adjusting your filters or search term
+              <div className="text-center py-8">
+                <Package className="h-10 w-10 mx-auto mb-2 text-muted-foreground/50" />
+                <h3 className="font-semibold text-sm mb-1">No items found</h3>
+                <p className="text-muted-foreground text-[10px] mb-2">
+                  Try adjusting your filters
                 </p>
-                <Button variant="outline" size="sm" onClick={() => { setSearchTerm(""); setSelectedCategory("all"); }}>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setSearchTerm(""); setSelectedCategory("all"); }}>
                   Clear Filters
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-4">
+              <div className="grid grid-cols-2 gap-1.5">
                 {items.map((item) => (
                   <PWAListingCard
                     key={item.id}
@@ -386,18 +384,18 @@ const PWADashboard = () => {
         ) : (
           <>
             {pgListings.length === 0 ? (
-              <div className="text-center py-16">
-                <Home className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
-                <h3 className="font-semibold text-lg mb-2">No PG/Rooms found</h3>
-                <p className="text-muted-foreground text-sm mb-4">
-                  Check back later or adjust your filters
+              <div className="text-center py-8">
+                <Home className="h-10 w-10 mx-auto mb-2 text-muted-foreground/50" />
+                <h3 className="font-semibold text-sm mb-1">No PG/Rooms found</h3>
+                <p className="text-muted-foreground text-[10px] mb-2">
+                  Check back later
                 </p>
-                <Button variant="outline" onClick={() => setPgPropertyType("all")}>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPgPropertyType("all")}>
                   Clear Filters
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-2">
                 {pgListings.map((pg) => (
                   <PGListingCard key={pg.id} listing={pg} onClick={() => navigate(`/pg/${pg.id}`)} />
                 ))}
