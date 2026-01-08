@@ -23,6 +23,7 @@ import PWAChat from "./pages/PWAChat";
 import MyChats from "./pages/MyChats";
 import PWAChats from "./pages/PWAChats";
 import MyListings from "./pages/MyListings";
+import PWAMyListings from "./pages/PWAMyListings";
 import MyPGListings from "./pages/MyPGListings";
 import Leaderboard from "./pages/Leaderboard";
 import NotFound from "./pages/NotFound";
@@ -49,6 +50,9 @@ const SmartSellItem = () => isPWA() ? <PWASellItem /> : <SellItem />;
 // PWA Chat wrappers
 const SmartChat = () => isPWA() ? <PWAChat /> : <Chat />;
 const SmartChats = () => isPWA() ? <PWAChats /> : <MyChats />;
+
+// PWA Listings wrapper
+const SmartMyListings = () => isPWA() ? <PWAMyListings /> : <MyListings />;
 
 const App = () => (
   <Routes>
