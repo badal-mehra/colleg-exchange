@@ -40,7 +40,7 @@ const PWAPageWrapper: React.FC<PWAPageWrapperProps> = ({
     <div
       className={cn(
         "min-h-screen bg-background",
-        // "pb-20 md:pb-6", // Space for bottom nav on mobile, less on desktop
+        "pb-20 md:pb-6", // Space for bottom nav on mobile, less on desktop
         className
       )}
     >

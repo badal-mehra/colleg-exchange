@@ -22,15 +22,15 @@ const PWASearchBar: React.FC<PWASearchBarProps> = ({
   className,
 }) => {
   return (
-    <div className={cn("flex items-center gap-1", className)}>
+    <div className={cn("flex items-center gap-2", className)}>
       <div className="relative flex-1">
-        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="pl-7 h-8 text-xs rounded-md bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary/50"
+          className="pl-9 h-11 rounded-xl bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary/50"
         />
       </div>
       {showFilter && (
@@ -38,9 +38,9 @@ const PWASearchBar: React.FC<PWASearchBarProps> = ({
           variant="outline"
           size="icon"
           onClick={onFilterClick}
-          className="h-8 w-8 rounded-md border-muted-foreground/20 flex-shrink-0"
+          className="h-11 w-11 rounded-xl border-muted-foreground/20 flex-shrink-0"
         >
-          <SlidersHorizontal className="h-3 w-3" />
+          <SlidersHorizontal className="h-4 w-4" />
         </Button>
       )}
     </div>
