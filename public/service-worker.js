@@ -119,18 +119,44 @@ self.addEventListener('fetch', (event) => {
 });
 
 // --- NOTIFICATIONS ---
+// self.addEventListener("push", (event) => {
+//   let data = {
+//     title: "Notification",
+//     body: "New update",
+//     url: "/"
+//   };
+
+//   if (event.data) {
+//     try {
+//       data = event.data.json(); // real push (JSON)
+//     } catch {
+//       data.body = event.data.text(); // DevTools test push
+//     }
+//   }
+
+//   event.waitUntil(
+//     self.registration.showNotification(data.title, {
+//       body: data.body,
+//       icon: "/icons/icon-192.png",
+//       data: {
+//         url: data.url || "/"
+//       },
+//     })
+//   );
+// });
 self.addEventListener("push", (event) => {
   let data = {
-    title: "Notification",
+    title: "MyCampusKart",
     body: "New update",
     url: "/"
   };
 
   if (event.data) {
+    const text = event.data.text();
     try {
-      data = event.data.json(); // real push (JSON)
+      data = JSON.parse(text);   // real backend push
     } catch {
-      data.body = event.data.text(); // DevTools test push
+      data.body = text;          // DevTools test push
     }
   }
 
@@ -138,12 +164,12 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: "/icons/icon-192.png",
-      data: {
-        url: data.url || "/"
-      },
+      badge: "/icons/icon-192.png",
+      data: { url: data.url || "/" }
     })
   );
 });
+// ---
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
