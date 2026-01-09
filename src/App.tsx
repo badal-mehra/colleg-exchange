@@ -30,6 +30,7 @@ import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
 import ScanQR from "./pages/ScanQR";
 import MyOrders from "./pages/MyOrders";
+import PWAMyOrders from "./pages/PWAMyOrders";
 import MyCart from "./pages/MyCart";
 import MyReports from "./pages/MyReports";
 import StaticPage from "./pages/StaticPage";
@@ -54,6 +55,9 @@ const SmartChats = () => isPWA() ? <PWAChats /> : <MyChats />;
 // PWA Listings wrapper
 const SmartMyListings = () => isPWA() ? <PWAMyListings /> : <MyListings />;
 
+// PWA Orders wrapper
+const SmartMyOrders = () => isPWA() ? <PWAMyOrders /> : <MyOrders />;
+
 const App = () => (
   <Routes>
     {/** ROUTES WITH HEADER + FOOTER (MainLayout) */}
@@ -72,7 +76,8 @@ const App = () => (
       <Route path="/pwa-profile" element={<PWAProfile />} />
       
       <Route path="/my-chats" element={<ProtectedRoute><SmartChats /></ProtectedRoute>} />
-      <Route path="/my-orders" element={<ProtectedRoute><MyOrders /></ProtectedRoute>} />
+      {/* <Route path="/my-orders" element={<ProtectedRoute><MyOrders /></ProtectedRoute>} /> */}
+      <Route path="/my-orders" element={<ProtectedRoute><SmartMyOrders /></ProtectedRoute>} />
     </Route>
 
     {/** FULLSCREEN ROUTES (NO HEADER / NO FOOTER) */}
