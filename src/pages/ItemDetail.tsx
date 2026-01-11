@@ -207,12 +207,18 @@ const ItemDetail = () => {
       setItem(null); 
     } else {
       setItem(data as Item);
-      // Increment view count (fire and forget)
+      // Increment view count only once per session per item
       if (data) {
-        await supabase
-          .from('items')
-          .update({ views: (data.views || 0) + 1 })
-          .eq('id', id);
+        const viewedKey = `item_viewed_${id}`;
+        const hasViewed = sessionStorage.getItem(viewedKey);
+        if (!hasViewed) {
+          sessionStorage.setItem(viewedKey, 'true');
+          supabase
+            .from('items')
+            .update({ views: (data.views || 0) + 1 })
+            .eq('id', id)
+            .then(() => {});
+        }
       }
     }
     setLoading(false);
