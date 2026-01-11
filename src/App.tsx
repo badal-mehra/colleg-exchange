@@ -15,6 +15,7 @@ import ItemDetail from "./pages/ItemDetail";
 import PGDetail from "./pages/PGDetail";
 import KYC from "./pages/KYC";
 import Profile from "./pages/Profile";
+import PWAEditProfile from "./pages/PWAEditProfile";
 import PublicProfile from "./pages/PublicProfile";
 import SellItem from "./pages/SellItem";
 import PWASellItem from "./pages/PWASellItem";
@@ -57,6 +58,9 @@ const SmartMyListings = () => isPWA() ? <PWAMyListings /> : <MyListings />;
 
 // PWA Orders wrapper
 const SmartMyOrders = () => isPWA() ? <PWAMyOrders /> : <MyOrders />;
+
+// PWA Profile wrapper
+const SmartProfile = () => isPWA() ? <PWAEditProfile /> : <Profile />;
 
 const App = () => (
   <Routes>
@@ -101,7 +105,7 @@ const App = () => (
 
     {/** PROTECTED NO-LAYOUT PAGES */}
     <Route path="/kyc" element={<ProtectedRoute><KYC /></ProtectedRoute>} />
-    <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+    <Route path="/profile" element={<ProtectedRoute><SmartProfile /></ProtectedRoute>} />
     <Route path="/sell" element={<ProtectedRoute><SmartSellItem /></ProtectedRoute>} />
     <Route path="/chat/:conversationId?" element={<ProtectedRoute><SmartChat /></ProtectedRoute>} />
     <Route path="/my-cart" element={<ProtectedRoute><MyCart /></ProtectedRoute>} />

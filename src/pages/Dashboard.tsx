@@ -314,11 +314,11 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
           )}
         </button>
 
-        {/* Image Count Badge - Bottom Right */}
-        {item.images.length > 1 && (
+        {/* Views Badge - Bottom Right */}
+        {(item.views ?? 0) > 0 && (
           <div className="absolute bottom-2 right-2 bg-foreground/80 text-background text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5">
             <Eye className="h-3 w-3" />
-            {item.images.length}
+            {item.views}
           </div>
         )}
       </div>
