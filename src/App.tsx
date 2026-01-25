@@ -36,6 +36,7 @@ import MyCart from "./pages/MyCart";
 import MyReports from "./pages/MyReports";
 import StaticPage from "./pages/StaticPage";
 import PWAProfile from "./pages/PWAProfile";
+import DownloadApp from "./pages/DownloadApp";
 
 // Check if running as PWA
 const isPWA = () => typeof window !== 'undefined' && (
@@ -89,6 +90,7 @@ const App = () => (
     <Route path="/home" element={<Home />} />
     <Route path="/auth" element={<Auth />} />
     <Route path="/reset-password" element={<ResetPassword />} />
+    <Route path="/downloadmycampuskartapp" element={<DownloadApp />} />
 
     {/** STATIC PAGES */}
     <Route path="/terms" element={<StaticPage />} />

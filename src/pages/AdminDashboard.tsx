@@ -166,9 +166,14 @@ const AdminDashboard = () => {
   };
 
   const handleVerificationUpdate = async (profileId: string, newStatus: string) => {
+    // When approving, also set is_verified to true
+    const updateData = newStatus === 'approved' 
+      ? { verification_status: newStatus, is_verified: true }
+      : { verification_status: newStatus, is_verified: false };
+
     const { error } = await supabase
       .from('profiles')
-      .update({ verification_status: newStatus })
+      .update(updateData)
       .eq('id', profileId);
 
     if (error) {
@@ -512,10 +517,11 @@ const AdminDashboard = () => {
             <Card>
               <CardHeader>
                 <CardTitle>User Management & KYC Verification</CardTitle>
+                <p className="text-sm text-muted-foreground">Showing only users who have uploaded verification documents</p>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {profiles.map((profile) => (
+                  {profiles.filter(p => p.verification_document_url).map((profile) => (
                     <div key={profile.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
