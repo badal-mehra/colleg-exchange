@@ -4,13 +4,13 @@ import {
   Smartphone, Download, CheckCircle, Zap, 
   Bell, Shield, ArrowRight, Star, Users, 
   ShoppingBag, Monitor, SmartphoneNfc, Globe,
-  MousePointerClick, Sparkles
+  MousePointerClick, Sparkles, Laugh, Coffee, Rocket
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { usePWAInstall } from '@/hooks/usePWAInstall'; // Ensure this hook handles 'beforeinstallprompt'
+import { usePWAInstall } from '@/hooks/usePWAInstall';
 import logo from '@/assets/mycampuskart-logo.png';
 
 const DownloadApp = () => {
@@ -18,13 +18,30 @@ const DownloadApp = () => {
   const navigate = useNavigate();
   const [platform, setPlatform] = useState<'ios' | 'android' | 'desktop'>('desktop');
 
-  // Logic to detect platform for personalized "Hooks"
   useEffect(() => {
     const userAgent = window.navigator.userAgent.toLowerCase();
     if (/iphone|ipad|ipod/.test(userAgent)) setPlatform('ios');
     else if (/android/.test(userAgent)) setPlatform('android');
     else setPlatform('desktop');
   }, []);
+
+  const memes = [
+    {
+      emoji: "💸",
+      setup: "Me looking at the ₹3,000 textbook I'll use for 4 months:",
+      punchline: "MyCampusKart: 'I got you for ₹400, fam.'"
+    },
+    {
+      emoji: "📦",
+      setup: "POV: It's moving day and you have 4 years of junk.",
+      punchline: "Sell it all in 2 minutes on the app before your mom sees the mess."
+    },
+    {
+      emoji: "🍕",
+      setup: "Bank balance: ₹42.00",
+      punchline: "Sell that old kettle you never used and buy a pizza tonight."
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-white text-slate-900 selection:bg-primary/10">
@@ -35,101 +52,92 @@ const DownloadApp = () => {
             <img src={logo} alt="MyCampusKart" className="h-8 w-auto" />
             <span className="font-bold text-lg tracking-tight">MyCampusKart</span>
           </div>
-          <div className="hidden md:flex items-center gap-6">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>Marketplace</Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/safety')}>Safety</Button>
-            <Button size="sm" className="rounded-full px-5" onClick={() => navigate('/auth')}>Login</Button>
-          </div>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="text-slate-500 hover:text-primary">
+            Browse Guest Mode
+          </Button>
         </div>
       </nav>
 
-      {/* --- The "Hook" Hero --- */}
-      <section className="relative pt-12 pb-20 lg:pt-24 lg:pb-32 overflow-hidden">
+      {/* --- Hero Section --- */}
+      <section className="relative pt-12 pb-20 lg:pt-24 lg:pb-32">
         <div className="container mx-auto px-6">
           <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
-            <div className="flex-1 text-center lg:text-left space-y-8">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm font-medium">
-                <Sparkles className="h-4 w-4" />
-                <span>The Future of Campus Trading is Here</span>
-              </div>
+            <div className="flex-1 text-center lg:text-left space-y-10">
+              <Badge className="bg-orange-100 text-orange-700 border-none px-4 py-1.5 text-sm animate-bounce">
+                🚀 100% Student-First Marketplace
+              </Badge>
               
-              <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight leading-[1.1]">
-                Stop Browsing, <br />
-                <span className="text-primary italic">Start Dealing.</span>
+              <h1 className="text-6xl lg:text-8xl font-black tracking-tighter leading-[0.9]">
+                Ditch the <br />
+                <span className="text-primary italic">Retail Scams.</span>
               </h1>
               
-              <p className="text-xl text-slate-600 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-                Join 10,000+ students. Buy a textbook in the morning, sell your old mini-fridge by the afternoon. <strong>No App Store required.</strong>
+              <p className="text-xl lg:text-2xl text-slate-500 max-w-xl mx-auto lg:mx-0 leading-relaxed font-medium">
+                The unofficial official app for students who prefer pizza money over expensive textbooks.
               </p>
 
-              {/* Dynamic Action Area */}
-              <div className="p-2 bg-slate-50 rounded-3xl border border-slate-100 inline-block w-full max-w-md shadow-inner">
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Button 
-                    size="lg" 
-                    className="flex-1 h-16 rounded-2xl text-lg font-bold shadow-lg shadow-primary/25 hover:translate-y-[-2px] transition-all"
-                    onClick={canInstall ? installApp : () => navigate('/dashboard')}
-                  >
-                    {canInstall ? (
-                      <><Download className="mr-2 h-6 w-6" /> Install App</>
-                    ) : (
-                      <><Smartphone className="mr-2 h-6 w-6" /> Open Web App</>
-                    )}
-                  </Button>
-                  <Button 
-                    size="lg" 
-                    variant="outline" 
-                    className="flex-1 h-16 rounded-2xl text-lg font-semibold border-slate-200 bg-white"
-                    onClick={() => navigate('/auth')}
-                  >
-                    Create Account
-                  </Button>
-                </div>
-              </div>
-
-              {/* Detailed Trust Hook */}
-              <div className="grid grid-cols-3 gap-4 pt-6 max-w-sm mx-auto lg:mx-0">
-                <div className="space-y-1">
-                  <p className="text-2xl font-bold">50k+</p>
-                  <p className="text-[10px] uppercase text-slate-400 font-black tracking-widest">Listings</p>
-                </div>
-                <div className="space-y-1 border-x border-slate-100">
-                  <p className="text-2xl font-bold text-green-600">Free</p>
-                  <p className="text-[10px] uppercase text-slate-400 font-black tracking-widest">For Students</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-2xl font-bold">4.9/5</p>
-                  <p className="text-[10px] uppercase text-slate-400 font-black tracking-widest">Avg. Rating</p>
-                </div>
+              {/* ULTRA BIG INSTALL BUTTON */}
+              <div className="space-y-6">
+                <Button 
+                  size="lg" 
+                  className="w-full lg:w-auto h-24 px-12 rounded-[2rem] text-2xl font-black shadow-[0_20px_50px_-10px_rgba(var(--primary-rgb),0.4)] hover:translate-y-[-4px] hover:shadow-[0_30px_60px_-10px_rgba(var(--primary-rgb),0.5)] transition-all active:scale-95 group"
+                  onClick={canInstall ? installApp : () => navigate('/dashboard')}
+                >
+                  {canInstall ? (
+                    <div className="flex flex-col items-center sm:flex-row gap-4">
+                      <Download className="h-8 w-8 animate-pulse" />
+                      <div className="text-left">
+                        <span className="block">INSTALL APP NOW</span>
+                        <span className="text-sm font-normal opacity-80 uppercase tracking-widest text-center sm:text-left">0MB Download • Works Instantly</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <Rocket className="h-8 w-8" />
+                      <span>LAUNCH MARKETPLACE</span>
+                    </div>
+                  )}
+                </Button>
+                
+                <p className="text-sm text-slate-400 flex items-center justify-center lg:justify-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  Verified for your college campus
+                </p>
               </div>
             </div>
 
-            {/* Mockup with "Live" Feel */}
-            <div className="flex-1 relative perspective-1000">
-              <div className="relative mx-auto w-[300px] h-[600px] bg-slate-900 rounded-[3.5rem] border-[12px] border-slate-800 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] transform lg:rotate-2">
+            {/* Phone Mockup */}
+            <div className="flex-1 relative hidden md:block">
+              <div className="relative mx-auto w-[320px] h-[640px] bg-slate-900 rounded-[3.5rem] border-[12px] border-slate-800 shadow-2xl">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-slate-800 rounded-b-3xl z-20" />
-                <div className="absolute inset-0 m-1 bg-white rounded-[2.8rem] overflow-hidden">
-                  <div className="bg-primary h-24 p-6 text-white">
-                    <div className="flex justify-between items-center mt-4">
-                      <div className="h-2 w-12 bg-white/30 rounded" />
-                      <Bell className="h-5 w-5 opacity-80" />
-                    </div>
-                  </div>
-                  <div className="p-4 space-y-4 -mt-6">
-                    <div className="bg-white rounded-2xl p-4 shadow-xl border border-slate-50 space-y-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">A</div>
-                        <div>
-                          <p className="text-xs font-bold">Aryan (Verification Pending)</p>
-                          <p className="text-[10px] text-slate-400">IIT Delhi Campus</p>
+                <div className="absolute inset-0 m-1 bg-slate-50 rounded-[2.8rem] overflow-hidden flex flex-col">
+                   <div className="p-6 pt-12 space-y-4">
+                      <div className="flex gap-2">
+                        <div className="h-8 w-8 bg-primary rounded-lg" />
+                        <div className="h-8 flex-1 bg-white rounded-lg border" />
+                      </div>
+                      <div className="bg-white p-4 rounded-2xl shadow-sm space-y-3 border">
+                        <div className="w-full aspect-square bg-slate-100 rounded-xl" />
+                        <div className="h-4 w-24 bg-slate-200 rounded" />
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold">₹499</span>
+                          <div className="h-6 w-12 bg-green-100 rounded" />
                         </div>
                       </div>
-                      <div className="h-32 bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center text-slate-300">
-                        <ShoppingBag className="h-8 w-8" />
-                      </div>
-                      <div className="h-4 w-3/4 bg-slate-100 rounded" />
-                    </div>
-                  </div>
+                   </div>
+                   <div className="mt-auto p-4 bg-white border-t flex justify-around">
+                      <div className="h-8 w-8 bg-slate-100 rounded-full" />
+                      <div className="h-8 w-8 bg-primary/20 rounded-full" />
+                      <div className="h-8 w-8 bg-slate-100 rounded-full" />
+                   </div>
+                </div>
+              </div>
+              {/* Floating Badge */}
+              <div className="absolute -right-8 top-1/4 bg-white p-4 rounded-2xl shadow-xl border rotate-12 flex items-center gap-3">
+                <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center text-xl">🤝</div>
+                <div>
+                  <p className="text-xs font-bold">Deal Closed!</p>
+                  <p className="text-[10px] text-slate-400">Saved ₹1,200 today</p>
                 </div>
               </div>
             </div>
@@ -137,109 +145,84 @@ const DownloadApp = () => {
         </div>
       </section>
 
-      {/* --- The "PWA Benefit" Section (Detailed Hook) --- */}
-      <section className="py-24 bg-slate-900 text-white">
+      {/* --- MEME / RELATABILITY SECTION --- */}
+      <section className="py-24 bg-slate-50 border-y">
         <div className="container mx-auto px-6">
-          <div className="grid md:grid-cols-2 gap-16 items-center">
-            <div className="space-y-6">
-              <h2 className="text-3xl md:text-5xl font-bold leading-tight">
-                No Store, No Hassle. <br />
-                Just Instant Access.
-              </h2>
-              <div className="space-y-4">
-                {[
-                  { title: 'Zero Storage', desc: 'Takes up less than 1MB of space compared to 100MB+ native apps.', icon: SmartphoneNfc },
-                  { title: 'Privacy First', desc: 'No tracking through app store accounts. Just secure campus trading.', icon: Shield },
-                  { title: 'Works Offline', desc: 'Check your saved chats and listings even when campus Wi-Fi drops.', icon: Globe }
-                ].map((item, i) => (
-                  <div key={i} className="flex gap-4 p-4 rounded-2xl hover:bg-white/5 transition-colors">
-                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                      <item.icon className="text-primary h-6 w-6" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-lg">{item.title}</h4>
-                      <p className="text-slate-400 text-sm">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <div className="text-center mb-16 space-y-4">
+            <div className="inline-flex items-center gap-2 text-primary font-bold">
+              <Laugh className="h-5 w-5" />
+              <span>Student Realities</span>
             </div>
-            <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-8 md:p-12">
-              <h3 className="text-2xl font-bold mb-8 flex items-center gap-2">
-                <MousePointerClick className="text-primary" />
-                How to Download
-              </h3>
-              
-              <div className="space-y-8 relative">
-                {/* Visual Connector Line */}
-                <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-primary to-transparent" />
-                
-                <div className="relative flex gap-6 group">
-                  <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold shrink-0 z-10">1</div>
-                  <div>
-                    <h5 className="font-bold mb-1">Visit MyCampusKart.com</h5>
-                    <p className="text-slate-400 text-sm">Open this page in Chrome or Safari.</p>
-                  </div>
-                </div>
-
-                <div className="relative flex gap-6 group">
-                  <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold shrink-0 z-10">2</div>
-                  <div>
-                    <h5 className="font-bold mb-1">Tap {platform === 'ios' ? '"Share"' : '"Install"'}</h5>
-                    <p className="text-slate-400 text-sm">
-                      {platform === 'ios' 
-                        ? 'Look for the share icon at the bottom of Safari.' 
-                        : 'Look for the install prompt or click the menu dots.'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="relative flex gap-6 group">
-                  <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold shrink-0 z-10">3</div>
-                  <div>
-                    <h5 className="font-bold mb-1">Add to Home Screen</h5>
-                    <p className="text-slate-400 text-sm">Tap the plus icon and the app will appear on your phone instantly.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <h2 className="text-4xl font-black">Why you actually need this app</h2>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            {memes.map((meme, i) => (
+              <Card key={i} className="border-none shadow-none bg-white p-8 rounded-[2rem] hover:rotate-1 transition-transform cursor-default group">
+                <span className="text-4xl mb-6 block">{meme.emoji}</span>
+                <p className="text-slate-500 font-medium mb-4 italic group-hover:text-slate-900 transition-colors">
+                  "{meme.setup}"
+                </p>
+                <div className="h-px w-12 bg-primary/20 mb-4" />
+                <p className="font-bold text-lg text-primary">
+                  {meme.punchline}
+                </p>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* --- Final CTA --- */}
-      <section className="py-24 text-center">
-        <div className="container mx-auto px-6 max-w-2xl">
-          <h2 className="text-4xl font-black mb-6">Ready to save your pocket money?</h2>
-          <p className="text-slate-500 mb-10 text-lg">
-            Stop paying retail prices for things you'll only use for a semester. Join your campus marketplace today.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-             <Button size="lg" className="px-10 py-7 text-lg rounded-2xl shadow-2xl shadow-primary/30" onClick={canInstall ? installApp : () => navigate('/dashboard')}>
-                Download the App
-             </Button>
-             <Button size="lg" variant="ghost" className="px-10 py-7 text-lg rounded-2xl" onClick={() => navigate('/faq')}>
-                How it works
-                <ArrowRight className="ml-2 h-5 w-5" />
-             </Button>
+      {/* --- SERVICE HOOKS --- */}
+      <section className="py-24">
+        <div className="container mx-auto px-6">
+          <div className="max-w-4xl mx-auto bg-slate-900 rounded-[3rem] p-8 md:p-16 text-white relative overflow-hidden">
+             <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
+                <div className="space-y-6">
+                  <h3 className="text-3xl font-bold">Installation for Procrastinators</h3>
+                  <p className="text-slate-400">Takes less time than deciding what to order for dinner.</p>
+                  
+                  <div className="space-y-4 text-sm">
+                    <div className="flex items-center gap-4 bg-white/5 p-4 rounded-xl border border-white/10">
+                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-bold">1</div>
+                      <p>Open this site in {platform === 'ios' ? 'Safari' : 'Chrome'}</p>
+                    </div>
+                    <div className="flex items-center gap-4 bg-white/5 p-4 rounded-xl border border-white/10">
+                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-bold">2</div>
+                      <p>Tap {platform === 'ios' ? '"Add to Home Screen"' : '"Install App"'}</p>
+                    </div>
+                    <div className="flex items-center gap-4 bg-white/5 p-4 rounded-xl border border-white/10">
+                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-bold">3</div>
+                      <p>Start saving for your next {platform === 'desktop' ? 'trip' : 'night out'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-center space-y-6">
+                  <div className="w-32 h-32 bg-white rounded-[2rem] mx-auto flex items-center justify-center">
+                    <SmartphoneNfc className="h-16 w-16 text-primary" />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="font-bold text-xl">PWA Power</p>
+                    <p className="text-slate-400 text-sm">No storage space used. No manual updates. No app store tracking.</p>
+                  </div>
+                </div>
+             </div>
+             {/* Abstract background light */}
+             <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-primary/30 blur-[120px]" />
           </div>
         </div>
       </section>
 
-      {/* --- Footer --- */}
-      <footer className="py-12 border-t border-slate-100 bg-slate-50/50">
-        <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="flex items-center gap-3 opacity-60">
-            <img src={logo} alt="Logo" className="h-6" />
-            <span className="font-bold">MyCampusKart</span>
-          </div>
-          <div className="flex flex-wrap justify-center gap-8 text-sm font-semibold text-slate-400 uppercase tracking-widest">
-            <a href="#" className="hover:text-primary transition-colors">Instagram</a>
-            <a href="#" className="hover:text-primary transition-colors">LinkedIn</a>
-            <a href="#" className="hover:text-primary transition-colors">Twitter</a>
-          </div>
-          <p className="text-sm text-slate-400 font-medium">© 2026 Built for Students, by Students.</p>
+      {/* --- FOOTER --- */}
+      <footer className="py-12 text-center text-slate-400 text-sm">
+        <div className="flex justify-center gap-6 mb-6">
+          <Coffee className="h-5 w-5 hover:text-primary cursor-pointer transition-colors" />
+          <Globe className="h-5 w-5 hover:text-primary cursor-pointer transition-colors" />
+          <Users className="h-5 w-5 hover:text-primary cursor-pointer transition-colors" />
         </div>
+        <p>Built with ❤️ and a lot of caffeine for the student community.</p>
+        <p className="mt-2 opacity-50">© 2026 MyCampusKart. Not affiliated with any university, just helping you save.</p>
       </footer>
     </div>
   );
