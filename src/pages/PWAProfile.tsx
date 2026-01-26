@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { subscribeToPush } from "@/hooks/usePushNotifications";
 import {
   User,
   Trophy,
@@ -17,6 +18,7 @@ import {
   Settings,
   HelpCircle,
   Bell,
+  BellRing,
   Moon,
   Sun,
 } from "lucide-react";
@@ -58,7 +60,8 @@ const PWAProfile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
-
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationLoading, setNotificationLoading] = useState(false);
   // Auth guard
   useEffect(() => {
     if (!authLoading && !user) {
@@ -97,6 +100,26 @@ const PWAProfile = () => {
     setDarkMode(isDark);
   }, []);
 
+  // Check notification permission status
+  useEffect(() => {
+    if ("Notification" in window) {
+      setNotificationsEnabled(Notification.permission === "granted");
+    }
+  }, []);
+
+  const handleEnableNotifications = async () => {
+    if (!user) return;
+    
+    setNotificationLoading(true);
+    try {
+      await subscribeToPush(user.id);
+      setNotificationsEnabled(Notification.permission === "granted");
+    } catch (error) {
+      console.error("Failed to enable notifications:", error);
+    } finally {
+      setNotificationLoading(false);
+    }
+  };
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
@@ -187,10 +210,17 @@ const PWAProfile = () => {
           path: "/leaderboard",
         },
         {
-          icon: Bell,
-          label: "Notifications",
-          description: "Manage notification settings",
-          path: "/profile",
+          icon: notificationsEnabled ? BellRing : Bell,
+          label: notificationsEnabled ? "Notifications Enabled" : "Enable Notifications",
+          description: notificationsEnabled ? "Push notifications are active" : "Tap to enable push notifications",
+          action: notificationsEnabled ? undefined : handleEnableNotifications,
+          rightElement: notificationLoading ? (
+            <Loader2 className="h-5 w-5 animate-spin text-primary ml-auto" />
+          ) : notificationsEnabled ? (
+            <div className="ml-auto px-2 py-1 bg-green-500/10 text-green-600 text-xs font-medium rounded-full">
+              Active
+            </div>
+          ) : undefined,
         },
         {
           icon: darkMode ? Sun : Moon,
