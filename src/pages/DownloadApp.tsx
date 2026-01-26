@@ -1,207 +1,244 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Smartphone, Download, CheckCircle, Zap, 
   Bell, Shield, ArrowRight, Star, Users, 
-  ShoppingBag, Monitor, ChevronRight
+  ShoppingBag, Monitor, SmartphoneNfc, Globe,
+  MousePointerClick, Sparkles
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { usePWAInstall } from '@/hooks/usePWAInstall';
+import { usePWAInstall } from '@/hooks/usePWAInstall'; // Ensure this hook handles 'beforeinstallprompt'
 import logo from '@/assets/mycampuskart-logo.png';
 
 const DownloadApp = () => {
   const { canInstall, installApp } = usePWAInstall();
   const navigate = useNavigate();
+  const [platform, setPlatform] = useState<'ios' | 'android' | 'desktop'>('desktop');
 
-  // Optimized SEO Management
+  // Logic to detect platform for personalized "Hooks"
   useEffect(() => {
-    const originalTitle = document.title;
-    document.title = 'Download MyCampusKart | The College Marketplace App';
-    
-    return () => { document.title = originalTitle; };
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(userAgent)) setPlatform('ios');
+    else if (/android/.test(userAgent)) setPlatform('android');
+    else setPlatform('desktop');
   }, []);
-
-  const features = [
-    { icon: Zap, title: 'Native Speed', desc: 'Zero lag, instant transitions.' },
-    { icon: Bell, title: 'Smart Alerts', desc: 'Real-time price drop alerts.' },
-    { icon: Shield, title: 'Verified Only', desc: 'Exclusively for college students.' },
-    { icon: Download, title: 'Offline Access', desc: 'Browse saved items without data.' }
-  ];
 
   return (
     <div className="min-h-screen bg-white text-slate-900 selection:bg-primary/10">
       {/* --- Navigation --- */}
-      <nav className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur-md">
+      <nav className="sticky top-0 z-50 border-b bg-white/90 backdrop-blur-md">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
             <img src={logo} alt="MyCampusKart" className="h-8 w-auto" />
             <span className="font-bold text-lg tracking-tight">MyCampusKart</span>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="text-muted-foreground">
-            Launch Web Version
-          </Button>
+          <div className="hidden md:flex items-center gap-6">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>Marketplace</Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/safety')}>Safety</Button>
+            <Button size="sm" className="rounded-full px-5" onClick={() => navigate('/auth')}>Login</Button>
+          </div>
         </div>
       </nav>
 
-      {/* --- Hero Section --- */}
-      <section className="relative pt-16 pb-24 overflow-hidden">
+      {/* --- The "Hook" Hero --- */}
+      <section className="relative pt-12 pb-20 lg:pt-24 lg:pb-32 overflow-hidden">
         <div className="container mx-auto px-6">
-          <div className="flex flex-col lg:flex-row items-center gap-16">
-            <div className="flex-1 space-y-8 text-center lg:text-left">
-              <Badge variant="secondary" className="px-3 py-1 text-primary bg-primary/5 border-primary/10">
-                Now available as a PWA
-              </Badge>
-              <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight text-slate-900">
-                Your Campus <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-600">
-                  In Your Pocket
-                </span>
+          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+            <div className="flex-1 text-center lg:text-left space-y-8">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm font-medium">
+                <Sparkles className="h-4 w-4" />
+                <span>The Future of Campus Trading is Here</span>
+              </div>
+              
+              <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight leading-[1.1]">
+                Stop Browsing, <br />
+                <span className="text-primary italic">Start Dealing.</span>
               </h1>
-              <p className="text-xl text-slate-600 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                Experience the fastest way to buy and sell textbooks, electronics, and dorm essentials with your fellow students.
+              
+              <p className="text-xl text-slate-600 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+                Join 10,000+ students. Buy a textbook in the morning, sell your old mini-fridge by the afternoon. <strong>No App Store required.</strong>
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <Button size="lg" className="h-14 px-8 text-md font-semibold shadow-xl shadow-primary/20 transition-all hover:scale-105" onClick={canInstall ? installApp : () => navigate('/dashboard')}>
-                  {canInstall ? <Download className="mr-2 h-5 w-5" /> : <Smartphone className="mr-2 h-5 w-5" />}
-                  {canInstall ? 'Install to Home Screen' : 'Get Started Now'}
-                </Button>
-                <Button size="lg" variant="outline" className="h-14 px-8 text-md border-slate-200" onClick={() => navigate('/auth')}>
-                  Sign Up Free
-                </Button>
+              {/* Dynamic Action Area */}
+              <div className="p-2 bg-slate-50 rounded-3xl border border-slate-100 inline-block w-full max-w-md shadow-inner">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button 
+                    size="lg" 
+                    className="flex-1 h-16 rounded-2xl text-lg font-bold shadow-lg shadow-primary/25 hover:translate-y-[-2px] transition-all"
+                    onClick={canInstall ? installApp : () => navigate('/dashboard')}
+                  >
+                    {canInstall ? (
+                      <><Download className="mr-2 h-6 w-6" /> Install App</>
+                    ) : (
+                      <><Smartphone className="mr-2 h-6 w-6" /> Open Web App</>
+                    )}
+                  </Button>
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    className="flex-1 h-16 rounded-2xl text-lg font-semibold border-slate-200 bg-white"
+                    onClick={() => navigate('/auth')}
+                  >
+                    Create Account
+                  </Button>
+                </div>
               </div>
 
-              {/* Social Proof */}
-              <div className="flex items-center justify-center lg:justify-start gap-8 pt-4 border-t border-slate-100">
-                <div className="text-center lg:text-left">
-                  <div className="flex items-center gap-1 font-bold text-2xl">
-                    <Users className="h-5 w-5 text-primary" /> 10k+
-                  </div>
-                  <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold">Active Students</p>
+              {/* Detailed Trust Hook */}
+              <div className="grid grid-cols-3 gap-4 pt-6 max-w-sm mx-auto lg:mx-0">
+                <div className="space-y-1">
+                  <p className="text-2xl font-bold">50k+</p>
+                  <p className="text-[10px] uppercase text-slate-400 font-black tracking-widest">Listings</p>
                 </div>
-                <div className="text-center lg:text-left">
-                  <div className="flex items-center gap-1 font-bold text-2xl">
-                    <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" /> 4.9
-                  </div>
-                  <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold">App Rating</p>
+                <div className="space-y-1 border-x border-slate-100">
+                  <p className="text-2xl font-bold text-green-600">Free</p>
+                  <p className="text-[10px] uppercase text-slate-400 font-black tracking-widest">For Students</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-2xl font-bold">4.9/5</p>
+                  <p className="text-[10px] uppercase text-slate-400 font-black tracking-widest">Avg. Rating</p>
                 </div>
               </div>
             </div>
 
-            {/* Realistic Phone Mockup */}
-            <div className="flex-1 relative">
-              <div className="relative mx-auto w-[280px] h-[580px] bg-slate-900 rounded-[3rem] border-[8px] border-slate-800 shadow-2xl">
-                {/* Notch */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-800 rounded-b-2xl z-20" />
-                {/* Screen Content */}
-                <div className="absolute inset-0 m-1 bg-slate-50 rounded-[2.5rem] overflow-hidden">
-                  <div className="p-4 pt-10">
-                    <div className="h-6 w-24 bg-slate-200 rounded mb-6" />
-                    <div className="space-y-4">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
-                          <div className="aspect-square w-full bg-slate-100 rounded-xl mb-3" />
-                          <div className="h-3 w-2/3 bg-slate-200 rounded mb-2" />
-                          <div className="h-3 w-1/3 bg-slate-100 rounded" />
+            {/* Mockup with "Live" Feel */}
+            <div className="flex-1 relative perspective-1000">
+              <div className="relative mx-auto w-[300px] h-[600px] bg-slate-900 rounded-[3.5rem] border-[12px] border-slate-800 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] transform lg:rotate-2">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-slate-800 rounded-b-3xl z-20" />
+                <div className="absolute inset-0 m-1 bg-white rounded-[2.8rem] overflow-hidden">
+                  <div className="bg-primary h-24 p-6 text-white">
+                    <div className="flex justify-between items-center mt-4">
+                      <div className="h-2 w-12 bg-white/30 rounded" />
+                      <Bell className="h-5 w-5 opacity-80" />
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-4 -mt-6">
+                    <div className="bg-white rounded-2xl p-4 shadow-xl border border-slate-50 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">A</div>
+                        <div>
+                          <p className="text-xs font-bold">Aryan (Verification Pending)</p>
+                          <p className="text-[10px] text-slate-400">IIT Delhi Campus</p>
                         </div>
-                      ))}
+                      </div>
+                      <div className="h-32 bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center text-slate-300">
+                        <ShoppingBag className="h-8 w-8" />
+                      </div>
+                      <div className="h-4 w-3/4 bg-slate-100 rounded" />
                     </div>
                   </div>
                 </div>
               </div>
-              {/* Decorative Blobs */}
-              <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-primary/10 rounded-full blur-3xl" />
             </div>
           </div>
         </div>
       </section>
 
-      {/* --- Features Grid --- */}
-      <section className="py-24 bg-slate-50">
+      {/* --- The "PWA Benefit" Section (Detailed Hook) --- */}
+      <section className="py-24 bg-slate-900 text-white">
         <div className="container mx-auto px-6">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl font-bold mb-4 text-slate-900">Built for the Modern Campus</h2>
-            <p className="text-slate-600">No App Store fees. No storage issues. Just a powerful Progressive Web App that works everywhere.</p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((f, i) => (
-              <Card key={i} className="bg-white border-slate-200/60 shadow-sm transition-all hover:shadow-md">
-                <CardContent className="p-8">
-                  <div className="w-12 h-12 bg-primary/5 rounded-xl flex items-center justify-center mb-6">
-                    <f.icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="font-bold text-lg mb-2">{f.title}</h3>
-                  <p className="text-slate-500 text-sm leading-relaxed">{f.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* --- Installation Guide --- */}
-      <section className="py-24">
-        <div className="container mx-auto px-6 max-w-5xl">
-          <div className="bg-slate-900 rounded-[2rem] p-8 md:p-16 text-white overflow-hidden relative">
-            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-12">
-              <div className="space-y-6">
-                <h2 className="text-3xl font-bold">Simple 3-Step Setup</h2>
-                <div className="space-y-4">
-                  {[
-                    'Open MyCampusKart in your mobile browser',
-                    'Tap the "Share" or "Menu" icon',
-                    'Select "Add to Home Screen"'
-                  ].map((step, i) => (
-                    <div key={i} className="flex items-center gap-4 group">
-                      <span className="flex-shrink-0 w-8 h-8 rounded-full border border-white/20 flex items-center justify-center text-sm font-bold group-hover:bg-primary transition-colors">
-                        {i + 1}
-                      </span>
-                      <p className="text-slate-300 font-medium">{step}</p>
+          <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div className="space-y-6">
+              <h2 className="text-3xl md:text-5xl font-bold leading-tight">
+                No Store, No Hassle. <br />
+                Just Instant Access.
+              </h2>
+              <div className="space-y-4">
+                {[
+                  { title: 'Zero Storage', desc: 'Takes up less than 1MB of space compared to 100MB+ native apps.', icon: SmartphoneNfc },
+                  { title: 'Privacy First', desc: 'No tracking through app store accounts. Just secure campus trading.', icon: Shield },
+                  { title: 'Works Offline', desc: 'Check your saved chats and listings even when campus Wi-Fi drops.', icon: Globe }
+                ].map((item, i) => (
+                  <div key={i} className="flex gap-4 p-4 rounded-2xl hover:bg-white/5 transition-colors">
+                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                      <item.icon className="text-primary h-6 w-6" />
                     </div>
-                  ))}
-                </div>
-                <div className="pt-4 flex gap-4">
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <Monitor className="h-4 w-4" /> Works on Desktop
+                    <div>
+                      <h4 className="font-bold text-lg">{item.title}</h4>
+                      <p className="text-slate-400 text-sm">{item.desc}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <Smartphone className="h-4 w-4" /> iOS & Android
-                  </div>
-                </div>
+                ))}
               </div>
-              <div className="hidden lg:block w-px h-48 bg-white/10" />
-              <div className="text-center md:text-left">
-                <p className="text-slate-400 mb-6 text-sm">Scan to open on your phone</p>
-                <div className="w-32 h-32 bg-white rounded-2xl p-2 mx-auto md:mx-0">
-                  {/* Placeholder for QR Code */}
-                  <div className="w-full h-full bg-slate-100 rounded-lg flex items-center justify-center">
-                    <Smartphone className="h-8 w-8 text-slate-400" />
+            </div>
+            <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-8 md:p-12">
+              <h3 className="text-2xl font-bold mb-8 flex items-center gap-2">
+                <MousePointerClick className="text-primary" />
+                How to Download
+              </h3>
+              
+              <div className="space-y-8 relative">
+                {/* Visual Connector Line */}
+                <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-primary to-transparent" />
+                
+                <div className="relative flex gap-6 group">
+                  <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold shrink-0 z-10">1</div>
+                  <div>
+                    <h5 className="font-bold mb-1">Visit MyCampusKart.com</h5>
+                    <p className="text-slate-400 text-sm">Open this page in Chrome or Safari.</p>
+                  </div>
+                </div>
+
+                <div className="relative flex gap-6 group">
+                  <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold shrink-0 z-10">2</div>
+                  <div>
+                    <h5 className="font-bold mb-1">Tap {platform === 'ios' ? '"Share"' : '"Install"'}</h5>
+                    <p className="text-slate-400 text-sm">
+                      {platform === 'ios' 
+                        ? 'Look for the share icon at the bottom of Safari.' 
+                        : 'Look for the install prompt or click the menu dots.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="relative flex gap-6 group">
+                  <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold shrink-0 z-10">3</div>
+                  <div>
+                    <h5 className="font-bold mb-1">Add to Home Screen</h5>
+                    <p className="text-slate-400 text-sm">Tap the plus icon and the app will appear on your phone instantly.</p>
                   </div>
                 </div>
               </div>
             </div>
-            {/* Background Accent */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 blur-[100px] -mr-32 -mt-32" />
           </div>
         </div>
       </section>
 
-      {/* --- Simple Footer --- */}
-      <footer className="py-12 border-t border-slate-100">
-        <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2 opacity-50 grayscale hover:grayscale-0 transition-all">
+      {/* --- Final CTA --- */}
+      <section className="py-24 text-center">
+        <div className="container mx-auto px-6 max-w-2xl">
+          <h2 className="text-4xl font-black mb-6">Ready to save your pocket money?</h2>
+          <p className="text-slate-500 mb-10 text-lg">
+            Stop paying retail prices for things you'll only use for a semester. Join your campus marketplace today.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+             <Button size="lg" className="px-10 py-7 text-lg rounded-2xl shadow-2xl shadow-primary/30" onClick={canInstall ? installApp : () => navigate('/dashboard')}>
+                Download the App
+             </Button>
+             <Button size="lg" variant="ghost" className="px-10 py-7 text-lg rounded-2xl" onClick={() => navigate('/faq')}>
+                How it works
+                <ArrowRight className="ml-2 h-5 w-5" />
+             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* --- Footer --- */}
+      <footer className="py-12 border-t border-slate-100 bg-slate-50/50">
+        <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
+          <div className="flex items-center gap-3 opacity-60">
             <img src={logo} alt="Logo" className="h-6" />
             <span className="font-bold">MyCampusKart</span>
           </div>
-          <div className="flex gap-8 text-sm font-medium text-slate-500">
-            <a href="#" className="hover:text-primary transition-colors">Safety</a>
-            <a href="#" className="hover:text-primary transition-colors">Support</a>
-            <a href="#" className="hover:text-primary transition-colors">Privacy</a>
+          <div className="flex flex-wrap justify-center gap-8 text-sm font-semibold text-slate-400 uppercase tracking-widest">
+            <a href="#" className="hover:text-primary transition-colors">Instagram</a>
+            <a href="#" className="hover:text-primary transition-colors">LinkedIn</a>
+            <a href="#" className="hover:text-primary transition-colors">Twitter</a>
           </div>
-          <p className="text-sm text-slate-400">© 2026 MyCampusKart Inc.</p>
+          <p className="text-sm text-slate-400 font-medium">© 2026 Built for Students, by Students.</p>
         </div>
       </footer>
     </div>
