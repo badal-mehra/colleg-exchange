@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { subscribeToPush } from "@/hooks/usePushNotifications";
+import { toast } from "@/hooks/use-toast";
 import {
   User,
   Trophy,
@@ -113,9 +114,28 @@ const PWAProfile = () => {
     setNotificationLoading(true);
     try {
       await subscribeToPush(user.id);
-      setNotificationsEnabled(Notification.permission === "granted");
+      const isGranted = Notification.permission === "granted";
+      setNotificationsEnabled(isGranted);
+      
+      if (isGranted) {
+        toast({
+          title: "Notifications Enabled! 🔔",
+          description: "You'll now receive push notifications for messages and updates.",
+        });
+      } else {
+        toast({
+          title: "Permission Denied",
+          description: "Please enable notifications in your browser settings.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error("Failed to enable notifications:", error);
+      toast({
+        title: "Something went wrong",
+        description: "Failed to enable notifications. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setNotificationLoading(false);
     }
