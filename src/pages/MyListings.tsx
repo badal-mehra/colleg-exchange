@@ -20,6 +20,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ImageCarousel from '@/components/ImageCarousel';
+import { deleteFromCloudinary } from '@/utils/cloudinaryDelete';
 
 interface Item {
   id: string;
@@ -76,6 +77,24 @@ const MyListings = () => {
   };
 
   const deleteItem = async (itemId: string) => {
+    // First, get the item to retrieve its images
+    const { data: item, error: fetchError } = await supabase
+      .from('items')
+      .select('images')
+      .eq('id', itemId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching item:', fetchError);
+      toast({
+        title: "Error",
+        description: "Failed to fetch item details",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Delete the item from database
     const { error } = await supabase
       .from('items')
       .delete()
@@ -89,9 +108,20 @@ const MyListings = () => {
         variant: "destructive",
       });
     } else {
+      // Delete all images from Cloudinary after successful DB deletion
+      if (item?.images && item.images.length > 0) {
+        try {
+          await Promise.all(item.images.map((url: string) => deleteFromCloudinary(url)));
+          console.log('All images deleted from Cloudinary');
+        } catch (cloudinaryError) {
+          console.error('Error deleting images from Cloudinary:', cloudinaryError);
+          // Don't show error to user since the listing is already deleted
+        }
+      }
+      
       toast({
         title: "Success",
-        description: "Item deleted successfully",
+        description: "Item and all images deleted successfully",
       });
       fetchMyListings();
     }

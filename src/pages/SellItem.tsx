@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ListingTypeSelector, { ListingType } from '@/components/ListingTypeSelector';
 import PGListingForm from '@/components/PGListingForm';
+import { useImageUpload } from '@/hooks/useImageUpload';
 
 // --- Interface Definitions ---
 interface Category {
@@ -39,32 +40,6 @@ const AD_PRIORITY_MAP: Record<AdPackage['ad_type'], number> = {
     'urgent': 1,
     'basic': 0,
 };
-
-// ✅ Cloudinary Upload Function with Hard Failure Catch
-const uploadToCloudinary = async (file: File) => {
-  const formData = new FormData();
-  formData.append("file", file);
-  // ⚠️ ASSUMPTION: Preset name is 'mycampuskart'
-  formData.append("upload_preset", "mycampuskart");
-
-  // ⚠️ ASSUMPTION: Cloud name is 'dj6q4dvre'
-  const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dj6q4dvre/image/upload"; 
-  
-  const res = await fetch(
-    CLOUDINARY_URL,
-    { method: "POST", body: formData }
-  );
-
-  const data = await res.json();
-  console.log("UPLOAD RESULT:", data);
-
-  if (!data.secure_url) {
-    throw new Error(data.error?.message || "Cloudinary upload failed: secure_url not returned. Check console log for details.");
-  }
-
-  return data.secure_url; // CDN URL
-};
-// --- END Cloudinary Upload Function ---
 
 // --- New Component: Listing Summary ---
 interface ListingSummaryProps {
@@ -156,9 +131,21 @@ const SellItem = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [adPackages, setAdPackages] = useState<AdPackage[]>([]); 
   const [loading, setLoading] = useState(false);
-  const [images, setImages] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [userPoints, setUserPoints] = useState<number>(0);
+
+  // Use deferred image upload hook - images are stored locally until submission
+  const {
+    localImages,
+    previewUrls,
+    uploading,
+    addImages,
+    removeLocalImage,
+    uploadAllImages,
+    clearAllImages,
+    imageCount,
+    canAddMore,
+  } = useImageUpload(5);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -225,60 +212,18 @@ const SellItem = () => {
       formData.description.trim().length > 0 &&
       parseFloat(formData.price) > 0 &&
       formData.condition.length > 0 &&
-      images.length > 0 && 
+      imageCount > 0 && 
       !!selectedPackage // Ad package must be selected
     );
-  }, [formData, images, selectedPackage]);
+  }, [formData, imageCount, selectedPackage]);
   
 
-  // --- Handlers (Image/Tag handlers remain unchanged) ---
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // --- Handlers ---
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-
-    const newImageUrls: string[] = [];
-    const filesToProcess = Array.from(files);
-
-    setLoading(true);
-
-    for (const file of filesToProcess) {
-      if (newImageUrls.length >= 5 - images.length) break;
-
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "Image Too Large",
-          description: `"${file.name}" exceeds the 5MB limit and was skipped.`,
-          variant: "destructive",
-        });
-        continue;
-      }
-      
-      try {
-        let url = await uploadToCloudinary(file);
-        
-        const optimizedUrl = url.replace(
-          "/upload/",
-          "/upload/f_auto,q_auto,w_800/"
-        );
-        
-        newImageUrls.push(optimizedUrl);
-      } catch (error: any) {
-        console.error("Cloudinary upload error:", error);
-        toast({ title: "Upload Error", description: error.message, variant: "destructive" });
-      }
-    }
-    
-    setImages(prev => {
-      const updated = [...prev, ...newImageUrls];
-      return updated;
-    });
-
-    setLoading(false);
-    e.target.value = ''; // Reset input
-  };
-
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+    addImages(files);
+    e.target.value = '';
   };
 
   const addTag = () => {
@@ -293,14 +238,14 @@ const SellItem = () => {
     setTags(prev => prev.filter(tag => tag !== tagToRemove));
   };
 
-  // --- Submission Logic (Now includes ad_priority) ---
+  // --- Submission Logic (Now uploads images on confirmation) ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !selectedPackage) return;
 
     if (!isFormValid) {
         let description = "Please fill in all required fields (Title, Description, Price, Condition).";
-        if (images.length === 0) {
+        if (imageCount === 0) {
             description = "Please upload at least one image for your listing.";
         } else if (!selectedPackage) {
             description = "Please select an Ad Package.";
@@ -312,15 +257,20 @@ const SellItem = () => {
 
     if (userPoints < cost) {
       toast({ title: "Affordability Check", description: `You need ${cost} points but only have ${userPoints}.`, variant: "destructive" });
-      setLoading(false);
       return;
     }
 
     setLoading(true);
-    let uploadedImageUrls: string[] = images; 
     let originalUserPoints = userPoints;
 
-    // 1. Deduct Points (Start Transaction)
+    // 1. Upload images to Cloudinary (deferred upload on confirmation)
+    const uploadedImageUrls = await uploadAllImages();
+    if (!uploadedImageUrls) {
+      setLoading(false);
+      return;
+    }
+
+    // 2. Deduct Points (Start Transaction)
     const { error: pointsError } = await supabase
       .from('profiles')
       .update({ campus_points: userPoints - cost })
@@ -335,7 +285,7 @@ const SellItem = () => {
     // Calculate priority based on selected ad_type
     const adPriority = AD_PRIORITY_MAP[selectedPackage.ad_type] || 0;
 
-    // 2. Create Item
+    // 3. Create Item with uploaded image URLs
     const { error: insertError } = await supabase
       .from('items')
       .insert({
@@ -351,17 +301,15 @@ const SellItem = () => {
         ad_duration_days: selectedPackage.duration_days,
         expires_at: new Date(Date.now() + selectedPackage.duration_days * 24 * 60 * 60 * 1000).toISOString(),
         is_negotiable: formData.is_negotiable,
-        // 📌 BONUS FIX: Ad priority included for sorting
         ad_priority: adPriority, 
-        // Auto-repost removed from submission as it's not implemented
         tags: tags
       });
 
     if (insertError) {
-      // 3. Rollback Points on failure
+      // 4. Rollback Points on failure
       const { error: rollbackError } = await supabase
         .from('profiles')
-        .update({ campus_points: originalUserPoints }) // Rollback to original balance
+        .update({ campus_points: originalUserPoints })
         .eq('user_id', user.id); 
 
       let rollbackMessage = rollbackError ? "Points refund failed. Contact support." : "Points successfully refunded.";
@@ -371,7 +319,7 @@ const SellItem = () => {
         description: `Failed to list item. ${rollbackMessage}`, 
         variant: "destructive" 
       });
-      fetchUserPoints(); // Refresh balance after rollback attempt
+      fetchUserPoints();
       setLoading(false);
       return;
     }
@@ -541,16 +489,16 @@ const SellItem = () => {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     
-                    {/* Images */}
+                    {/* Images - now using local preview URLs */}
                     <div className="space-y-2">
                       <Label>Images (Max 5) *</Label>
                       <div className="space-y-4">
-                        {images.length > 0 && (
+                        {localImages.length > 0 && (
                           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-                            {images.map((image, index) => (
-                              <div key={index} className="relative group aspect-square">
+                            {localImages.map((image, index) => (
+                              <div key={image.id} className="relative group aspect-square">
                                 <img
-                                  src={image}
+                                  src={image.previewUrl}
                                   alt={`Preview ${index + 1}`}
                                   className="w-full h-full object-cover rounded-lg border shadow-sm"
                                   loading="lazy"
@@ -560,7 +508,7 @@ const SellItem = () => {
                                   variant="destructive"
                                   size="icon"
                                   className="absolute top-1 right-1 h-6 w-6 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => removeImage(index)}
+                                  onClick={() => removeLocalImage(image.id)}
                                 >
                                   <X className="h-3 w-3" />
                                 </Button>
@@ -568,7 +516,7 @@ const SellItem = () => {
                             ))}
                           </div>
                         )}
-                        {images.length < 5 && (
+                        {canAddMore && (
                           <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center transition-colors hover:border-primary/50">
                             <input
                               type="file"
@@ -577,25 +525,25 @@ const SellItem = () => {
                               onChange={handleImageUpload}
                               className="hidden"
                               id="image-upload"
-                              disabled={images.length >= 5 || loading}
+                              disabled={!canAddMore || uploading}
                             />
                             <label htmlFor="image-upload" className="cursor-pointer block">
-                              {loading ? (
+                              {uploading ? (
                                   <Loader2 className="h-8 w-8 text-primary mx-auto mb-2 animate-spin" />
                               ) : (
                                   <ImageIcon className="h-8 w-8 text-primary mx-auto mb-2" />
                               )}
                               
                               <p className="text-sm font-medium text-primary">
-                                {loading ? 'Uploading...' : 'Click to upload high-quality images'}
+                                {uploading ? 'Processing...' : 'Click to upload high-quality images'}
                               </p>
                               <p className="text-xs text-muted-foreground mt-1">
-                                ({5 - images.length} remaining, max 5MB/image)
+                                ({5 - imageCount} remaining, max 5MB/image)
                               </p>
                             </label>
                           </div>
                         )}
-                        {images.length === 0 && <p className="text-red-500 text-xs mt-2">At least one image is required.</p>}
+                        {imageCount === 0 && <p className="text-red-500 text-xs mt-2">At least one image is required.</p>}
                       </div>
                     </div>
 

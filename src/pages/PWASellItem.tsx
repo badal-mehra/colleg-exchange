@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import PWAPageWrapper from '@/components/PWAPageWrapper';
 import ListingTypeSelector, { ListingType } from '@/components/ListingTypeSelector';
 import PGListingForm from '@/components/PGListingForm';
+import { useImageUpload } from '@/hooks/useImageUpload';
 import { 
   Camera, 
   X, 
@@ -48,23 +49,6 @@ const AD_PRIORITY_MAP: Record<AdPackage['ad_type'], number> = {
   basic: 0,
 };
 
-const uploadToCloudinary = async (file: File) => {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', 'mycampuskart');
-
-  const res = await fetch(
-    'https://api.cloudinary.com/v1_1/dj6q4dvre/image/upload',
-    { method: 'POST', body: formData }
-  );
-
-  const data = await res.json();
-  if (!data.secure_url) {
-    throw new Error(data.error?.message || 'Upload failed');
-  }
-  return data.secure_url;
-};
-
 const PWASellItem = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -76,10 +60,21 @@ const PWASellItem = () => {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [adPackages, setAdPackages] = useState<AdPackage[]>([]);
-  const [images, setImages] = useState<string[]>([]);
   const [userPoints, setUserPoints] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  
+  // Use deferred image upload hook - images are stored locally until submission
+  const {
+    localImages,
+    previewUrls,
+    uploading,
+    addImages,
+    removeLocalImage,
+    uploadAllImages,
+    clearAllImages,
+    imageCount,
+    canAddMore,
+  } = useImageUpload(5);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -116,36 +111,11 @@ const PWASellItem = () => {
     return adPackages.find(pkg => pkg.ad_type === formData.ad_type) || null;
   }, [adPackages, formData.ad_type]);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-
-    setUploading(true);
-    const newImages: string[] = [];
-
-    for (const file of Array.from(files)) {
-      if (images.length + newImages.length >= 5) break;
-      if (file.size > 5 * 1024 * 1024) {
-        toast({ title: 'Image too large', description: 'Max 5MB per image', variant: 'destructive' });
-        continue;
-      }
-
-      try {
-        const url = await uploadToCloudinary(file);
-        const optimizedUrl = url.replace('/upload/', '/upload/f_auto,q_auto,w_800/');
-        newImages.push(optimizedUrl);
-      } catch (error: any) {
-        toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
-      }
-    }
-
-    setImages(prev => [...prev, ...newImages]);
-    setUploading(false);
+    addImages(files);
     e.target.value = '';
-  };
-
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
@@ -157,7 +127,19 @@ const PWASellItem = () => {
       return;
     }
 
+    if (imageCount === 0) {
+      toast({ title: 'No images', description: 'Please add at least one image', variant: 'destructive' });
+      return;
+    }
+
     setLoading(true);
+
+    // Upload images to Cloudinary only now (on confirmation)
+    const uploadedUrls = await uploadAllImages();
+    if (!uploadedUrls) {
+      setLoading(false);
+      return;
+    }
 
     // Deduct points
     const { error: pointsError } = await supabase
@@ -171,7 +153,7 @@ const PWASellItem = () => {
       return;
     }
 
-    // Create listing
+    // Create listing with uploaded image URLs
     const { error: insertError } = await supabase.from('items').insert({
       title: formData.title.trim(),
       description: formData.description.trim(),
@@ -179,7 +161,7 @@ const PWASellItem = () => {
       condition: formData.condition,
       category_id: formData.category_id || null,
       location: formData.location.trim() || null,
-      images,
+      images: uploadedUrls,
       seller_id: user.id,
       ad_type: selectedPackage.ad_type,
       ad_duration_days: selectedPackage.duration_days,
@@ -216,9 +198,9 @@ const PWASellItem = () => {
     { value: 'poor', label: 'Poor', emoji: '⚠️' },
   ];
 
-  const canProceedToDetails = images.length > 0;
+  const canProceedToDetails = imageCount > 0;
   const canProceedToPackage = formData.title && formData.description && formData.price && formData.condition;
-  const canSubmit = canProceedToPackage && selectedPackage && userPoints >= (selectedPackage?.points_cost || 0);
+  const canSubmit = canProceedToPackage && selectedPackage && userPoints >= (selectedPackage?.points_cost || 0) && imageCount > 0;
 
   // Show PG form if PG type selected
   if (listingType === 'pg') {
@@ -272,18 +254,18 @@ const PWASellItem = () => {
             <p className="text-sm md:text-base text-muted-foreground">First photo will be the cover image</p>
           </div>
 
-          {/* Image Grid */}
+          {/* Image Grid - now using local preview URLs */}
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 md:gap-4">
-            {images.map((img, index) => (
-              <div key={index} className="relative aspect-square rounded-xl overflow-hidden bg-muted">
-                <img src={img} alt="" className="w-full h-full object-cover" />
+            {localImages.map((img, index) => (
+              <div key={img.id} className="relative aspect-square rounded-xl overflow-hidden bg-muted">
+                <img src={img.previewUrl} alt="" className="w-full h-full object-cover" />
                 {index === 0 && (
                   <div className="absolute top-1 left-1 bg-primary text-primary-foreground text-[10px] md:text-xs px-1.5 py-0.5 rounded">
                     Cover
                   </div>
                 )}
                 <button
-                  onClick={() => removeImage(index)}
+                  onClick={() => removeLocalImage(img.id)}
                   className="absolute top-1 right-1 w-6 h-6 md:w-8 md:h-8 bg-black/60 rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
                 >
                   <X className="h-3 w-3 md:h-4 md:w-4 text-white" />
@@ -291,7 +273,7 @@ const PWASellItem = () => {
               </div>
             ))}
 
-            {images.length < 5 && (
+            {canAddMore && (
               <label className="aspect-square rounded-xl border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center cursor-pointer active:bg-muted/50 hover:bg-muted/30 transition-colors">
                 <input
                   type="file"
@@ -313,7 +295,7 @@ const PWASellItem = () => {
             )}
           </div>
 
-          {images.length === 0 && (
+          {imageCount === 0 && (
             <p className="text-center text-sm text-destructive">Add at least 1 photo to continue</p>
           )}
 
@@ -540,8 +522,8 @@ const PWASellItem = () => {
 
           {/* Preview Card */}
           <div className="bg-card rounded-2xl overflow-hidden border border-border shadow-sm">
-            {images[0] && (
-              <img src={images[0]} alt="" className="w-full h-48 md:h-64 object-cover" />
+            {previewUrls[0] && (
+              <img src={previewUrls[0]} alt="" className="w-full h-48 md:h-64 object-cover" />
             )}
             <div className="p-4 md:p-5 space-y-2">
               <h3 className="font-semibold text-lg md:text-xl">{formData.title}</h3>
