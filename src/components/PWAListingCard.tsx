@@ -1,7 +1,12 @@
 import React, { memo, useMemo } from "react";
-import { Heart, MapPin, Clock, Eye, Loader2 } from "lucide-react";
+import { Heart, MapPin, Clock, Eye, Loader2, Key } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+
+interface RentalMetadata {
+  rental_duration?: string;
+  rental_deposit?: number;
+}
 
 interface PWAListingCardProps {
   id: string;
@@ -14,6 +19,7 @@ interface PWAListingCardProps {
   createdAt: string;
   imageCount?: number;
   adType?: string;
+  rentalMetadata?: RentalMetadata | null;
   onClick: () => void;
   onFavorite?: (e: React.MouseEvent) => void;
   isFavoriting?: boolean;
@@ -39,11 +45,24 @@ const PWAListingCard: React.FC<PWAListingCardProps> = memo(
     createdAt,
     imageCount = 1,
     adType,
+    rentalMetadata,
     onClick,
     onFavorite,
     isFavoriting = false,
     showFavorite = true,
   }) => {
+    const isRental = !!rentalMetadata?.rental_duration;
+    
+    const rentalDurationLabel = useMemo(() => {
+      if (!rentalMetadata?.rental_duration) return null;
+      const labels: Record<string, string> = {
+        per_hour: "/hr",
+        per_day: "/day",
+        per_week: "/wk",
+        per_month: "/mo",
+      };
+      return labels[rentalMetadata.rental_duration] || "";
+    }, [rentalMetadata]);
     const timeAgo = useMemo(() => {
       const now = new Date();
       const created = new Date(createdAt);
@@ -95,8 +114,15 @@ const PWAListingCard: React.FC<PWAListingCardProps> = memo(
             loading="lazy"
           />
 
-          {/* Ad Badge */}
-          {adBadge && (
+          {/* Rental Badge - Priority over Ad Badge */}
+          {isRental ? (
+            <Badge
+              className="absolute top-2 left-2 text-[10px] px-2 py-0.5 font-semibold shadow-sm bg-gradient-to-r from-emerald-500 to-teal-500 text-white"
+            >
+              <Key className="h-3 w-3 mr-0.5" />
+              For Rent
+            </Badge>
+          ) : adBadge && (
             <Badge
               className={cn(
                 "absolute top-2 left-2 text-[10px] px-2 py-0.5 font-semibold shadow-sm",
@@ -136,10 +162,17 @@ const PWAListingCard: React.FC<PWAListingCardProps> = memo(
 
         {/* Content */}
         <div className="p-3 space-y-1.5">
-          {/* Price */}
-          <p className="text-lg font-bold text-foreground">
-            ₹{price.toLocaleString("en-IN")}
-          </p>
+          {/* Price with rental duration */}
+          <div className="flex items-baseline gap-1">
+            <p className="text-lg font-bold text-foreground">
+              ₹{price.toLocaleString("en-IN")}
+            </p>
+            {rentalDurationLabel && (
+              <span className="text-xs text-muted-foreground font-medium">
+                {rentalDurationLabel}
+              </span>
+            )}
+          </div>
 
           {/* Title */}
           <h3 className="text-sm text-foreground/90 line-clamp-2 leading-snug min-h-[2.5rem]">

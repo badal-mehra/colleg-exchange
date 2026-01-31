@@ -22,7 +22,10 @@ import {
   Star,
   AlertTriangle,
   DollarSign,
-  Package
+  Package,
+  Key,
+  Clock,
+  Banknote
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
@@ -69,6 +72,11 @@ interface Category {
   icon: string;
 }
 
+interface RentalMetadata {
+  rental_duration?: string;
+  rental_deposit?: number;
+}
+
 interface Item {
   id: string;
   title: string;
@@ -83,6 +91,8 @@ interface Item {
   seller_id: string;
   categories: Category;
   profiles: Profile;
+  rental_metadata?: RentalMetadata | null;
+  is_negotiable?: boolean;
 }
 
 const ItemDetail = () => {
@@ -663,10 +673,57 @@ const ItemDetail = () => {
                   </div>
                 )}
               </div>
-              <div className="text-4xl font-bold text-primary mb-4">
-                ₹{item.price.toLocaleString()}
+              <div className="flex items-baseline gap-2 mb-4">
+                <span className="text-4xl font-bold text-primary">
+                  ₹{item.price.toLocaleString()}
+                </span>
+                {item.rental_metadata?.rental_duration && (
+                  <span className="text-lg text-muted-foreground font-medium">
+                    {item.rental_metadata.rental_duration === 'per_hour' && '/hour'}
+                    {item.rental_metadata.rental_duration === 'per_day' && '/day'}
+                    {item.rental_metadata.rental_duration === 'per_week' && '/week'}
+                    {item.rental_metadata.rental_duration === 'per_month' && '/month'}
+                  </span>
+                )}
               </div>
             </div>
+
+            {/* Rental Details Card */}
+            {item.rental_metadata?.rental_duration && (
+              <Card className="border-emerald-500/30 bg-emerald-500/5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                    <Key className="h-5 w-5" />
+                    Rental Item
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Duration</p>
+                        <p className="font-medium capitalize">
+                          {item.rental_metadata.rental_duration.replace('per_', 'Per ')}
+                        </p>
+                      </div>
+                    </div>
+                    {item.rental_metadata.rental_deposit !== undefined && item.rental_metadata.rental_deposit > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Banknote className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Security Deposit</p>
+                          <p className="font-medium">₹{item.rental_metadata.rental_deposit.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground bg-muted/50 p-2 rounded-md">
+                    💡 This is a rental item. The price shown is the rental fee. Contact the seller to discuss rental terms.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardHeader>
