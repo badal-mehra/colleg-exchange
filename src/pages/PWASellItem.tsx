@@ -85,6 +85,9 @@ const PWASellItem = () => {
     location: '',
     ad_type: 'basic' as AdPackage['ad_type'],
     is_negotiable: true,
+    // Rental specific fields
+    rental_duration: '', // e.g., "per_day", "per_week", "per_month"
+    rental_deposit: '',
   });
 
   useEffect(() => {
@@ -154,6 +157,7 @@ const PWASellItem = () => {
     }
 
     // Create listing with uploaded image URLs
+    const isRental = listingType === 'rent';
     const { error: insertError } = await supabase.from('items').insert({
       title: formData.title.trim(),
       description: formData.description.trim(),
@@ -168,6 +172,12 @@ const PWASellItem = () => {
       expires_at: new Date(Date.now() + selectedPackage.duration_days * 24 * 60 * 60 * 1000).toISOString(),
       is_negotiable: formData.is_negotiable,
       ad_priority: AD_PRIORITY_MAP[selectedPackage.ad_type],
+      // Add rental metadata if it's a rental listing
+      rental_metadata: isRental ? {
+        is_rental: true,
+        rental_duration: formData.rental_duration,
+        rental_deposit: parseFloat(formData.rental_deposit) || 0,
+      } : null,
     });
 
     if (insertError) {
@@ -185,10 +195,12 @@ const PWASellItem = () => {
 
   const handleTypeSelect = (type: ListingType) => {
     setListingType(type);
-    if (type === 'sell') {
+    if (type === 'sell' || type === 'rent') {
       setStep('photos');
     }
   };
+
+  const isRentalListing = listingType === 'rent';
 
   const conditions = [
     { value: 'new', label: 'Brand New', emoji: '✨' },
@@ -199,7 +211,8 @@ const PWASellItem = () => {
   ];
 
   const canProceedToDetails = imageCount > 0;
-  const canProceedToPackage = formData.title && formData.description && formData.price && formData.condition;
+  const canProceedToPackage = formData.title && formData.description && formData.price && formData.condition && 
+    (isRentalListing ? formData.rental_duration : true);
   const canSubmit = canProceedToPackage && selectedPackage && userPoints >= (selectedPackage?.points_cost || 0) && imageCount > 0;
 
   // Show PG form if PG type selected
@@ -211,9 +224,19 @@ const PWASellItem = () => {
     );
   }
 
+  const pageTitle = step === 'type' 
+    ? 'Create Listing' 
+    : step === 'photos' 
+    ? 'Add Photos' 
+    : step === 'details' 
+    ? (isRentalListing ? 'Rental Details' : 'Item Details') 
+    : step === 'package' 
+    ? 'Choose Package' 
+    : 'Review';
+
   return (
     <PWAPageWrapper 
-      title={step === 'type' ? 'Create Listing' : step === 'photos' ? 'Add Photos' : step === 'details' ? 'Item Details' : step === 'package' ? 'Choose Package' : 'Review'} 
+      title={pageTitle} 
       showBack 
       onBack={() => {
         if (step === 'type') navigate(-1);
@@ -326,32 +349,77 @@ const PWASellItem = () => {
             <Input
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="What are you selling?"
+              placeholder={isRentalListing ? "What are you renting out?" : "What are you selling?"}
               className="h-12 md:h-14 rounded-xl text-base md:text-lg"
             />
           </div>
 
           {/* Price */}
           <div className="space-y-2">
-            <Label className="text-sm md:text-base font-medium">Price (₹) *</Label>
+            <Label className="text-sm md:text-base font-medium">
+              {isRentalListing ? 'Rent Price (₹) *' : 'Price (₹) *'}
+            </Label>
             <Input
               type="number"
               value={formData.price}
               onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              placeholder="0"
+              placeholder={isRentalListing ? 'e.g., 100' : '0'}
               className="h-12 md:h-14 rounded-xl text-base md:text-lg"
             />
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="negotiable"
-                checked={formData.is_negotiable}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_negotiable: !!checked })}
-              />
-              <Label htmlFor="negotiable" className="text-sm md:text-base text-muted-foreground">
-                Price is negotiable
-              </Label>
-            </div>
+            {!isRentalListing && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="negotiable"
+                  checked={formData.is_negotiable}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_negotiable: !!checked })}
+                />
+                <Label htmlFor="negotiable" className="text-sm md:text-base text-muted-foreground">
+                  Price is negotiable
+                </Label>
+              </div>
+            )}
           </div>
+
+          {/* Rental Duration - Only for rentals */}
+          {isRentalListing && (
+            <div className="space-y-2">
+              <Label className="text-sm md:text-base font-medium">Rental Duration *</Label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: 'per_hour', label: 'Per Hour', emoji: '⏱️' },
+                  { value: 'per_day', label: 'Per Day', emoji: '📅' },
+                  { value: 'per_week', label: 'Per Week', emoji: '🗓️' },
+                  { value: 'per_month', label: 'Per Month', emoji: '📆' },
+                ].map((d) => (
+                  <button
+                    key={d.value}
+                    onClick={() => setFormData({ ...formData, rental_duration: d.value })}
+                    className={`px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-sm md:text-base font-medium transition-all hover:opacity-90 ${
+                      formData.rental_duration === d.value
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {d.emoji} {d.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Security Deposit - Only for rentals */}
+          {isRentalListing && (
+            <div className="space-y-2">
+              <Label className="text-sm md:text-base font-medium">Security Deposit (₹)</Label>
+              <Input
+                type="number"
+                value={formData.rental_deposit}
+                onChange={(e) => setFormData({ ...formData, rental_deposit: e.target.value })}
+                placeholder="Optional deposit amount"
+                className="h-12 md:h-14 rounded-xl text-base md:text-lg"
+              />
+            </div>
+          )}
 
           {/* Condition */}
           <div className="space-y-2">
