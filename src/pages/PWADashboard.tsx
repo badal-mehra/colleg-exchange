@@ -29,6 +29,11 @@ interface Category {
   icon: string | null;
 }
 
+interface RentalMetadata {
+  rental_duration?: string;
+  rental_deposit?: number;
+}
+
 interface Item {
   id: string;
   title: string;
@@ -40,6 +45,7 @@ interface Item {
   created_at: string;
   ad_type: string;
   seller_id: string;
+  rental_metadata: RentalMetadata | null;
 }
 
 interface PGListing {
@@ -114,7 +120,7 @@ const PWADashboard = () => {
     // First, get all items
     let query = supabase
       .from("items")
-      .select("id, title, price, images, location, condition, is_negotiable, created_at, ad_type, seller_id")
+      .select("id, title, price, images, location, condition, is_negotiable, created_at, ad_type, seller_id, rental_metadata")
       .eq("is_sold", false)
       .order("ad_priority", { ascending: false })
       .order("created_at", { ascending: false })
@@ -157,7 +163,12 @@ const PWADashboard = () => {
         .map(order => order.item_id)
     );
 
-    const filteredItems = itemsData.filter(item => !reservedByOthers.has(item.id));
+    const filteredItems = itemsData
+      .filter(item => !reservedByOthers.has(item.id))
+      .map(item => ({
+        ...item,
+        rental_metadata: item.rental_metadata as RentalMetadata | null
+      }));
     setItems(filteredItems.slice(0, 30));
   }, [searchTerm, selectedCategory, priceRange, toast, user?.id]);
 
@@ -396,6 +407,7 @@ const PWADashboard = () => {
                     createdAt={item.created_at}
                     imageCount={item.images.length}
                     adType={item.ad_type}
+                    rentalMetadata={item.rental_metadata}
                     onClick={() => navigate(`/item/${item.id}`)}
                     onFavorite={(e) => handleFavorite(e, item.id)}
                     showFavorite={!!user && item.seller_id !== user.id}
