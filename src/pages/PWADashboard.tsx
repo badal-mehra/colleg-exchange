@@ -109,15 +109,16 @@ const PWADashboard = () => {
     fetchCategories();
   }, []);
 
-  // Fetch Items
+  // Fetch Items - exclude items reserved by other users
   const fetchItems = useCallback(async () => {
+    // First, get all items
     let query = supabase
       .from("items")
       .select("id, title, price, images, location, condition, is_negotiable, created_at, ad_type, seller_id")
       .eq("is_sold", false)
       .order("ad_priority", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(30);
+      .limit(50);
 
     if (selectedCategory !== "all") {
       query = query.eq("category_id", selectedCategory);
@@ -130,13 +131,35 @@ const PWADashboard = () => {
       query = max ? query.gte("price", min).lte("price", max) : query.gte("price", min);
     }
 
-    const { data, error } = await query;
+    const { data: itemsData, error } = await query;
     if (error) {
       toast({ title: "Error", description: "Failed to load items", variant: "destructive" });
-    } else {
-      setItems(data || []);
+      return;
     }
-  }, [searchTerm, selectedCategory, priceRange, toast]);
+
+    if (!itemsData || itemsData.length === 0) {
+      setItems([]);
+      return;
+    }
+
+    // Get pending orders to filter out reserved items (reserved by someone else)
+    const itemIds = itemsData.map(item => item.id);
+    const { data: pendingOrders } = await supabase
+      .from("orders")
+      .select("item_id, buyer_id")
+      .in("item_id", itemIds)
+      .eq("status", "pending");
+
+    // Filter items: show if no pending order OR if current user is the buyer
+    const reservedByOthers = new Set(
+      (pendingOrders || [])
+        .filter(order => order.buyer_id !== user?.id)
+        .map(order => order.item_id)
+    );
+
+    const filteredItems = itemsData.filter(item => !reservedByOthers.has(item.id));
+    setItems(filteredItems.slice(0, 30));
+  }, [searchTerm, selectedCategory, priceRange, toast, user?.id]);
 
   // Fetch PG Listings
   const fetchPGListings = useCallback(async () => {

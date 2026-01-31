@@ -157,7 +157,10 @@ const SellItem = () => {
     ad_type: '' as AdPackage['ad_type'] | '', 
     is_negotiable: true,
     auto_repost: false, // Removed Auto-repost logic, but state kept for cleaner removal below
-    tag_input: ''
+    tag_input: '',
+    // Rental specific fields
+    rental_duration: '',
+    rental_deposit: '',
   });
 
   // --- Data Fetching ---
@@ -286,6 +289,7 @@ const SellItem = () => {
     const adPriority = AD_PRIORITY_MAP[selectedPackage.ad_type] || 0;
 
     // 3. Create Item with uploaded image URLs
+    const isRental = listingType === 'rent';
     const { error: insertError } = await supabase
       .from('items')
       .insert({
@@ -302,7 +306,13 @@ const SellItem = () => {
         expires_at: new Date(Date.now() + selectedPackage.duration_days * 24 * 60 * 60 * 1000).toISOString(),
         is_negotiable: formData.is_negotiable,
         ad_priority: adPriority, 
-        tags: tags
+        tags: tags,
+        // Add rental metadata if it's a rental listing
+        rental_metadata: isRental ? {
+          is_rental: true,
+          rental_duration: formData.rental_duration,
+          rental_deposit: parseFloat(formData.rental_deposit) || 0,
+        } : null,
       });
 
     if (insertError) {
@@ -369,8 +379,8 @@ const SellItem = () => {
           <PGListingForm onBack={() => setListingType(null)} />
         )}
 
-        {/* Step 2b: Sell Item Form (Original) */}
-        {listingType === 'sell' && (
+        {/* Step 2b: Sell/Rent Item Form */}
+        {(listingType === 'sell' || listingType === 'rent') && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* Column 1: Listing Form */}
@@ -380,7 +390,7 @@ const SellItem = () => {
                 {/* --- SECTION 1: Item Details --- */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-2xl">1. Item Details</CardTitle>
+                    <CardTitle className="text-2xl">1. {listingType === 'rent' ? 'Rental' : 'Item'} Details</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     
@@ -397,18 +407,49 @@ const SellItem = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="price">Price (₹) *</Label>
+                        <Label htmlFor="price">{listingType === 'rent' ? 'Rent Price (₹) *' : 'Price (₹) *'}</Label>
                         <Input
                           id="price"
                           type="number"
                           min="1"
                           value={formData.price}
                           onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                          placeholder="e.g., 50000"
+                          placeholder={listingType === 'rent' ? 'e.g., 100' : 'e.g., 50000'}
                           required
                         />
                       </div>
                     </div>
+
+                    {/* Rental Duration & Deposit - only for rentals */}
+                    {listingType === 'rent' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Rental Duration *</Label>
+                          <Select value={formData.rental_duration} onValueChange={(value) => setFormData({ ...formData, rental_duration: value })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select duration" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="per_hour">Per Hour</SelectItem>
+                              <SelectItem value="per_day">Per Day</SelectItem>
+                              <SelectItem value="per_week">Per Week</SelectItem>
+                              <SelectItem value="per_month">Per Month</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="rental_deposit">Security Deposit (₹)</Label>
+                          <Input
+                            id="rental_deposit"
+                            type="number"
+                            min="0"
+                            value={formData.rental_deposit}
+                            onChange={(e) => setFormData({ ...formData, rental_deposit: e.target.value })}
+                            placeholder="Optional deposit amount"
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     {/* Description */}
                     <div className="space-y-2">
