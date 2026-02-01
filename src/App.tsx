@@ -110,6 +110,7 @@ const App = () => (
     <Route path="/profile" element={<ProtectedRoute><SmartProfile /></ProtectedRoute>} />
     <Route path="/sell" element={<ProtectedRoute><SmartSellItem /></ProtectedRoute>} />
     <Route path="/chat/:conversationId?" element={<ProtectedRoute><SmartChat /></ProtectedRoute>} />
+    <Route path="/pwa-chat/:conversationId" element={<ProtectedRoute><PWAChat /></ProtectedRoute>} />
     <Route path="/my-cart" element={<ProtectedRoute><MyCart /></ProtectedRoute>} />
     <Route path="/my-reports" element={<ProtectedRoute><MyReports /></ProtectedRoute>} />
     <Route path="/my-listings" element={<ProtectedRoute><SmartMyListings /></ProtectedRoute>} />

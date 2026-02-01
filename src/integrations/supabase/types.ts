@@ -370,7 +370,9 @@ export type Database = {
           location: string | null
           price: number
           promotion_expires_at: string | null
+          rental_available_date: string | null
           rental_metadata: Json | null
+          rental_status: string | null
           seller_id: string
           status: string | null
           tags: string[] | null
@@ -401,7 +403,9 @@ export type Database = {
           location?: string | null
           price: number
           promotion_expires_at?: string | null
+          rental_available_date?: string | null
           rental_metadata?: Json | null
+          rental_status?: string | null
           seller_id: string
           status?: string | null
           tags?: string[] | null
@@ -432,7 +436,9 @@ export type Database = {
           location?: string | null
           price?: number
           promotion_expires_at?: string | null
+          rental_available_date?: string | null
           rental_metadata?: Json | null
+          rental_status?: string | null
           seller_id?: string
           status?: string | null
           tags?: string[] | null
@@ -624,6 +630,55 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      pg_conversations: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          id: string
+          pg_listing_id: string
+          seller_id: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          id?: string
+          pg_listing_id: string
+          seller_id: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          pg_listing_id?: string
+          seller_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pg_conversations_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "pg_conversations_pg_listing_id_fkey"
+            columns: ["pg_listing_id"]
+            isOneToOne: false
+            referencedRelation: "pg_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pg_conversations_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
           },
         ]
       }

@@ -6,10 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { 
-  ArrowLeft, Send, User, Shield, Loader2, Check, CheckCheck, MessageCircle, Phone, MoreVertical, Image as ImageIcon
+  ArrowLeft, Send, User, Shield, Loader2, Check, CheckCheck, MessageCircle, Phone, MoreVertical, Image as ImageIcon, Home
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import TypingIndicator from '@/components/TypingIndicator'; 
 
 const MESSAGES_PER_PAGE = 50;
@@ -33,14 +33,24 @@ interface Item {
   images: string[];
 }
 
+interface PGListing {
+  id: string;
+  property_type: string;
+  area_locality: string;
+  rent_per_month: number;
+  images: string[];
+}
+
 interface Conversation {
   id: string;
   buyer_id: string;
   seller_id: string;
-  item_id: string;
+  item_id?: string;
+  pg_listing_id?: string;
   created_at: string;
   updated_at?: string; 
-  items: Item;
+  items?: Item;
+  pg_listing?: PGListing;
   buyer_profile: Profile;
   seller_profile: Profile;
 }
@@ -82,6 +92,8 @@ const PWAChat = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { conversationId } = useParams<{ conversationId: string }>(); 
+  const [searchParams] = useSearchParams();
+  const isPGChat = searchParams.get('type') === 'pg';
   
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -105,6 +117,10 @@ const PWAChat = () => {
   const previousScrollHeightRef = useRef(0); 
   const channelsRef = useRef<any[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Determine messages table based on chat type
+  const messagesTable = isPGChat ? 'messages' : 'messages'; // Both use same messages table for now
+  const conversationsTable = isPGChat ? 'pg_conversations' : 'conversations';
 
   const otherUser = useMemo(() => {
     if (!conversation || !user) return null;
@@ -135,15 +151,25 @@ const PWAChat = () => {
     
     (window as any)[timeoutId] = setTimeout(async () => {
       try {
-        await supabase.rpc('mark_messages_read', {
-          conv_id: conversationId,
-          uid: user.id
-        });
+        // For PG chats, we need to manually update since there's no RPC for pg_messages
+        if (isPGChat) {
+          await supabase
+            .from('messages')
+            .update({ is_read: true })
+            .eq('conversation_id', conversationId)
+            .neq('sender_id', user.id)
+            .eq('is_read', false);
+        } else {
+          await supabase.rpc('mark_messages_read', {
+            conv_id: conversationId,
+            uid: user.id
+          });
+        }
       } catch (error) {
         console.error('Error marking messages as read:', error);
       }
     }, 500); 
-  }, [conversationId, user]);
+  }, [conversationId, user, isPGChat]);
 
   const handleTyping = () => {
     if (!conversationId || !user) return;
@@ -218,6 +244,12 @@ const PWAChat = () => {
       });
     } else if (data) {
       setMessages(prev => prev.map(m => m.id === tempId ? { ...data, is_optimistic: false } : m));
+      
+      // Update conversation updated_at timestamp
+      await supabase
+        .from(conversationsTable)
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', conversationId);
     }
   };
 
@@ -273,38 +305,76 @@ const PWAChat = () => {
       setConversationLoading(true);
 
       try {
-        const { data: conversationData, error } = await supabase
-          .from('conversations')
-          .select(`
-            buyer_id, seller_id, item_id, created_at, id,
-            items (title, price, images)
-          `)
-          .eq('id', conversationId)
-          .single();
+        if (isPGChat) {
+          // Fetch PG conversation
+          const { data: conversationData, error } = await supabase
+            .from('pg_conversations')
+            .select(`
+              buyer_id, seller_id, pg_listing_id, created_at, id,
+              pg_listings (id, property_type, area_locality, rent_per_month, images)
+            `)
+            .eq('id', conversationId)
+            .single();
 
-        if (error || !conversationData) {
-          console.error('Error fetching conversation:', error);
-          toast({ title: "Error", description: "Conversation not found", variant: "destructive" });
-          navigate('/my-chats'); 
-          return;
-        }
-        
-        const userIdsToFetch = [conversationData.buyer_id, conversationData.seller_id];
-
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('user_id, full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
-          .in('user_id', userIdsToFetch);
+          if (error || !conversationData) {
+            console.error('Error fetching PG conversation:', error);
+            toast({ title: "Error", description: "Conversation not found", variant: "destructive" });
+            navigate('/my-chats'); 
+            return;
+          }
           
-        const buyerProfile = profilesData?.find(p => p.user_id === conversationData.buyer_id) || { full_name: 'Unknown User' };
-        const sellerProfile = profilesData?.find(p => p.user_id === conversationData.seller_id) || { full_name: 'Unknown User' };
+          const userIdsToFetch = [conversationData.buyer_id, conversationData.seller_id];
 
-        setConversation({
-          ...conversationData,
-          items: { ...conversationData.items, id: conversationData.item_id } as Item,
-          buyer_profile: buyerProfile as Profile,
-          seller_profile: sellerProfile as Profile
-        });
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('user_id, full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
+            .in('user_id', userIdsToFetch);
+            
+          const buyerProfile = profilesData?.find(p => p.user_id === conversationData.buyer_id) || { user_id: conversationData.buyer_id, full_name: 'Unknown User' };
+          const sellerProfile = profilesData?.find(p => p.user_id === conversationData.seller_id) || { user_id: conversationData.seller_id, full_name: 'Unknown User' };
+
+          setConversation({
+            ...conversationData,
+            pg_listing_id: conversationData.pg_listing_id,
+            pg_listing: conversationData.pg_listings as unknown as PGListing,
+            buyer_profile: buyerProfile as Profile,
+            seller_profile: sellerProfile as Profile
+          });
+        } else {
+          // Fetch regular conversation
+          const { data: conversationData, error } = await supabase
+            .from('conversations')
+            .select(`
+              buyer_id, seller_id, item_id, created_at, id,
+              items (id, title, price, images)
+            `)
+            .eq('id', conversationId)
+            .single();
+
+          if (error || !conversationData) {
+            console.error('Error fetching conversation:', error);
+            toast({ title: "Error", description: "Conversation not found", variant: "destructive" });
+            navigate('/my-chats'); 
+            return;
+          }
+          
+          const userIdsToFetch = [conversationData.buyer_id, conversationData.seller_id];
+
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('user_id, full_name, is_verified, verification_status, avatar_url, mck_id, trust_seller_badge')
+            .in('user_id', userIdsToFetch);
+            
+          const buyerProfile = profilesData?.find(p => p.user_id === conversationData.buyer_id) || { user_id: conversationData.buyer_id, full_name: 'Unknown User' };
+          const sellerProfile = profilesData?.find(p => p.user_id === conversationData.seller_id) || { user_id: conversationData.seller_id, full_name: 'Unknown User' };
+
+          setConversation({
+            ...conversationData,
+            items: { ...conversationData.items, id: conversationData.item_id } as Item,
+            buyer_profile: buyerProfile as Profile,
+            seller_profile: sellerProfile as Profile
+          });
+        }
 
       } catch (error) {
         console.error('Error in fetchConversation:', error);
@@ -327,7 +397,7 @@ const PWAChat = () => {
         clearTimeout(typingTimeoutRef.current);
       }
     };
-  }, [conversationId, user, fetchMessages, navigate, toast]);
+  }, [conversationId, user, isPGChat, fetchMessages, navigate, toast]);
   
   useEffect(() => {
     if (!conversation || !user || !otherUserId) {
@@ -453,6 +523,14 @@ const PWAChat = () => {
     }
   };
 
+  const navigateToListing = () => {
+    if (isPGChat && conversation?.pg_listing?.id) {
+      navigate(`/pg/${conversation.pg_listing.id}`);
+    } else if (conversation?.items?.id) {
+      navigate(`/item/${conversation.items.id}`);
+    }
+  };
+
   // Group messages by date
   const groupMessagesByDate = (messages: Message[]) => {
     const groups: { [key: string]: Message[] } = {};
@@ -476,6 +554,29 @@ const PWAChat = () => {
   };
 
   const groupedMessages = useMemo(() => groupMessagesByDate(messages), [messages]);
+
+  // Get listing preview info
+  const listingPreview = useMemo(() => {
+    if (isPGChat && conversation?.pg_listing) {
+      const pg = conversation.pg_listing;
+      return {
+        title: `${pg.property_type?.toUpperCase()} in ${pg.area_locality}`,
+        price: pg.rent_per_month,
+        priceSuffix: '/month',
+        image: pg.images?.[0],
+        isPG: true
+      };
+    } else if (conversation?.items) {
+      return {
+        title: conversation.items.title,
+        price: conversation.items.price,
+        priceSuffix: '',
+        image: conversation.items.images?.[0],
+        isPG: false
+      };
+    }
+    return null;
+  }, [conversation, isPGChat]);
 
   if (conversationLoading) {
     return (
@@ -566,28 +667,37 @@ const PWAChat = () => {
           </Button>
         </div>
 
-        {/* Item Preview Bar */}
-        {conversation.items && (
+        {/* Item/PG Preview Bar */}
+        {listingPreview && (
           <div 
             className="max-w-4xl mx-auto flex items-center gap-3 px-4 py-2 bg-muted/50 border-t cursor-pointer active:bg-muted transition-colors"
-            onClick={() => navigate(`/item/${conversation.items.id}`)}
+            onClick={navigateToListing}
           >
             <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-              {conversation.items.images?.[0] ? (
+              {listingPreview.image ? (
                 <img 
-                  src={conversation.items.images[0]} 
-                  alt={conversation.items.title}
+                  src={listingPreview.image} 
+                  alt={listingPreview.title}
                   className="w-full h-full object-cover"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                  {listingPreview.isPG ? <Home className="h-4 w-4 text-muted-foreground" /> : <ImageIcon className="h-4 w-4 text-muted-foreground" />}
                 </div>
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm md:text-base font-medium truncate">{conversation.items.title}</p>
-              <p className="text-xs md:text-sm text-primary font-semibold">₹{conversation.items.price.toLocaleString()}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm md:text-base font-medium truncate">{listingPreview.title}</p>
+                {listingPreview.isPG && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-orange-500/10 text-orange-600 border-orange-500/30">
+                    PG
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs md:text-sm text-primary font-semibold">
+                ₹{listingPreview.price.toLocaleString()}{listingPreview.priceSuffix}
+              </p>
             </div>
           </div>
         )}
@@ -626,7 +736,7 @@ const PWAChat = () => {
               <div>
                 <p className="font-bold text-xl mb-1">Start the Conversation</p>
                 <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                  Send a message about "{conversation.items?.title}"
+                  Send a message about "{listingPreview?.title || 'this listing'}"
                 </p>
               </div>
             </div>
