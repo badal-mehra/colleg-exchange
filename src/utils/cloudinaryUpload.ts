@@ -7,28 +7,64 @@ const CLOUDINARY_SIGN_URL =
 
 type CloudinaryFolder = "avatars" | "slider";
 
+async function getFreshAccessToken(): Promise<string> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData?.session;
+
+  if (!session) {
+    throw new Error("Please sign in to upload images.");
+  }
+
+  // If token is close to expiring, refresh it (prevents 401 "Invalid or expired token")
+  const expiresAtMs = session?.expires_at ? session.expires_at * 1000 : null;
+  const shouldRefresh =
+    !session.access_token || (expiresAtMs !== null && expiresAtMs <= Date.now() + 30_000);
+
+  if (!shouldRefresh) return session.access_token;
+
+  const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+  const freshToken = refreshed?.session?.access_token;
+
+  if (refreshError || !freshToken) {
+    // Clear any broken/stale session (common after "refresh token not found")
+    await supabase.auth.signOut();
+    throw new Error("Session expired. Please sign in again and retry.");
+  }
+
+  return freshToken;
+}
+
+async function readEdgeError(res: Response): Promise<string> {
+  const text = await res.text();
+  try {
+    const json = JSON.parse(text);
+    return typeof json?.error === "string" ? json.error : text;
+  } catch {
+    return text;
+  }
+}
+
 export async function uploadToCloudinary(
   file: File,
   folder: CloudinaryFolder = "avatars"
 ): Promise<string> {
-  // Get the current user's session token
-  const { data: sessionData } = await supabase.auth.getSession();
-  const accessToken = sessionData?.session?.access_token;
-
-  if (!accessToken) {
-    throw new Error("User must be logged in to upload images");
-  }
+  const accessToken = await getFreshAccessToken();
 
   // Get signature from Supabase Edge Function with user's auth token
-  const sigRes = await fetch(`${CLOUDINARY_SIGN_URL}?folder=${folder}`, {
+  const sigRes = await fetch(`${CLOUDINARY_SIGN_URL}?folder=${encodeURIComponent(folder)}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   });
 
   if (!sigRes.ok) {
-    console.error("Signature Error:", await sigRes.text());
-    throw new Error("Failed to get Cloudinary signature");
+    const message = await readEdgeError(sigRes);
+    // If our JWT is invalid/expired, force re-login rather than cascading failures.
+    if (sigRes.status === 401) {
+      await supabase.auth.signOut();
+      throw new Error("Session expired. Please sign in again and retry.");
+    }
+    throw new Error(message || "Failed to get Cloudinary signature");
   }
 
   const { signature, timestamp, apiKey, cloudName } = await sigRes.json();
