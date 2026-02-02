@@ -159,25 +159,25 @@ const PGDetail = () => {
     if (!listing) return;
 
     try {
-      // Check existing conversation (use item_id field with pg listing id)
+      // Check existing PG conversation
       const { data: existing } = await supabase
-        .from('conversations')
+        .from('pg_conversations')
         .select('id')
-        .eq('item_id', listing.id)
+        .eq('pg_listing_id', listing.id)
         .eq('buyer_id', user.id)
         .eq('seller_id', listing.seller_id)
         .maybeSingle();
 
       if (existing) {
-        navigate(`/chat/${existing.id}`);
+        navigate(`/pwa-chat/${existing.id}?type=pg`);
         return;
       }
 
-      // Create new conversation
+      // Create new PG conversation
       const { data: newConv, error } = await supabase
-        .from('conversations')
+        .from('pg_conversations')
         .insert({
-          item_id: listing.id,
+          pg_listing_id: listing.id,
           buyer_id: user.id,
           seller_id: listing.seller_id,
         })
@@ -186,13 +186,14 @@ const PGDetail = () => {
 
       if (error) throw error;
 
+      // Send initial message
       await supabase.from('messages').insert({
         conversation_id: newConv.id,
         sender_id: user.id,
         content: `Hi! I'm interested in your ${listing.property_type.toUpperCase()} listing in ${listing.area_locality} (₹${listing.rent_per_month}/month).`,
       });
 
-      navigate(`/chat/${newConv.id}`);
+      navigate(`/pwa-chat/${newConv.id}?type=pg`);
     } catch (error) {
       console.error('Error:', error);
       toast({ title: "Error", description: "Failed to start conversation", variant: "destructive" });
