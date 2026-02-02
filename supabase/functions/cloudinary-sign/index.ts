@@ -16,7 +16,7 @@ Deno.serve(async (req: Request) => {
     const folder = url.searchParams.get("folder") || "avatars";
 
     // Validate auth header
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = req.headers.get("authorization") ?? req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "Authorization header missing" }),
@@ -31,11 +31,9 @@ Deno.serve(async (req: Request) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Validate the token by getting user
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    
-    if (claimsError || !claimsData?.claims) {
+    // Validate the token by fetching the current user (robust vs header casing/format)
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData?.user) {
       return new Response(
         JSON.stringify({ error: "Invalid or expired token" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
