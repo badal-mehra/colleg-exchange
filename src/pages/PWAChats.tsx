@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
-  Search, User, MessageCircle, Check, CheckCheck, Image as ImageIcon, Shield
+  Search, User, MessageCircle, Check, CheckCheck, Image as ImageIcon, Shield, Home
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PWAPageWrapper from '@/components/PWAPageWrapper';
@@ -18,13 +18,6 @@ interface Profile {
   verification_status?: string;
 }
 
-interface Item {
-  id: string;
-  title: string;
-  images: string[];
-  price: number;
-}
-
 interface Message {
   content: string;
   created_at: string;
@@ -32,17 +25,28 @@ interface Message {
   is_read: boolean;
 }
 
-interface Conversation {
+interface UnifiedConversation {
   id: string;
   buyer_id: string;
   seller_id: string;
-  item_id: string;
   updated_at: string;
-  items: Item;
+  type: 'item' | 'pg';
+  // Item conversation fields
+  item_id?: string;
+  item_title?: string;
+  item_images?: string[];
+  item_price?: number;
+  // PG conversation fields
+  pg_listing_id?: string;
+  pg_property_type?: string;
+  pg_area?: string;
+  pg_rent?: number;
+  pg_images?: string[];
+  // Common fields
   buyer_profile: Profile;
   seller_profile: Profile;
   messages: Message[];
-  unread_count?: number;
+  unread_count: number;
 }
 
 const formatTimeAgo = (dateString: string): string => {
@@ -60,7 +64,7 @@ const formatTimeAgo = (dateString: string): string => {
 const PWAChats = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversations, setConversations] = useState<UnifiedConversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -70,136 +74,166 @@ const PWAChats = () => {
     }
   }, [user, authLoading, navigate]);
 
-  useEffect(() => {
-    const fetchConversations = async () => {
-      if (!user) return;
-      setLoading(true);
+  const fetchAllConversations = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
 
-      try {
-        const { data, error } = await supabase
+    try {
+      // Fetch both conversation types in parallel
+      const [itemConvsResult, pgConvsResult] = await Promise.all([
+        supabase
           .from('conversations')
           .select(`
             id, buyer_id, seller_id, item_id, updated_at,
-            items (id, title, images, price),
-            messages (content, created_at, sender_id, is_read)
+            items (id, title, images, price)
           `)
           .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-          .order('updated_at', { ascending: false });
+          .order('updated_at', { ascending: false }),
+        supabase
+          .from('pg_conversations')
+          .select(`
+            id, buyer_id, seller_id, pg_listing_id, updated_at,
+            pg_listings (id, property_type, area_locality, rent_per_month, images)
+          `)
+          .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+          .order('updated_at', { ascending: false })
+      ]);
 
-        if (error) throw error;
+      const itemConvs = itemConvsResult.data || [];
+      const pgConvs = pgConvsResult.data || [];
 
-        // Get unique user IDs
-        const userIds = new Set<string>();
-        data?.forEach(conv => {
-          userIds.add(conv.buyer_id);
-          userIds.add(conv.seller_id);
-        });
+      // Get all conversation IDs for message fetching
+      const allConvIds = [
+        ...itemConvs.map(c => c.id),
+        ...pgConvs.map(c => c.id)
+      ];
 
-        // Fetch all profiles
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('user_id, full_name, avatar_url, verification_status')
-          .in('user_id', Array.from(userIds));
+      // Fetch messages for all conversations
+      const { data: messagesData } = await supabase
+        .from('messages')
+        .select('conversation_id, content, created_at, sender_id, is_read')
+        .in('conversation_id', allConvIds)
+        .order('created_at', { ascending: false });
 
-        const profilesMap = new Map(profilesData?.map(p => [p.user_id, p]));
+      // Group messages by conversation
+      const messagesMap = new Map<string, Message[]>();
+      messagesData?.forEach(msg => {
+        const existing = messagesMap.get(msg.conversation_id) || [];
+        existing.push(msg);
+        messagesMap.set(msg.conversation_id, existing);
+      });
 
-        // Process conversations
-        const processedConversations = data?.map(conv => {
-          const messages = (conv.messages || []) as unknown as Message[];
-          const sortedMessages = [...messages].sort((a, b) => 
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          );
-          
-          const unreadCount = messages.filter(
-            m => !m.is_read && m.sender_id !== user.id
-          ).length;
+      // Get unique user IDs for profiles
+      const userIds = new Set<string>();
+      itemConvs.forEach(conv => {
+        userIds.add(conv.buyer_id);
+        userIds.add(conv.seller_id);
+      });
+      pgConvs.forEach(conv => {
+        userIds.add(conv.buyer_id);
+        userIds.add(conv.seller_id);
+      });
 
-          return {
-            ...conv,
-            buyer_profile: profilesMap.get(conv.buyer_id) || { user_id: conv.buyer_id, full_name: 'Unknown' },
-            seller_profile: profilesMap.get(conv.seller_id) || { user_id: conv.seller_id, full_name: 'Unknown' },
-            messages: sortedMessages,
-            unread_count: unreadCount
-          };
-        }) || [];
+      // Fetch all profiles
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, avatar_url, verification_status')
+        .in('user_id', Array.from(userIds));
 
-        setConversations(processedConversations as Conversation[]);
-      } catch (error) {
-        console.error('Error fetching conversations:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      const profilesMap = new Map(profilesData?.map(p => [p.user_id, p]));
 
-    if (user) {
-      fetchConversations();
+      // Process item conversations
+      const processedItemConvs: UnifiedConversation[] = itemConvs.map(conv => {
+        const messages = messagesMap.get(conv.id) || [];
+        const unreadCount = messages.filter(m => !m.is_read && m.sender_id !== user.id).length;
+        const item = conv.items as { id: string; title: string; images: string[]; price: number } | null;
+
+        return {
+          id: conv.id,
+          buyer_id: conv.buyer_id,
+          seller_id: conv.seller_id,
+          updated_at: conv.updated_at,
+          type: 'item' as const,
+          item_id: conv.item_id,
+          item_title: item?.title,
+          item_images: item?.images,
+          item_price: item?.price,
+          buyer_profile: profilesMap.get(conv.buyer_id) || { user_id: conv.buyer_id, full_name: 'Unknown' },
+          seller_profile: profilesMap.get(conv.seller_id) || { user_id: conv.seller_id, full_name: 'Unknown' },
+          messages,
+          unread_count: unreadCount
+        };
+      });
+
+      // Process PG conversations
+      const processedPgConvs: UnifiedConversation[] = pgConvs.map(conv => {
+        const messages = messagesMap.get(conv.id) || [];
+        const unreadCount = messages.filter(m => !m.is_read && m.sender_id !== user.id).length;
+        const pg = conv.pg_listings as { id: string; property_type: string; area_locality: string; rent_per_month: number; images: string[] } | null;
+
+        return {
+          id: conv.id,
+          buyer_id: conv.buyer_id,
+          seller_id: conv.seller_id,
+          updated_at: conv.updated_at,
+          type: 'pg' as const,
+          pg_listing_id: conv.pg_listing_id,
+          pg_property_type: pg?.property_type,
+          pg_area: pg?.area_locality,
+          pg_rent: pg?.rent_per_month,
+          pg_images: pg?.images,
+          buyer_profile: profilesMap.get(conv.buyer_id) || { user_id: conv.buyer_id, full_name: 'Unknown' },
+          seller_profile: profilesMap.get(conv.seller_id) || { user_id: conv.seller_id, full_name: 'Unknown' },
+          messages,
+          unread_count: unreadCount
+        };
+      });
+
+      // Merge and sort by updated_at
+      const allConversations = [...processedItemConvs, ...processedPgConvs]
+        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+
+      setConversations(allConversations);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+    } finally {
+      setLoading(false);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchAllConversations();
+    }
+  }, [user, fetchAllConversations]);
 
   // Real-time subscription
   useEffect(() => {
     if (!user) return;
 
     const channel = supabase
-      .channel('pwa-conversations')
+      .channel('pwa-all-conversations')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'messages'
-        },
-        () => {
-          // Refetch on any message change
-          supabase
-            .from('conversations')
-            .select(`
-              id, buyer_id, seller_id, item_id, updated_at,
-              items (id, title, images, price),
-              messages (content, created_at, sender_id, is_read)
-            `)
-            .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-            .order('updated_at', { ascending: false })
-            .then(({ data }) => {
-              if (data) {
-                // Quick update without re-fetching profiles
-                setConversations(prev => {
-                  const profilesMap = new Map(
-                    prev.flatMap(c => [
-                      [c.buyer_id, c.buyer_profile],
-                      [c.seller_id, c.seller_profile]
-                    ])
-                  );
-
-                  return data.map(conv => {
-                    const messages = (conv.messages || []) as unknown as Message[];
-                    const sortedMessages = [...messages].sort((a, b) => 
-                      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                    );
-                    
-                    const unreadCount = messages.filter(
-                      m => !m.is_read && m.sender_id !== user.id
-                    ).length;
-
-                    return {
-                      ...conv,
-                      buyer_profile: profilesMap.get(conv.buyer_id) || { user_id: conv.buyer_id, full_name: 'Unknown' },
-                      seller_profile: profilesMap.get(conv.seller_id) || { user_id: conv.seller_id, full_name: 'Unknown' },
-                      messages: sortedMessages,
-                      unread_count: unreadCount
-                    };
-                  }) as Conversation[];
-                });
-              }
-            });
-        }
+        { event: '*', schema: 'public', table: 'messages' },
+        () => fetchAllConversations()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'conversations' },
+        () => fetchAllConversations()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pg_conversations' },
+        () => fetchAllConversations()
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, fetchAllConversations]);
 
   const filteredConversations = useMemo(() => {
     if (!searchQuery.trim()) return conversations;
@@ -207,12 +241,21 @@ const PWAChats = () => {
     const query = searchQuery.toLowerCase();
     return conversations.filter(conv => {
       const otherUser = user?.id === conv.buyer_id ? conv.seller_profile : conv.buyer_profile;
+      const title = conv.type === 'item' ? conv.item_title : `${conv.pg_property_type} in ${conv.pg_area}`;
       return (
         otherUser.full_name?.toLowerCase().includes(query) ||
-        conv.items?.title?.toLowerCase().includes(query)
+        title?.toLowerCase().includes(query)
       );
     });
   }, [conversations, searchQuery, user]);
+
+  const handleConversationClick = (conv: UnifiedConversation) => {
+    if (conv.type === 'pg') {
+      navigate(`/pwa-chat/${conv.id}?type=pg`);
+    } else {
+      navigate(`/pwa-chat/${conv.id}`);
+    }
+  };
 
   if (authLoading) {
     return (
@@ -280,19 +323,28 @@ const PWAChats = () => {
             const otherUser = user?.id === conv.buyer_id ? conv.seller_profile : conv.buyer_profile;
             const lastMessage = conv.messages[0];
             const isOwnMessage = lastMessage?.sender_id === user?.id;
-            const hasUnread = (conv.unread_count || 0) > 0;
+            const hasUnread = conv.unread_count > 0;
+
+            // Get thumbnail and title based on conversation type
+            const thumbnail = conv.type === 'item' 
+              ? conv.item_images?.[0] 
+              : conv.pg_images?.[0];
+            const title = conv.type === 'item' 
+              ? conv.item_title 
+              : `${conv.pg_property_type?.toUpperCase()} in ${conv.pg_area}`;
+            const isPgConversation = conv.type === 'pg';
 
             return (
               <div
                 key={conv.id}
-                onClick={() => navigate(`/chat/${conv.id}`)}
+                onClick={() => handleConversationClick(conv)}
                 className={`
                   flex items-center gap-3 md:gap-4 p-4 md:p-5 cursor-pointer transition-colors
                   active:bg-muted/50 hover:bg-muted/30
                   ${hasUnread ? 'bg-primary/5' : ''}
                 `}
               >
-                {/* Avatar with item thumbnail */}
+                {/* Avatar with item/pg thumbnail */}
                 <div className="relative flex-shrink-0">
                   <Avatar className="h-14 w-14 md:h-16 md:w-16 ring-2 ring-background shadow-md">
                     <AvatarImage src={otherUser.avatar_url || undefined} />
@@ -300,14 +352,18 @@ const PWAChats = () => {
                       {otherUser.full_name?.charAt(0) || <User className="h-6 w-6" />}
                     </AvatarFallback>
                   </Avatar>
-                  {/* Item thumbnail badge */}
-                  <div className="absolute -bottom-1 -right-1 w-6 h-6 md:w-7 md:h-7 rounded-md overflow-hidden ring-2 ring-background bg-muted shadow-sm">
-                    {conv.items?.images?.[0] ? (
+                  {/* Thumbnail badge */}
+                  <div className={`absolute -bottom-1 -right-1 w-6 h-6 md:w-7 md:h-7 rounded-md overflow-hidden ring-2 ring-background shadow-sm ${isPgConversation ? 'bg-orange-500' : 'bg-muted'}`}>
+                    {thumbnail ? (
                       <img 
-                        src={conv.items.images[0]} 
+                        src={thumbnail} 
                         alt=""
                         className="w-full h-full object-cover"
                       />
+                    ) : isPgConversation ? (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Home className="h-3 w-3 text-white" />
+                      </div>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <ImageIcon className="h-3 w-3 text-muted-foreground" />
@@ -325,6 +381,11 @@ const PWAChats = () => {
                       </span>
                       {otherUser.verification_status === 'approved' && (
                         <Shield className="h-3.5 w-3.5 md:h-4 md:w-4 fill-green-500 text-green-500 flex-shrink-0" />
+                      )}
+                      {isPgConversation && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-orange-500 text-orange-500">
+                          PG
+                        </Badge>
                       )}
                     </div>
                     <span className="text-xs md:text-sm text-muted-foreground flex-shrink-0">
@@ -352,9 +413,9 @@ const PWAChats = () => {
                     )}
                   </div>
 
-                  {/* Item name */}
+                  {/* Item/PG name */}
                   <p className="text-xs md:text-sm text-muted-foreground truncate mt-0.5">
-                    {conv.items?.title}
+                    {title}
                   </p>
                 </div>
               </div>
