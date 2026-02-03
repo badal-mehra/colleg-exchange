@@ -520,13 +520,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "messages_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "messages_sender_id_fkey"
             columns: ["sender_id"]
             isOneToOne: false

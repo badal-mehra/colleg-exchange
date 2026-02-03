@@ -105,8 +105,8 @@ const PWAChats = () => {
 
         // Process conversations
         const processedConversations = data?.map(conv => {
-          const messages = conv.messages || [];
-          const sortedMessages = messages.sort((a, b) => 
+          const messages = (conv.messages || []) as unknown as Message[];
+          const sortedMessages = [...messages].sort((a, b) => 
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           );
           
@@ -172,8 +172,8 @@ const PWAChats = () => {
                   );
 
                   return data.map(conv => {
-                    const messages = conv.messages || [];
-                    const sortedMessages = messages.sort((a, b) => 
+                    const messages = (conv.messages || []) as unknown as Message[];
+                    const sortedMessages = [...messages].sort((a, b) => 
                       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
                     );
                     
