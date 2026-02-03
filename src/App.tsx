@@ -76,14 +76,14 @@ const App = () => (
           </ProtectedRoute>
         }
       />
-      
+        </Route>
       {/* FIX: Removed ProtectedRoute wrapper. PWAProfile now handles its own auth check to prevent white-screen race conditions. */}
       <Route path="/pwa-profile" element={<PWAProfile />} />
       
       <Route path="/my-chats" element={<ProtectedRoute><SmartChats /></ProtectedRoute>} />
       {/* <Route path="/my-orders" element={<ProtectedRoute><MyOrders /></ProtectedRoute>} /> */}
       <Route path="/my-orders" element={<ProtectedRoute><SmartMyOrders /></ProtectedRoute>} />
-    </Route>
+  
 
     {/** FULLSCREEN ROUTES (NO HEADER / NO FOOTER) */}
     <Route path="/" element={<Index />} />
