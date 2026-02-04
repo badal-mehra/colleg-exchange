@@ -4,31 +4,47 @@ import { useEffect, useState } from "react";
 const NotFound = () => {
   const location = useLocation();
   const [meme, setMeme] = useState("");
+  // Track if we are currently loading to prevent rapid-fire error loops
+  const [imgError, setImgError] = useState(false);
 
-  // A curated list of relatable memes for students/devs
-  const memes = [
-    "https://media.giphy.com/media/VbnUQpnihPSlIxe2v3/giphy.gif", // Confused Travolta
-    "https://media.giphy.com/media/26hkhKd2Cp5WMWU1O/giphy.gif", // Blinking Guy
-    "https://media.giphy.com/media/QMHoU66sBXqqLqYvGO/giphy.gif", // This is fine
-    "https://media.giphy.com/media/l2JjkYs6j4FhEaMrm/giphy.gif", // Minion what?
-    "https://media.giphy.com/media/g7GKcSzwQ5s5i/giphy.gif", // Confused Math Lady
+  // A list of reliable Giphy IDs for student/tech humor
+  // We use the ID to construct a consistent URL structure
+  const memeIds = [
+    "VbnUQpnihPSlIxe2v3", // Confused Travolta
+    "26hkhKd2Cp5WMWU1O",  // Blinking Guy
+    "QMHoU66sBXqqLqYvGO", // This is fine (Fire dog)
+    "NtOkhJ9LChVrq",      // IT Crowd "Have you tried turning it off and on?"
+    "g7GKcSzwQ5s5i",      // Confused Math Lady
+    "11IwPBbzm6vUfm",     // Computer smash
+    "isoLpIry2F6PC"       // Homer Simpson backing into bush
   ];
 
+  const getRandomMeme = () => {
+    const randomId = memeIds[Math.floor(Math.random() * memeIds.length)];
+    // Using the 'i.giphy.com' endpoint is often faster/more reliable for embedding
+    return `https://i.giphy.com/media/${randomId}/giphy.webp`;
+  };
+
   useEffect(() => {
-    // 1. Log the error for your analytics
     console.error(
       "404 Error: User attempted to access non-existent route:",
       location.pathname
     );
-
-    // 2. Pick a random meme on mount
-    const random = memes[Math.floor(Math.random() * memes.length)];
-    setMeme(random);
+    setMeme(getRandomMeme());
   }, [location.pathname]);
 
   const handleRefreshMeme = () => {
-    const random = memes[Math.floor(Math.random() * memes.length)];
-    setMeme(random);
+    setImgError(false); // Reset error state
+    setMeme(getRandomMeme());
+  };
+
+  // The "Auto-Fixer": If an image breaks, load this specific backup immediately
+  const handleImageError = () => {
+    if (!imgError) {
+      setImgError(true);
+      // Fallback to a super reliable static image (Confused Travolta backup)
+      setMeme("https://i.giphy.com/media/VbnUQpnihPSlIxe2v3/giphy.webp");
+    }
   };
 
   return (
@@ -44,7 +60,6 @@ const NotFound = () => {
         
         <div className="flex flex-col items-center text-center">
           
-          {/* Glitchy 404 Text */}
           <h1 className="relative mb-2 text-8xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 sm:text-9xl hover:scale-110 transition-transform duration-300 cursor-default">
             404
           </h1>
@@ -67,6 +82,7 @@ const NotFound = () => {
               <img
                 src={meme}
                 alt="Random 404 Meme"
+                onError={handleImageError} // <--- The Magic Fix
                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
             )}
@@ -83,7 +99,6 @@ const NotFound = () => {
             </button>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
             <Link
               to="/"
