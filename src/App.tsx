@@ -7,6 +7,7 @@ import MainLayout from "./layouts/MainLayout";
 import AuthCallback from "./pages/AuthCallback";
 import Index from "./pages/Index";
 import Home from "./pages/Home";
+import Browse from "./pages/Browse";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
@@ -86,8 +87,9 @@ const App = () => (
   
 
     {/** FULLSCREEN ROUTES (NO HEADER / NO FOOTER) */}
-    <Route path="/" element={<Index />} />
-    <Route path="/home" element={<Home />} />
+    <Route path="/" element={<Browse />} />
+    <Route path="/home" element={<Browse />} />
+    <Route path="/browse" element={<Browse />} />
     <Route path="/auth" element={<Auth />} />
     <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/downloadmycampuskartapp" element={<DownloadApp />} />
