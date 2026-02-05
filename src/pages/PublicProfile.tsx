@@ -1,28 +1,19 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // NEW
 import { 
   ArrowLeft, Award, Star, Trophy, Package, User as UserIcon, 
   AlertTriangle, Shield, CheckCircle, Home, MapPin, 
-  MessageCircle, Share2, Search, Filter,
-  ExternalLink, Copy, ArrowUpRight, Zap, Ghost
+  MessageCircle, Calendar, Share2, Clock 
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ReportModal } from '@/components/ReportModal';
 import { Separator } from '@/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // --- Interfaces ---
 interface Profile {
@@ -36,7 +27,7 @@ interface Profile {
   trust_seller_badge: boolean;
   avatar_url: string | null;
   verification_status: string;
-  created_at?: string;
+  created_at?: string; // Assumed field for "Member Since"
 }
 
 interface Item {
@@ -66,36 +57,12 @@ interface PGListing {
 }
 
 // --- Utilities ---
-
-// Fun "Student Vibe" Generator for Retention/Humor
-const STUDENT_VIBES = [
-  { text: "Caffeine Powered ☕", color: "bg-amber-100 text-amber-800 border-amber-200" },
-  { text: "Academic Weapon 📚", color: "bg-blue-100 text-blue-800 border-blue-200" },
-  { text: "Sleep Deprived 😴", color: "bg-purple-100 text-purple-800 border-purple-200" },
-  { text: "Last Minute Legend ⚡", color: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-  { text: "Broke but Happy 💸", color: "bg-green-100 text-green-800 border-green-200" },
-  { text: "Future CEO 🚀", color: "bg-indigo-100 text-indigo-800 border-indigo-200" },
-  { text: "Assignment Survivor 🛡️", color: "bg-red-100 text-red-800 border-red-200" },
-];
-
-const getRandomVibe = () => STUDENT_VIBES[Math.floor(Math.random() * STUDENT_VIBES.length)];
-
-// Generates a unique gradient background based on the user's name
-const generateGradient = (str: string) => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  const c1 = `hsl(${hash % 360}, 70%, 50%)`;
-  const c2 = `hsl(${(hash + 80) % 360}, 70%, 40%)`;
-  return `linear-gradient(135deg, ${c1}, ${c2})`;
-};
-
-const getInitials = (name: string) => {
-  if (!name) return "U";
-  return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-};
-
 const fetchUserRating = async (userId: string) => {
-  const { data, error } = await supabase.from("ratings").select("rating").eq("to_user_id", userId);
+  const { data, error } = await supabase
+    .from("ratings")
+    .select("rating")
+    .eq("to_user_id", userId);
+
   if (error || !data) return { avg: 0, count: 0 };
   const count = data.length;
   const avg = count === 0 ? 0 : data.reduce((sum, item) => sum + item.rating, 0) / count;
@@ -105,10 +72,12 @@ const fetchUserRating = async (userId: string) => {
 const formatRelativeTime = (dateString: string) => {
   const date = new Date(dateString);
   const now = new Date();
-  const diffInHours = Math.abs(now.getTime() - date.getTime()) / 36e5;
-  if (diffInHours < 24) return 'Fresh Drop 🔥';
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) return `${diffInDays}d ago`;
+  const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 3600 * 24));
+  
+  if (diffInDays === 0) return 'Today';
+  if (diffInDays === 1) return 'Yesterday';
+  if (diffInDays < 7) return `${diffInDays} days ago`;
+  if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
   return date.toLocaleDateString();
 };
 
@@ -117,134 +86,98 @@ const PublicProfile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Data State
   const [profile, setProfile] = useState<Profile | null>(null);
   const [listings, setListings] = useState<Item[]>([]);
   const [pgListings, setPgListings] = useState<PGListing[]>([]);
-  const [sellerRating, setSellerRating] = useState({ avg: 0, count: 0 });
   const [loading, setLoading] = useState(true);
-  const [userVibe, setUserVibe] = useState(STUDENT_VIBES[0]); // Fun state
-  
-  // UI State
   const [reportModalOpen, setReportModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"newest" | "price_asc" | "price_desc">("newest");
+  const [sellerRating, setSellerRating] = useState({ avg: 0, count: 0 });
 
   useEffect(() => {
     fetchProfileAndListings();
-    setUserVibe(getRandomVibe()); // Set random vibe on load
-    window.scrollTo(0, 0); 
   }, [mckId]);
 
   const fetchProfileAndListings = async () => {
     if (!mckId) return;
     setLoading(true);
     
-    // Fetch Profile
-    const { data: profileData } = await supabase
+    // 1. Fetch Profile
+    const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('mck_id', mckId)
       .single();
 
-    if (!profileData) {
+    if (profileError || !profileData) {
+      toast({ title: "Error", description: "Profile not found", variant: "destructive" });
       setLoading(false);
       return;
     }
 
     setProfile(profileData);
     
-    // Parallel Fetching
+    // 2. Fetch Rating & Listings Parallelly
     if (profileData.user_id) {
-      const [ratingRes, itemsRes, pgsRes] = await Promise.all([
+      const [rating, items, pgs] = await Promise.all([
         fetchUserRating(profileData.user_id),
         supabase.from('items').select('*').eq('seller_id', profileData.user_id).order('created_at', { ascending: false }),
         supabase.from('pg_listings').select('*').eq('seller_id', profileData.user_id).order('created_at', { ascending: false })
       ]);
 
-      setSellerRating(ratingRes);
-      if (itemsRes.data) setListings(itemsRes.data as Item[]);
-      if (pgsRes.data) setPgListings(pgsRes.data as PGListing[]);
+      setSellerRating(rating);
+      if (items.data) setListings(items.data as Item[]);
+      if (pgs.data) setPgListings(pgs.data as PGListing[]);
     }
+
     setLoading(false);
   };
 
   const getAvatarUrl = (avatarPath: string | null) => {
-    if (!avatarPath || avatarPath === 'null') return undefined; 
+    if (!avatarPath) return null;
     if (avatarPath.startsWith('http')) return avatarPath;
     const { data } = supabase.storage.from('avatars').getPublicUrl(avatarPath);
     return data.publicUrl;
   };
 
-  const handleShare = async () => {
-    const shareData = {
-      title: `${profile?.full_name}'s Profile`,
-      text: `Check out items from ${profile?.full_name} on MyCampusKart!`,
-      url: window.location.href
-    };
-
-    if (navigator.share) {
-      try { await navigator.share(shareData); } catch (err) { console.log('Error sharing:', err); }
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      toast({ 
-        title: "Link Copied! 🚀", 
-        description: "Share it with your friends and earn karma points (kidding, but do it anyway).",
-      });
-    }
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast({ title: "Link Copied", description: "Profile link copied to clipboard." });
   };
 
-  const filteredItems = useMemo(() => {
-    let items = listings.filter(item => 
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) && !item.is_sold
-    );
-    if (sortBy === 'price_asc') items.sort((a, b) => a.price - b.price);
-    else if (sortBy === 'price_desc') items.sort((a, b) => b.price - a.price);
-    return items;
-  }, [listings, searchQuery, sortBy]);
+  const handleMessage = () => {
+    if(!profile) return;
+    // Assuming you have a chat route
+    navigate(`/chat/${profile.user_id}`);
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="h-48 bg-muted animate-pulse" />
-        <div className="container max-w-5xl px-4 -mt-20">
-          <div className="bg-card rounded-xl p-6 shadow-sm border space-y-4">
-            <div className="flex gap-4 items-end">
-              <div className="h-32 w-32 rounded-full bg-muted animate-pulse border-4 border-background" />
-              <div className="space-y-2 mb-2 flex-1">
-                <div className="h-8 w-1/2 bg-muted rounded animate-pulse" />
-              </div>
-            </div>
-          </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse space-y-4 w-full max-w-4xl px-4">
+          <div className="h-48 bg-muted rounded-lg w-full"></div>
+          <div className="h-24 w-24 rounded-full bg-muted mx-auto -mt-12"></div>
+          <div className="h-8 bg-muted rounded w-1/3 mx-auto"></div>
         </div>
       </div>
     );
   }
 
-  if (!profile) return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center">
-        <Ghost className="h-16 w-16 text-muted-foreground mb-4 opacity-20" />
-        <h2 className="text-xl font-semibold">User ghosted us?</h2>
-        <p className="text-muted-foreground">We couldn't find this profile.</p>
-        <Button variant="link" onClick={() => navigate('/')}>Go Home</Button>
-    </div>
-  );
+  if (!profile) return null;
+
+  const avatarUrl = getAvatarUrl(profile.avatar_url);
+  const activeListings = listings.filter(item => !item.is_sold);
+  const activePGListings = pgListings.filter(pg => pg.is_active && pg.status !== 'rented');
 
   return (
-    <div className="min-h-screen bg-background pb-24 md:pb-12">
-      
-      {/* 1. Dynamic Identity Banner */}
-      <div 
-        className="h-48 md:h-64 w-full relative overflow-hidden"
-        style={{ background: generateGradient(profile.full_name || 'User') }}
-      >
-        <div className="absolute inset-0 bg-black/10" />
-        <div className="container mx-auto px-4 py-6 relative z-10">
+    <div className="min-h-screen bg-background pb-12">
+      {/* 1. Gradient Banner */}
+      <div className="h-48 md:h-64 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 w-full relative">
+        <div className="container mx-auto px-4 py-6">
           <Button 
             variant="secondary" 
             size="sm" 
             onClick={() => navigate(-1)} 
-            className="bg-white/20 hover:bg-white/30 text-white backdrop-blur-md border-none shadow-sm"
+            className="bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm border-none"
           >
             <ArrowLeft className="h-4 w-4 mr-2" /> Back
           </Button>
@@ -253,85 +186,64 @@ const PublicProfile = () => {
 
       <div className="container mx-auto px-4 max-w-6xl -mt-24 relative z-10">
         
-        {/* 2. Main Profile Card - FIXED: overflow-visible */}
-        <Card className="mb-8 shadow-xl border-none overflow-visible backdrop-blur-sm bg-card/95">
+        {/* 2. Main Profile Card */}
+        <Card className="mb-8 shadow-xl overflow-visible border-none">
           <CardContent className="pt-0 pb-6 px-6">
             <div className="flex flex-col md:flex-row items-center md:items-end gap-6">
               
-              {/* Avatar Section */}
-              <div className="relative -mt-16 md:-mt-20 group">
-                <Avatar className="h-32 w-32 md:h-44 md:w-44 border-[6px] border-background shadow-xl transition-transform transform group-hover:scale-105 bg-background">
-                  <AvatarImage 
-                    src={getAvatarUrl(profile.avatar_url)} 
-                    alt={profile.full_name} 
-                    className="object-cover" 
-                  />
-                  <AvatarFallback className="text-4xl font-bold bg-primary/10 text-primary">
-                    {getInitials(profile.full_name)}
+              {/* Avatar */}
+              <div className="relative -mt-16 md:-mt-20">
+                <Avatar className="h-32 w-32 md:h-40 md:w-40 border-[6px] border-background shadow-md">
+                  <AvatarImage src={avatarUrl || undefined} alt={profile.full_name} className="object-cover" />
+                  <AvatarFallback className="text-4xl bg-primary text-primary-foreground">
+                    {profile.full_name?.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
-                
                 {profile.verification_status === 'approved' && (
-                   <TooltipProvider>
-                     <Tooltip>
-                       <TooltipTrigger asChild>
-                        <div className="absolute bottom-2 right-2 bg-background rounded-full p-1.5 shadow-sm ring-1 ring-border cursor-help">
-                          <CheckCircle className="h-6 w-6 text-green-500 fill-green-100" />
-                        </div>
-                       </TooltipTrigger>
-                       <TooltipContent><p>Verified Student Identity</p></TooltipContent>
-                     </Tooltip>
-                   </TooltipProvider>
+                  <div className="absolute bottom-2 right-2 bg-background rounded-full p-1">
+                    <Shield className="h-6 w-6 text-green-500 fill-green-500/20" />
+                  </div>
                 )}
               </div>
 
-              {/* Info Section */}
-              <div className="flex-1 text-center md:text-left mt-2 md:mt-0 md:pb-4">
-                <div className="flex items-center justify-center md:justify-start gap-2 flex-wrap">
-                  <h1 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight">
-                    {profile.full_name}
-                  </h1>
+              {/* Name & Basic Info */}
+              <div className="flex-1 text-center md:text-left mt-2 md:mt-0 md:pb-2">
+                <h1 className="text-3xl font-bold text-foreground flex items-center justify-center md:justify-start gap-2">
+                  {profile.full_name}
                   {profile.trust_seller_badge && (
-                    <Award className="h-6 w-6 text-yellow-500" />
+                    <Award className="h-6 w-6 text-yellow-500" title="Trusted Seller" />
                   )}
-                  {/* FUN FEATURE: Dynamic User Vibe Badge */}
-                  <Badge variant="outline" className={`ml-2 ${userVibe.color} border hidden md:inline-flex`}>
-                     {userVibe.text}
-                  </Badge>
-                </div>
+                </h1>
                 
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 text-muted-foreground mt-3">
-                  <Badge variant="outline" className="font-normal text-sm px-3 py-1 border-primary/20 bg-primary/5 text-primary">
-                     @{profile.mck_id}
-                  </Badge>
-                  <div className="flex items-center gap-1 text-sm">
-                    <MapPin className="h-3 w-3" /> {profile.university}
-                  </div>
+                <div className="flex flex-col md:flex-row items-center gap-2 text-muted-foreground mt-1">
+                  <span className="font-mono bg-muted px-2 py-0.5 rounded text-sm">@{profile.mck_id}</span>
+                  <span className="hidden md:inline">•</span>
+                  <span>{profile.university}</span>
                 </div>
+
+                {/* Date Joined */}
+                {profile.created_at && (
+                   <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2 justify-center md:justify-start">
+                     <Calendar className="h-3 w-3" />
+                     <span>Joined {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+                   </div>
+                )}
               </div>
 
-              {/* Desktop Actions */}
-              <div className="hidden md:flex gap-3 mb-4">
-                 <Button className="shadow-lg hover:shadow-xl transition-all" onClick={() => navigate(`/chat/${profile.user_id}`)}>
+              {/* Action Buttons */}
+              <div className="flex gap-3 mb-2 w-full md:w-auto">
+                 <Button className="flex-1 md:flex-none shadow-sm" onClick={handleMessage}>
                     <MessageCircle className="h-4 w-4 mr-2" /> Message
                  </Button>
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline"><Share2 className="h-4 w-4 mr-2" /> Share</Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => {
-                         navigator.clipboard.writeText(window.location.href);
-                         toast({ title: "Copied!", description: "Link copied to clipboard" });
-                      }}>
-                        <Copy className="h-4 w-4 mr-2" /> Copy Link
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.open(`https://wa.me/?text=Check out ${profile.full_name} on MyCampusKart: ${window.location.href}`, '_blank')}>
-                        <ExternalLink className="h-4 w-4 mr-2" /> WhatsApp
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                 </DropdownMenu>
-                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => setReportModalOpen(true)}>
+                 <Button variant="outline" size="icon" onClick={handleShare}>
+                    <Share2 className="h-4 w-4" />
+                 </Button>
+                 <Button 
+                   variant="ghost" 
+                   size="icon"
+                   className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                   onClick={() => setReportModalOpen(true)}
+                 >
                    <AlertTriangle className="h-4 w-4" />
                  </Button>
               </div>
@@ -341,91 +253,63 @@ const PublicProfile = () => {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-3 gap-4 md:gap-8 max-w-3xl mx-auto md:mx-0">
-               <div className="flex flex-col items-center md:items-start p-2 rounded-lg transition-colors cursor-default hover:bg-muted/50">
-                 <div className="flex items-center gap-2 mb-1">
+               <div className="text-center md:text-left border-r last:border-0 md:border-none">
+                 <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
                     <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
                     <span className="text-2xl font-bold">{sellerRating.avg}</span>
                  </div>
-                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{sellerRating.count} Reviews</p>
+                 <p className="text-xs text-muted-foreground">{sellerRating.count} Ratings</p>
                </div>
                
-               <div className="flex flex-col items-center md:items-start p-2 border-l border-r md:border-x-0 rounded-lg transition-colors hover:bg-muted/50">
-                 <div className="flex items-center gap-2 mb-1">
+               <div className="text-center md:text-left border-r last:border-0 md:border-none">
+                 <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
                     <Package className="h-5 w-5 text-blue-500" />
                     <span className="text-2xl font-bold">{profile.deals_completed}</span>
                  </div>
-                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Sold</p>
+                 <p className="text-xs text-muted-foreground">Deals Done</p>
                </div>
 
-               <div className="flex flex-col items-center md:items-start p-2 rounded-lg transition-colors hover:bg-muted/50">
-                 <div className="flex items-center gap-2 mb-1">
+               <div className="text-center md:text-left">
+                 <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
                     <Trophy className="h-5 w-5 text-orange-500" />
                     <span className="text-2xl font-bold">{profile.campus_points}</span>
                  </div>
-                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Points</p>
+                 <p className="text-xs text-muted-foreground">Campus Points</p>
                </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* 3. Listings Tabs */}
-        <Tabs defaultValue="items" className="w-full space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-             <TabsList className="h-auto p-1 bg-muted/50 border self-start">
-                <TabsTrigger value="items" className="px-6 py-2 text-sm">
-                  Marketplace <Badge variant="secondary" className="ml-2">{listings.length}</Badge>
+        {/* 3. TABS for Listings */}
+        <Tabs defaultValue="items" className="w-full">
+          <div className="flex items-center justify-between mb-4">
+             <TabsList className="bg-background border h-12 p-1 shadow-sm">
+                <TabsTrigger value="items" className="px-6 text-base data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  Items <Badge variant="secondary" className="ml-2 bg-muted-foreground/10">{listings.length}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="pgs" className="px-6 py-2 text-sm">
-                  Properties <Badge variant="secondary" className="ml-2">{pgListings.length}</Badge>
+                <TabsTrigger value="pgs" className="px-6 text-base data-[state=active]:bg-orange-50 data-[state=active]:text-orange-600">
+                  PGs / Rooms <Badge variant="secondary" className="ml-2 bg-muted-foreground/10">{pgListings.length}</Badge>
                 </TabsTrigger>
              </TabsList>
-
-             <div className="flex items-center gap-2 w-full md:w-auto">
-                <div className="relative flex-1 md:w-64">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search listings..." 
-                    className="pl-9 bg-background h-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-10 w-10"><Filter className="h-4 w-4" /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setSortBy('newest')}>Newest First</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSortBy('price_asc')}>Price: Low to High</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSortBy('price_desc')}>Price: High to Low</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-             </div>
           </div>
 
-          <TabsContent value="items" className="mt-0 min-h-[300px]">
-            {filteredItems.length === 0 ? (
-              <EmptyState 
-                icon={Ghost} 
-                title={searchQuery ? "No matches" : "Ghost Town 👻"}
-                desc={searchQuery ? "Try searching for something else." : `${profile.full_name} hasn't listed anything yet. Maybe they're hoarding all the good stuff?`}
-              />
+          {/* ITEM LISTINGS TAB */}
+          <TabsContent value="items" className="mt-0">
+            {listings.length === 0 ? (
+              <EmptyState icon={Package} text="No items listed yet." />
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-                {filteredItems.map((item) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {listings.map((item) => (
                   <ItemCard key={item.id} item={item} onClick={() => navigate(`/item/${item.id}`)} />
                 ))}
               </div>
             )}
           </TabsContent>
 
-          <TabsContent value="pgs" className="mt-0 min-h-[300px]">
+          {/* PG LISTINGS TAB */}
+          <TabsContent value="pgs" className="mt-0">
              {pgListings.length === 0 ? (
-               <EmptyState 
-                  icon={Home} 
-                  title="No Cribs Found 🏠" 
-                  desc="This user has no PG or Room listings available right now." 
-               />
+               <EmptyState icon={Home} text="No properties listed yet." />
              ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {pgListings.map((pg) => (
@@ -435,16 +319,7 @@ const PublicProfile = () => {
              )}
           </TabsContent>
         </Tabs>
-      </div>
 
-      {/* 4. Sticky Mobile Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-xl border-t p-4 z-50 md:hidden flex gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-         <Button className="flex-1 shadow-md h-12 text-base" onClick={() => navigate(`/chat/${profile.user_id}`)}>
-            <MessageCircle className="h-5 w-5 mr-2" /> Chat
-         </Button>
-         <Button variant="outline" size="icon" className="h-12 w-12 border-primary/20" onClick={handleShare}>
-            <Share2 className="h-5 w-5" />
-         </Button>
       </div>
 
       <ReportModal 
@@ -458,85 +333,67 @@ const PublicProfile = () => {
   );
 };
 
-// --- Sub-Components ---
+// --- Sub-Components for cleaner code ---
 
-const EmptyState = ({ icon: Icon, title, desc }: { icon: any, title: string, desc: string }) => (
-  <div className="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed rounded-xl bg-muted/20 animate-in fade-in zoom-in duration-500">
-    <div className="bg-background p-4 rounded-full shadow-sm mb-4">
-      <Icon className="h-8 w-8 text-muted-foreground/50" />
-    </div>
-    <h3 className="text-lg font-bold text-foreground">{title}</h3>
-    <p className="text-sm text-muted-foreground mt-1 max-w-xs">{desc}</p>
-  </div>
+const EmptyState = ({ icon: Icon, text }: { icon: any, text: string }) => (
+  <Card className="border-dashed shadow-sm">
+    <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="bg-muted p-4 rounded-full mb-4">
+        <Icon className="h-8 w-8 text-muted-foreground" />
+      </div>
+      <p className="text-lg font-medium text-foreground">{text}</p>
+    </CardContent>
+  </Card>
 );
 
 const ItemCard = ({ item, onClick }: { item: Item, onClick: () => void }) => (
   <Card 
-    className="group cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-muted bg-card"
+    className={`group cursor-pointer overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1 ${item.is_sold ? 'opacity-75 grayscale' : ''}`}
     onClick={onClick}
   >
-    <div className="aspect-[4/3] relative bg-secondary/30 overflow-hidden">
+    <div className="aspect-square relative bg-muted">
       {item.images?.[0] ? (
-        <img 
-          src={item.images[0]} 
-          alt={item.title} 
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
-        />
+        <img src={item.images[0]} alt={item.title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
       ) : (
         <div className="flex h-full items-center justify-center"><Package className="h-10 w-10 text-muted-foreground/20" /></div>
       )}
-      
-      {/* Condition Badge */}
-      <div className="absolute top-2 left-2">
-         {item.condition && <Badge className="text-[10px] bg-black/60 text-white hover:bg-black/70 border-none backdrop-blur-sm">{item.condition}</Badge>}
-      </div>
-      
-      {/* Time Badge */}
-      <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center">
-         <Badge variant="secondary" className="text-[10px] bg-white/90 backdrop-blur text-black shadow-sm font-normal flex items-center gap-1">
-           {item.created_at && new Date(item.created_at).getTime() > Date.now() - 86400000 && <Zap className="h-3 w-3 text-orange-500 fill-orange-500" />}
-           {formatRelativeTime(item.created_at)}
-         </Badge>
-      </div>
+      {item.is_sold && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><span className="font-bold text-white tracking-widest border-2 border-white px-3 py-1">SOLD</span></div>}
+      <Badge variant="secondary" className="absolute bottom-2 left-2 text-[10px] bg-background/80 backdrop-blur-sm shadow-sm flex items-center gap-1">
+        <Clock className="h-3 w-3" /> {formatRelativeTime(item.created_at)}
+      </Badge>
     </div>
     <CardContent className="p-3">
-      <h3 className="font-medium text-sm truncate mb-1 group-hover:text-primary transition-colors">{item.title}</h3>
+      <h3 className="font-medium truncate mb-1">{item.title}</h3>
       <div className="flex items-center justify-between">
-        <span className="font-bold text-base">₹{item.price.toLocaleString()}</span>
-        <div className="h-7 w-7 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground group-hover:bg-primary group-hover:text-white transition-colors">
-           <ArrowUpRight className="h-4 w-4" />
-        </div>
+        <span className="font-bold">₹{item.price}</span>
+        <Badge variant="outline" className="text-[10px] h-5">{item.condition}</Badge>
       </div>
     </CardContent>
   </Card>
 );
 
 const PGCard = ({ pg, onClick }: { pg: PGListing, onClick: () => void }) => {
-  const isRented = pg.status === 'rented' || !pg.is_active;
+  const isRented = pg.status === 'rented';
   return (
-    <Card className="cursor-pointer overflow-hidden group transition-all hover:shadow-lg border-muted" onClick={onClick}>
-      <div className="aspect-video relative bg-muted overflow-hidden">
+    <Card className="cursor-pointer overflow-hidden transition-all hover:shadow-md hover:border-primary/50" onClick={onClick}>
+      <div className="aspect-video relative bg-muted">
          {pg.images?.[0] ? (
-            <img src={pg.images[0]} alt="Property" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+            <img src={pg.images[0]} alt="Property" className="w-full h-full object-cover" />
          ) : (
             <div className="flex h-full items-center justify-center"><Home className="h-10 w-10 text-muted-foreground/20" /></div>
          )}
-         <div className="absolute top-2 left-2">
-            <Badge className="bg-background/90 text-foreground hover:bg-background shadow-sm border-none backdrop-blur-md">
-               {pg.property_type.toUpperCase()}
-            </Badge>
-         </div>
-         {isRented && <div className="absolute inset-0 bg-background/80 flex items-center justify-center backdrop-blur-[2px]"><span className="font-bold text-muted-foreground border-2 border-current px-4 py-1 rounded">RENTED</span></div>}
+         <Badge className="absolute top-2 right-2 bg-orange-500 hover:bg-orange-600">{pg.property_type.toUpperCase()}</Badge>
+         {isRented && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><span className="text-xl font-bold text-muted-foreground">No Longer Available</span></div>}
       </div>
       <CardContent className="p-4">
         <div className="flex justify-between items-start mb-2">
           <div>
-             <div className="text-xl font-bold text-primary">₹{pg.rent_per_month.toLocaleString()}<span className="text-xs font-normal text-muted-foreground ml-1">/mo</span></div>
+             <div className="text-xl font-bold text-primary">₹{pg.rent_per_month}<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
              <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                <MapPin className="h-3 w-3" /> <span className="truncate max-w-[150px]">{pg.area_locality}</span>
+                <MapPin className="h-3 w-3" /> {pg.area_locality}
              </div>
           </div>
-          <Badge variant="outline" className="capitalize">{pg.sharing_type}</Badge>
+          <Badge variant="outline">{pg.sharing_type} Share</Badge>
         </div>
       </CardContent>
     </Card>
