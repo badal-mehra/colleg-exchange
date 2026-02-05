@@ -25,7 +25,8 @@ import {
   Package,
   Key,
   Clock,
-  Banknote
+  Banknote,
+  LogIn
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
@@ -782,19 +783,31 @@ const ItemDetail = () => {
 
             {/* Action Buttons (Logic refined) */}
             <div className="space-y-3">
-              {/* Login/KYC checks (kept intact) */}
+              {/* Login Required - Prominent CTA for logged-out users */}
               {!user && (
-                <div className="p-4 bg-warning/10 border border-warning/20 rounded-lg">
-                  <div className="flex items-center gap-2 text-warning">
-                    <AlertCircle className="h-5 w-5" />
-                    <span className="font-medium">Login Required</span>
+                <div className="p-6 bg-gradient-to-br from-primary/10 via-primary/5 to-background border-2 border-primary/30 rounded-xl shadow-lg">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-primary/20 rounded-full">
+                      <MessageCircle className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">Interested in this item?</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Login to chat with the seller, make offers, or add to cart
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Please **login to chat** with the seller or save this item.
-                  </p>
-                  <Button variant="outline" className="mt-2 w-full" onClick={() => navigate('/auth')}>
-                    Login / Sign Up
+                  <Button 
+                    className="w-full h-12 text-lg font-semibold bg-primary hover:bg-primary/90 shadow-md" 
+                    size="lg"
+                    onClick={() => navigate('/auth')}
+                  >
+                    <LogIn className="h-5 w-5 mr-2" />
+                    Login to Chat with Seller
                   </Button>
+                  <p className="text-xs text-center text-muted-foreground mt-3">
+                    New here? Create a free account in seconds
+                  </p>
                 </div>
               )}
 

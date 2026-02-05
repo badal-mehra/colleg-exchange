@@ -391,6 +391,7 @@ const Browse = () => {
 
     let query = supabase.from('items').select('*')
       .eq('is_sold', false)
+      .eq('status', 'available')
       .order('ad_priority', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(30);
