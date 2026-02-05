@@ -1,57 +1,32 @@
 // ItemDetail.tsx
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogClose
+} from "@/components/ui/dialog";
 import logo from '@/assets/mycampuskart-logo.png';
 import {
-  ArrowLeft, 
-  MessageCircle, 
-  Heart, 
-  Share2, 
-  MapPin, 
-  Calendar, 
-  Eye,
-  User,
-  AlertCircle,
-  Shield,
-  Star,
-  AlertTriangle,
-  DollarSign,
-  Package,
-  Key,
-  Clock,
-  Banknote,
-  LogIn
+  ArrowLeft, MessageCircle, Heart, Share2, MapPin, Calendar, Eye,
+  User, AlertCircle, Shield, Star, AlertTriangle, DollarSign,
+  Package, Key, Clock, Banknote, LogIn, ChevronRight, X, ExternalLink,
+  Maximize2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
 import { ReportModal } from '@/components/ReportModal';
 import { BargainingDialog } from '@/components/BargainingDialog';
 
-// --- Cloudinary Optimization Helpers ---
-
-// For the main detail image view (w_1200 for good quality, still optimized)
-const getDetailImage = (url: string) => {
-  if (url.includes('cloudinary.com')) {
-    return url.replace('/upload/', '/upload/f_auto,q_auto:best,w_1200/');
-  }
-  return url;
-};
-
-// For the small gallery strip thumbnails (w_100 for maximum speed)
-const getThumbImage = (url: string) => {
-  if (url.includes('cloudinary.com')) {
-    return url.replace('/upload/', '/upload/f_auto,q_auto:low,w_100,h_100,c_fill/');
-  }
-  return url;
-};
-
-// --- Define the shape of your data interfaces (Unchanged) ---
+// --- Types ---
 interface Profile {
   id: string;
   user_id: string;
@@ -64,6 +39,7 @@ interface Profile {
   trust_seller_badge: boolean;
   campus_points: number;
   deals_completed: number;
+  created_at?: string; 
 }
 
 interface Category {
@@ -96,12 +72,22 @@ interface Item {
   is_negotiable?: boolean;
 }
 
+// --- Image Helpers ---
+const getDetailImage = (url: string) => 
+  url.includes('cloudinary.com') ? url.replace('/upload/', '/upload/f_auto,q_auto:best,w_1200/') : url;
+
+const getThumbImage = (url: string) => 
+  url.includes('cloudinary.com') ? url.replace('/upload/', '/upload/f_auto,q_auto:low,w_100,h_100,c_fill/') : url;
+
 const ItemDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth(); 
   const { toast } = useToast();
+  
+  // State
   const [item, setItem] = useState<Item | null>(null);
+  const [similarItems, setSimilarItems] = useState<Item[]>([]); // New: Similar Items
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
@@ -109,15 +95,16 @@ const ItemDetail = () => {
   const [checkingFavorite, setCheckingFavorite] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [bargainingDialogOpen, setBargainingDialogOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false); // New: Lightbox state
 
-  // Existing state for current user's pending order
+  // Order State
   const [hasPendingOrder, setHasPendingOrder] = useState(false);
-  // State to check if item is reserved by *someone else*
   const [isPendingBySomeoneElse, setIsPendingBySomeoneElse] = useState(false);
 
-  // --- Data Fetching Hooks ---
+  // --- Effects ---
 
   useEffect(() => {
+    window.scrollTo(0, 0); // Reset scroll on ID change
     if (id) {
       fetchItem();
     }
@@ -133,778 +120,505 @@ const ItemDetail = () => {
     }
   }, [user, id]);
 
-  // Combined checkPendingOrder function (for both self and external reservations)
-  const checkPendingOrder = useCallback(async (itemId: string, currentUserId: string) => {
-    // Query for any pending order on this item
-    const { data: pendingOrder, error } = await supabase
+  // Real-time listener (kept from original)
+  useEffect(() => {
+      if (user?.id && item?.id) {
+          checkPendingOrder(item.id, user.id); 
+          const ordersChannel = supabase
+            .channel(`item_${item.id}_orders`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `item_id=eq.${item.id}`},
+              () => checkPendingOrder(item.id, user.id)
+            )
+            .subscribe();
+          return () => { supabase.removeChannel(ordersChannel); };
+      }
+  }, [user?.id, item?.id]); // Removed checkPendingOrder from deps to avoid loop if not memoized perfectly
+
+  // --- Logic ---
+
+  const checkPendingOrder = async (itemId: string, currentUserId: string) => {
+    const { data: pendingOrder } = await supabase
       .from("orders")
       .select("buyer_id")
       .eq("item_id", itemId)
       .eq("status", "pending")
       .maybeSingle();
-
-    if (error) {
-        console.error("Error checking pending orders:", error);
-        setHasPendingOrder(false);
-        setIsPendingBySomeoneElse(false);
-        return;
-    }
     
     if (pendingOrder) {
-        const buyerId = pendingOrder.buyer_id;
-        // Check if the pending order belongs to the current user
-        const isCurrentUser = buyerId === currentUserId;
-        
+        const isCurrentUser = pendingOrder.buyer_id === currentUserId;
         setHasPendingOrder(isCurrentUser);
         setIsPendingBySomeoneElse(!isCurrentUser);
     } else {
-        // No pending order found at all
         setHasPendingOrder(false);
         setIsPendingBySomeoneElse(false);
     }
-  }, []);
+  };
 
-  // Use onSnapshot for real-time updates (reacts to status changes like cancellation)
-  useEffect(() => {
-      if (user?.id && item?.id) {
-          // Initial check
-          checkPendingOrder(item.id, user.id); 
-
-          // Set up real-time listener for any order related to this item
-          const ordersChannel = supabase
-            .channel(`item_${item.id}_orders`)
-            .on(
-              'postgres_changes',
-              { 
-                event: '*', 
-                schema: 'public', 
-                table: 'orders',
-                filter: `item_id=eq.${item.id}`
-              },
-              (payload) => {
-                // Re-run the check whenever an order for this item changes (created, updated/cancelled)
-                console.log('Realtime order update received:', payload.eventType);
-                checkPendingOrder(item.id, user.id);
-              }
-            )
-            .subscribe();
-
-          return () => {
-            supabase.removeChannel(ordersChannel);
-          };
-      } else {
-          setHasPendingOrder(false);
-          setIsPendingBySomeoneElse(false);
-      }
-  }, [user?.id, item?.id, checkPendingOrder]);
-
-
-  // --- Helper Functions ---
-  
   const fetchItem = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('items')
-      .select(`
-        *,
-        categories (*),
-        profiles (*)
-      `)
+      .select(`*, categories (*), profiles (*)`)
       .eq('id', id)
       .single();
 
     if (error) {
-      console.error("Item fetch failed:", error); 
       setItem(null); 
     } else {
       setItem(data as Item);
-      // Increment view count only once per session per item
-      if (data) {
-        const viewedKey = `item_viewed_${id}`;
-        const hasViewed = sessionStorage.getItem(viewedKey);
-        if (!hasViewed) {
-          sessionStorage.setItem(viewedKey, 'true');
-          supabase
-            .from('items')
-            .update({ views: (data.views || 0) + 1 })
-            .eq('id', id)
-            .then(() => {});
-        }
-      }
+      fetchSimilarItems(data.categories?.id, data.id); // Fetch similar
+      handleViewCount(data);
     }
     setLoading(false);
   };
 
+  const fetchSimilarItems = async (categoryId: string, currentId: string) => {
+    if (!categoryId) return;
+    const { data } = await supabase
+      .from('items')
+      .select('id, title, price, images, condition, created_at')
+      .eq('category_id', categoryId)
+      .neq('id', currentId) // Don't show current item
+      .eq('is_sold', false)
+      .limit(4);
+    
+    if (data) setSimilarItems(data as any);
+  };
+
+  const handleViewCount = (data: Item) => {
+    const viewedKey = `item_viewed_${id}`;
+    if (!sessionStorage.getItem(viewedKey)) {
+      sessionStorage.setItem(viewedKey, 'true');
+      supabase.from('items').update({ views: (data.views || 0) + 1 }).eq('id', id).then();
+    }
+  };
+
   const fetchUserProfile = async () => {
     if (!user) return;
-    
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!error) {
-      setUserProfile(data as Profile);
-    } else {
-      setUserProfile(null);
-    }
+    const { data } = await supabase.from('profiles').select('*').eq('user_id', user.id).single();
+    if (data) setUserProfile(data as Profile);
   };
 
   const checkIfFavorited = async () => {
     if (!user || !id) return;
-    
     setCheckingFavorite(true);
-    const { data, error } = await supabase
-      .from('favorites')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('item_id', id)
-      .maybeSingle();
-
-    if (!error && data) {
-      setIsFavorited(true);
-    } else {
-      setIsFavorited(false);
-    }
+    const { data } = await supabase.from('favorites').select('id').eq('user_id', user.id).eq('item_id', id).maybeSingle();
+    setIsFavorited(!!data);
     setCheckingFavorite(false);
   };
 
   const toggleFavorite = async () => {
-    if (!user) {
-      toast({
-        title: "Login Required",
-        description: "Please login to add items to your cart",
-        variant: "destructive",
-      });
-      navigate('/auth');
-      return;
-    }
-
-    if (!userProfile?.is_verified || userProfile?.verification_status !== 'approved') {
-      toast({
-        title: "Verification Required",
-        description: "Please complete your KYC verification",
-        variant: "destructive",
-      });
-      navigate('/kyc');
-      return;
-    }
-
+    if (!user) return navigate('/auth');
     try {
       if (isFavorited) {
-        // Remove from favorites
-        const { error } = await supabase
-          .from('favorites')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('item_id', id);
-
-        if (error) throw error;
-
+        await supabase.from('favorites').delete().eq('user_id', user.id).eq('item_id', id);
         setIsFavorited(false);
         sonnerToast.success('Removed from cart');
       } else {
-        // Add to favorites
-        const { error } = await supabase
-          .from('favorites')
-          .insert({
-            user_id: user.id,
-            item_id: id,
-          });
-
-        if (error) throw error;
-
+        await supabase.from('favorites').insert({ user_id: user.id, item_id: id });
         setIsFavorited(true);
         sonnerToast.success('Added to cart');
       }
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update cart",
-        variant: "destructive",
-      });
-    }
+    } catch (e) { console.error(e); }
   };
-  
-  // -------------------------------------------------------------------
-  // FINAL: HANDLE BUY NOW FUNCTION - Race condition error fixed
-  // -------------------------------------------------------------------
+
   const handleBuyNow = async () => {
     if (!user) return navigate("/auth");
-    
-    // Critical check added
-    if (!item) {
-        sonnerToast.error("Item data not loaded properly. Please refresh.");
-        return;
-    }
+    if (!item) return;
 
-    const isVerified = userProfile?.is_verified && userProfile?.verification_status === 'approved';
-    if (!isVerified) {
-      toast({
-        title: "Verification Required",
-        description: "Complete your KYC to buy this item",
-        variant: "destructive",
-      });
+    if (!userProfile?.is_verified) {
+      toast({ title: "Verification Required", description: "Complete KYC to buy", variant: "destructive" });
       return navigate("/kyc");
     }
-
-    if (user.id === item.seller_id) {
-      toast({
-        title: "Error",
-        description: "You cannot buy your own item",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (user.id === item.seller_id) return sonnerToast.error("Cannot buy your own item");
     
-    if (item.is_sold) {
-      toast({
-        title: "Error",
-        description: "This item has already been sold.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // CREATE ORDER using a hypothetical RPC for robust server-side validation
+    // RPC Call
     const { data: rpcResponse, error: rpcError } = await supabase.rpc("create_new_order", {
       item_id_input: item.id,
       buyer_id_input: user.id,
       seller_id_input: item.seller_id,
-      agreed_price_input: item.price // Pass the necessary inputs
+      agreed_price_input: item.price
     });
 
     if (rpcError) {
-      console.error("Order Failed (RPC Error):", rpcError);
-      
-      // ✅ FIX 1: Check for a database conflict/race condition error string
       const errorText = JSON.stringify(rpcError).toLowerCase();
-
-      if (errorText.includes("duplicate pending order") || errorText.includes("already reserved")) {
-        // This handles the race condition where another buyer just reserved it
-        sonnerToast.error("This item has just been reserved by another buyer.");
+      if (errorText.includes("duplicate") || errorText.includes("reserved")) {
+        sonnerToast.error("Item just reserved by another buyer.");
       } else {
-        // Generic network or unexpected DB error
-        sonnerToast.error("Could not process order due to a system error. Please try again.");
+        sonnerToast.error("System error. Try again.");
       }
       return;
     }
     
-    // Type cast the response
-    const response = rpcResponse as { success?: boolean; message?: string; error?: string } | null;
-
-    // Handle business logic failure (e.g., duplicate order check from RPC, for current user)
+    const response = rpcResponse as { success?: boolean; message?: string; error?: string };
     if (!response?.success) {
-        sonnerToast.error(
-            response?.error ||
-            "You already reserved this item. Go to My Orders to complete it."
-        );
-        // Redirect buyer to My Orders for smoother UX
-        navigate("/my-orders"); 
+        sonnerToast.error(response?.error || "Reservation failed.");
         return;
     }
 
-    // Success case
-    sonnerToast.success(response.message || "Item reserved successfully! Complete the transaction in My Orders.");
+    sonnerToast.success("Item reserved! Go to My Orders.");
     navigate("/my-orders");
-    
-    // Optimistic update: set state immediately, though the real-time listener will confirm it.
-    setHasPendingOrder(true);
-    setIsPendingBySomeoneElse(false);
   };
-  // -------------------------------------------------------------------
-  
+
   const handleChatClick = async (offerPrice?: number) => {
-    if (!user) {
-      toast({
-        title: "Login Required",
-        description: "Please login to chat with seller",
-        variant: "destructive",
-      });
-      navigate('/auth');
-      return;
-    }
+    if (!user) return navigate('/auth');
+    if (!userProfile?.is_verified) return navigate('/kyc');
+    if (!item) return;
 
-    if (!userProfile?.is_verified || userProfile?.verification_status !== 'approved') {
-      toast({
-        title: "Verification Required",
-        description: "Please complete your KYC verification to start chatting",
-        variant: "destructive",
-      });
-      navigate('/kyc');
-      return;
-    }
+    // Check existing conversation
+    const { data: existing } = await supabase.from('conversations')
+      .select('id').eq('item_id', item.id).eq('buyer_id', user.id).eq('seller_id', item.seller_id).maybeSingle();
 
-    // Existing chat and new conversation logic (kept intact)
-    try {
-      if (!item) return; 
-
-      // Check if conversation already exists
-      const { data: existingConversation } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('item_id', item.id)
-        .eq('buyer_id', user.id)
-        .eq('seller_id', item.seller_id)
-        .maybeSingle();
-
-      if (existingConversation) {
-        if (offerPrice) {
-          await supabase
-            .from('messages')
-            .insert({
-              conversation_id: existingConversation.id,
-              sender_id: user.id,
-              content: `Hi! I'm interested in "${item.title}". I'd like to offer ₹${offerPrice.toLocaleString()} for this item. Can we negotiate?`
-            });
-        }
-        navigate(`/chat/${existingConversation.id}`);
-        return;
+    if (existing) {
+      if (offerPrice) await sendOfferMessage(existing.id, offerPrice);
+      navigate(`/chat/${existing.id}`);
+    } else {
+      const { data: newConv, error } = await supabase.from('conversations')
+        .insert({ item_id: item.id, buyer_id: user.id, seller_id: item.seller_id }).select().single();
+      if (!error && newConv) {
+        if (offerPrice) await sendOfferMessage(newConv.id, offerPrice);
+        navigate(`/chat/${newConv.id}`);
       }
-
-      // Create new conversation
-      const { data: newConversation, error } = await supabase
-        .from('conversations')
-        .insert({
-          item_id: item.id,
-          buyer_id: user.id,
-          seller_id: item.seller_id,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Send first message if offer price provided
-      if (offerPrice) {
-        await supabase
-          .from('messages')
-          .insert({
-            conversation_id: newConversation.id,
-            sender_id: user.id,
-            content: `Hi! I'm interested in "${item.title}". I'd like to offer ₹${offerPrice.toLocaleString()} for this item. Can we negotiate?`
-          });
-      }
-
-      navigate(`/chat/${newConversation.id}`);
-    } catch (error) {
-      console.error('Error creating conversation:', error);
-      toast({
-        title: "Error",
-        description: "Failed to start conversation",
-        variant: "destructive",
-      });
     }
+  };
+
+  const sendOfferMessage = async (conversationId: string, price: number) => {
+    await supabase.from('messages').insert({
+      conversation_id: conversationId,
+      sender_id: user!.id,
+      content: `Hi! I'm interested in "${item?.title}". Offering ₹${price.toLocaleString()}. Can we negotiate?`
+    });
   };
 
   const handleShare = async () => {
     if (navigator.share) {
-      try {
-        await navigator.share({
-          title: item?.title,
-          text: item?.description,
-          url: window.location.href,
-        });
-      } catch (error) {
-        console.log('Error sharing:', error);
-      }
+      try { await navigator.share({ title: item?.title, text: item?.description, url: window.location.href }); } catch (e) {}
     } else {
-      // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href);
-      toast({
-        title: "Link Copied",
-        description: "Item link copied to clipboard",
-      });
+      sonnerToast.success("Link copied to clipboard");
     }
   };
 
-  // --- Conditional Rendering ---
-  
-  if (loading) {
-    // Loading skeleton (kept intact)
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-muted rounded w-32"></div>
-            <div className="grid lg:grid-cols-2 gap-8">
-              <div className="h-96 bg-muted rounded"></div>
-              <div className="space-y-4">
-                <div className="h-8 bg-muted rounded"></div>
-                <div className="h-6 bg-muted rounded w-24"></div>
-                <div className="h-20 bg-muted rounded"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // --- Render Helpers ---
 
-  // Handle Item Not Found (kept intact)
-  if (!item) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Item Not Found</h1>
-          <Button onClick={() => navigate('/')}>Go Back Home</Button>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <ItemSkeleton />;
+  if (!item) return <ItemNotFound navigate={navigate} />;
 
   const isOwner = user?.id === item.seller_id;
-  const isVerified = user && userProfile?.is_verified && userProfile?.verification_status === 'approved'; 
+  const isDisabled = !user || (!isOwner && !userProfile?.is_verified) || item.is_sold || hasPendingOrder || isPendingBySomeoneElse;
+  
+  const buttonText = item.is_sold ? 'Sold Out' : isPendingBySomeoneElse ? 'Reserved' : hasPendingOrder ? 'Already Reserved' : 'Buy Now';
 
-  // Determine the disabled status and button text
-  const isDisabled = 
-    !user || 
-    (!isVerified && !isOwner) || 
-    item.is_sold || 
-    hasPendingOrder || 
-    isPendingBySomeoneElse;
-
-  const buttonText = item.is_sold
-    ? 'Sold Out'
-    : isPendingBySomeoneElse
-    ? 'Reserved by Another Buyer'
-    : hasPendingOrder
-    ? 'Already Reserved'
-    : 'Buy Now';
-    
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Button variant="ghost" onClick={() => navigate(-1)}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+    <div className="min-h-screen bg-gray-50/50 dark:bg-background pb-20 md:pb-8">
+      {/* Navbar */}
+      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2">
+            <ArrowLeft className="h-4 w-4" /> Back
+          </Button>
+          <img src={logo} alt="MyCampusKart" className="h-8" />
+          <div className="flex gap-2">
+            <Button variant="ghost" size="icon" onClick={handleShare}><Share2 className="h-5 w-5" /></Button>
+            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setReportModalOpen(true)}>
+              <AlertTriangle className="h-5 w-5" />
             </Button>
-            <img 
-              src={logo} 
-              alt="MyCampusKart" 
-              className="h-10"
-            />
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="sm" onClick={handleShare}>
-                <Share2 className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setReportModalOpen(true)}>
-                <AlertTriangle className="h-4 w-4" />
-              </Button>
-            </div>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Image Gallery */}
-          <div className="space-y-4">
-            <div className="relative aspect-square rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-              {item.images.length > 0 ? (
-                // ✅ Egress Fix 1: Use getDetailImage for the main, large view.
-                <img
-                  src={getDetailImage(item.images[currentImageIndex])}
-                  alt={item.title}
-                  className="w-full h-full object-contain"
-                  // ✅ Egress Fix 2: Lazy load for the main image (first image is usually already visible/preloaded)
-                  loading={currentImageIndex === 0 ? 'eager' : 'lazy'} 
-                  onError={(e) => {
-                    e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xNTAgMTUwSDI1MFYyNTBIMTUwVjE1MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+Cg==';
-                  }}
-                />
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center text-muted-foreground">
-                    <Eye className="h-16 w-16 mx-auto mb-4" />
-                    <p>No images available</p>
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        {/* Breadcrumbs */}
+        <nav className="flex text-sm text-muted-foreground mb-6 overflow-x-auto whitespace-nowrap pb-2">
+           <Link to="/" className="hover:text-primary transition-colors">Home</Link>
+           <ChevronRight className="h-4 w-4 mx-2" />
+           <span className="font-medium text-foreground">{item.categories.name}</span>
+           <ChevronRight className="h-4 w-4 mx-2" />
+           <span className="truncate max-w-[200px]">{item.title}</span>
+        </nav>
+
+        <div className="grid lg:grid-cols-12 gap-8">
+          
+          {/* LEFT COLUMN: Images & Description (Span 7) */}
+          <div className="lg:col-span-7 space-y-6">
+            
+            {/* Image Gallery */}
+            <div className="space-y-3">
+              <div 
+                className="relative aspect-[4/3] rounded-xl overflow-hidden bg-muted border shadow-sm group cursor-zoom-in"
+                onClick={() => setLightboxOpen(true)}
+              >
+                {item.images.length > 0 ? (
+                  <>
+                    <img
+                      src={getDetailImage(item.images[currentImageIndex])}
+                      alt={item.title}
+                      className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                    />
+                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
+                        <Maximize2 className="text-white opacity-0 group-hover:opacity-100 drop-shadow-md transform scale-75 group-hover:scale-100 transition-all duration-300" />
+                     </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                    <Eye className="h-16 w-16 mb-2 opacity-20" />
+                    <p>No images</p>
                   </div>
+                )}
+                
+                {/* Condition Badge Overlay */}
+                <Badge className="absolute top-4 left-4 bg-black/60 hover:bg-black/70 backdrop-blur-md text-white border-0">
+                  {item.condition}
+                </Badge>
+              </div>
+
+              {/* Thumbnails */}
+              {item.images.length > 1 && (
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                  {item.images.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentImageIndex(idx)}
+                      className={`relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
+                        idx === currentImageIndex ? 'border-primary ring-2 ring-primary/20' : 'border-transparent opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={getThumbImage(img)} className="w-full h-full object-cover" alt="thumb" />
+                    </button>
+                  ))}
                 </div>
               )}
-              <Badge className="absolute top-4 right-4">
-                {item.condition}
-              </Badge>
             </div>
-            
-            {item.images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto">
-                {item.images.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 ${
-                      index === currentImageIndex ? 'border-primary' : 'border-transparent'
-                    }`}
-                  >
-                    {/* ✅ Egress Fix 3: Use getThumbImage for gallery strip */}
-                    <img
-                      src={getThumbImage(image)} 
-                      alt={`${item.title} ${index + 1}`}
-                      className="w-full h-full object-cover"
-                      loading="lazy" // ✅ Egress Fix 4: Lazy load thumbnails
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
+
+            {/* Description Card */}
+            <Card className="shadow-sm border-muted">
+              <CardHeader>
+                <CardTitle>Description</CardTitle>
+              </CardHeader>
+              <CardContent className="prose dark:prose-invert max-w-none text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+                {item.description}
+              </CardContent>
+            </Card>
+
+            {/* Safety Tips (New Feature) */}
+            <Card className="bg-blue-50/50 dark:bg-blue-950/10 border-blue-100 dark:border-blue-900">
+               <CardHeader className="pb-2">
+                 <CardTitle className="text-base flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                    <Shield className="h-5 w-5" /> Safety Tips for Students
+                 </CardTitle>
+               </CardHeader>
+               <CardContent className="text-sm text-muted-foreground space-y-2">
+                 <li className="list-disc ml-4">Always meet in safe, public campus locations (Library, Cafeteria).</li>
+                 <li className="list-disc ml-4">Check the item thoroughly before paying.</li>
+                 <li className="list-disc ml-4">Avoid sharing personal financial details outside the app.</li>
+               </CardContent>
+            </Card>
+
           </div>
 
-          {/* Item Details (kept intact) */}
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">{item.title}</h1>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                <div className="flex items-center gap-1">
-                  <Eye className="h-4 w-4" />
-                  {item.views} views
-                </div>
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  {new Date(item.created_at).toLocaleDateString()}
-                </div>
-                {item.location && (
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    {item.location}
+          {/* RIGHT COLUMN: Info & Actions (Span 5) */}
+          <div className="lg:col-span-5 space-y-6">
+            
+            {/* Main Info Card */}
+            <Card className="border-none shadow-none bg-transparent lg:bg-card lg:border lg:shadow-sm">
+              <CardContent className="p-0 lg:p-6 space-y-6">
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold leading-tight mb-2">{item.title}</h1>
+                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> {new Date(item.created_at).toLocaleDateString()}</span>
+                    <span className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" /> {item.views} views</span>
+                    {item.location && (
+                       <a 
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location + " Lovely Professional University")}`}
+                        target="_blank" rel="noreferrer"
+                        className="flex items-center gap-1 text-primary hover:underline"
+                       >
+                         <MapPin className="h-3.5 w-3.5" /> {item.location}
+                       </a>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="flex items-baseline gap-2 mb-4">
-                <span className="text-4xl font-bold text-primary">
-                  ₹{item.price.toLocaleString()}
-                </span>
+                </div>
+
+                <div className="flex items-end gap-2">
+                  <span className="text-4xl font-bold text-primary">₹{item.price.toLocaleString()}</span>
+                  {item.is_negotiable && <Badge variant="outline" className="mb-2 text-green-600 border-green-200 bg-green-50">Negotiable</Badge>}
+                </div>
+
+                {/* Rental Card (Conditional) */}
                 {item.rental_metadata?.rental_duration && (
-                  <span className="text-lg text-muted-foreground font-medium">
-                    {item.rental_metadata.rental_duration === 'per_hour' && '/hour'}
-                    {item.rental_metadata.rental_duration === 'per_day' && '/day'}
-                    {item.rental_metadata.rental_duration === 'per_week' && '/week'}
-                    {item.rental_metadata.rental_duration === 'per_month' && '/month'}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Rental Details Card */}
-            {item.rental_metadata?.rental_duration && (
-              <Card className="border-emerald-500/30 bg-emerald-500/5">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                    <Key className="h-5 w-5" />
-                    Rental Item
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Duration</p>
-                        <p className="font-medium capitalize">
-                          {item.rental_metadata.rental_duration.replace('per_', 'Per ')}
-                        </p>
-                      </div>
+                  <div className="bg-emerald-50 dark:bg-emerald-950/30 p-4 rounded-lg border border-emerald-100 dark:border-emerald-900">
+                    <div className="flex items-center gap-2 text-emerald-700 font-semibold mb-2">
+                       <Key className="h-4 w-4" /> Rental Item
                     </div>
-                    {item.rental_metadata.rental_deposit !== undefined && item.rental_metadata.rental_deposit > 0 && (
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                       <div>
+                         <p className="text-xs text-muted-foreground">Duration</p>
+                         <p className="font-medium capitalize">{item.rental_metadata.rental_duration.replace('per_', 'Per ')}</p>
+                       </div>
+                       {item.rental_metadata.rental_deposit && (
+                         <div>
+                           <p className="text-xs text-muted-foreground">Deposit</p>
+                           <p className="font-medium">₹{item.rental_metadata.rental_deposit}</p>
+                         </div>
+                       )}
+                    </div>
+                  </div>
+                )}
+
+                <Separator />
+
+                {/* Seller Profile */}
+                <div onClick={() => item.profiles?.mck_id && navigate(`/profile/${item.profiles.mck_id}`)} className="cursor-pointer group">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-12 w-12 border transition-transform group-hover:scale-105">
+                      <AvatarImage src={item.profiles?.avatar_url || undefined} />
+                      <AvatarFallback>{item.profiles?.full_name?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <Banknote className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">Security Deposit</p>
-                          <p className="font-medium">₹{item.rental_metadata.rental_deposit.toLocaleString()}</p>
-                        </div>
+                        <h3 className="font-semibold group-hover:text-primary transition-colors">{item.profiles?.full_name}</h3>
+                        {item.profiles?.verification_status === 'approved' && <Shield className="h-3.5 w-3.5 text-blue-500 fill-blue-500/20" />}
                       </div>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground bg-muted/50 p-2 rounded-md">
-                    💡 This is a rental item. The price shown is the rental fee. Contact the seller to discuss rental terms.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Description</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground whitespace-pre-wrap">
-                  {item.description}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-scale cursor-pointer" onClick={() => item.profiles?.mck_id && navigate(`/profile/${item.profiles.mck_id}`)}>
-              <CardHeader>
-                <CardTitle className="text-lg">Seller Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-16 w-16 border-2 border-primary/20">
-                    {/* ✅ Egress Fix 5: Assume avatar_url is the direct URL (prepares for Cloudinary Avatar migration) */}
-                    <AvatarImage 
-                      src={item.profiles?.avatar_url || undefined} 
-                      alt={item.profiles?.full_name} 
-                    />
-                    <AvatarFallback className="bg-primary/10 text-primary text-xl">
-                      {item.profiles?.full_name?.charAt(0) || <User className="h-8 w-8" />}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-lg">
-                        {item.profiles?.full_name || 'Anonymous User'}
-                      </h3>
-                      {item.profiles?.verification_status === 'approved' && (
-                        <Badge variant="verified" tooltip="Verified User" className="h-4 px-1">
-                          <Shield className="h-3 w-3" />
-                        </Badge>
-                      )}
-                      {item.profiles?.trust_seller_badge && (
-                        <Badge variant="warning" tooltip="Trusted Seller" className="h-4 px-1">
-                          <Star className="h-3 w-3" />
-                        </Badge>
-                      )}
+                      <p className="text-xs text-muted-foreground">{item.profiles?.mck_id}</p>
                     </div>
-                    {item.profiles?.mck_id && (
-                      <p className="text-sm font-mono text-primary mb-1">{item.profiles.mck_id}</p>
-                    )}
-                    <div className="flex gap-4 text-sm text-muted-foreground">
-                      <span>{item.profiles?.campus_points || 0} points</span>
-                      <span>{item.profiles?.deals_completed || 0} deals</span>
-                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                   </div>
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                     <div className="bg-muted/50 p-2 rounded text-center">
+                        <p className="text-xs text-muted-foreground">Deals</p>
+                        <p className="font-semibold text-sm">{item.profiles?.deals_completed || 0}</p>
+                     </div>
+                     <div className="bg-muted/50 p-2 rounded text-center">
+                        <p className="text-xs text-muted-foreground">Points</p>
+                        <p className="font-semibold text-sm">{item.profiles?.campus_points || 0}</p>
+                     </div>
+                  </div>
+                </div>
+
+                {/* Desktop Action Buttons (Hidden on Mobile) */}
+                <div className="hidden lg:flex flex-col gap-3 pt-2">
+                   {!isOwner ? (
+                     <>
+                        <div className="flex gap-3">
+                           <Button 
+                             className="flex-1 h-12 text-base font-semibold shadow-md" 
+                             onClick={handleBuyNow} 
+                             disabled={isDisabled}
+                           >
+                              {buttonText}
+                           </Button>
+                           <Button 
+                             size="icon" 
+                             variant="outline" 
+                             className={`h-12 w-12 ${isFavorited ? 'text-red-500 border-red-200 bg-red-50' : ''}`}
+                             onClick={toggleFavorite}
+                           >
+                             <Heart className={`h-5 w-5 ${isFavorited ? 'fill-current' : ''}`} />
+                           </Button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                           <Button variant="outline" onClick={() => setBargainingDialogOpen(true)} disabled={isDisabled}>
+                             Make Offer
+                           </Button>
+                           <Button variant="secondary" onClick={() => handleChatClick()} disabled={isDisabled}>
+                             <MessageCircle className="h-4 w-4 mr-2" /> Chat
+                           </Button>
+                        </div>
+                     </>
+                   ) : (
+                     <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard')}>Manage Listing</Button>
+                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Action Buttons (Logic refined) */}
-            <div className="space-y-3">
-              {/* Login Required - Prominent CTA for logged-out users */}
-              {!user && (
-                <div className="p-6 bg-gradient-to-br from-primary/10 via-primary/5 to-background border-2 border-primary/30 rounded-xl shadow-lg">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-primary/20 rounded-full">
-                      <MessageCircle className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">Interested in this item?</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Login to chat with the seller, make offers, or add to cart
-                      </p>
-                    </div>
-                  </div>
-                  <Button 
-                    className="w-full h-12 text-lg font-semibold bg-primary hover:bg-primary/90 shadow-md" 
-                    size="lg"
-                    onClick={() => navigate('/auth')}
-                  >
-                    <LogIn className="h-5 w-5 mr-2" />
-                    Login to Chat with Seller
-                  </Button>
-                  <p className="text-xs text-center text-muted-foreground mt-3">
-                    New here? Create a free account in seconds
-                  </p>
-                </div>
-              )}
-
-              {user && !isVerified && !isOwner && (
-                <div className="p-4 bg-info/10 border border-info/20 rounded-lg">
-                  <div className="flex items-center gap-2 text-info">
-                    <Shield className="h-5 w-5" />
-                    <span className="font-medium">KYC Verification Required</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Complete your identity verification to enable interactions like **chatting and offering**.
-                  </p>
-                  <Button variant="default" className="mt-2 w-full" onClick={() => navigate('/kyc')}>
-                    Complete Verification
-                  </Button>
-                </div>
-              )}
-
-              <div className="space-y-3">
-                {!isOwner && (
-                  <>
-                    {/* BUY NOW BUTTON with full proactive check and labels */}
-                    <Button
-                      className="w-full h-12 text-lg font-semibold bg-primary hover:bg-primary/90 transition-colors"
-                      size="lg"
-                      onClick={handleBuyNow}
-                      disabled={isDisabled}
-                    >
-                      <Package className="h-5 w-5 mr-2 relative z-10" />
-                      <span className="relative z-10">{buttonText}</span>
+             {/* Verification Banner */}
+             {user && !userProfile?.is_verified && !isOwner && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-amber-900 text-sm">Verification Needed</h4>
+                    <p className="text-xs text-amber-700 mt-1 mb-2">You need to verify your student ID to buy or chat.</p>
+                    <Button size="sm" variant="outline" className="bg-white border-amber-300 text-amber-800 hover:bg-amber-100 h-8" onClick={() => navigate('/kyc')}>
+                      Verify Now
                     </Button>
-                    
-                    {/* MAKE AN OFFER BUTTON - Disabled when reserved by anyone */}
-                    <Button 
-                      className="w-full relative group overflow-hidden" 
-                      size="lg"
-                      variant="outline"
-                      onClick={() => setBargainingDialogOpen(true)}
-                      disabled={isDisabled}
-                    >
-                      <DollarSign className="h-5 w-5 mr-2 relative z-10" />
-                      <span className="relative z-10 font-semibold">
-                        {item.is_sold || isPendingBySomeoneElse
-                          ? 'Item Unavailable' 
-                          : 'Make an Offer'}
-                      </span>
-                    </Button>
-                    
-                    <div className="flex gap-3">
-                      {/* CHAT BUTTON - Disabled when reserved by anyone */}
-                      <Button 
-                        variant="outline"
-                        className="flex-1" 
-                        size="lg"
-                        onClick={() => handleChatClick()}
-                        disabled={isDisabled}
-                      >
-                        <MessageCircle className="h-5 w-5 mr-2" />
-                        <span className="font-semibold">Chat</span>
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="lg" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleFavorite();
-                        }}
-                        disabled={checkingFavorite || item.is_sold}
-                        className={`transition-colors ${
-                          isFavorited 
-                            ? 'bg-destructive/10 text-destructive border-destructive hover:bg-destructive/20' 
-                            : 'hover:bg-destructive/10 hover:text-destructive hover:border-destructive'
-                        }`}
-                      >
-                        <Heart className={`h-5 w-5 ${isFavorited ? 'fill-current' : ''}`} />
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {isOwner && (
-                <div className="p-4 bg-accent/10 border border-accent/20 rounded-lg">
-                  <p className="text-sm text-muted-foreground">
-                    This is your listing. You can edit or manage it from your dashboard.
-                  </p>
-                  <Button variant="outline" className="mt-2" onClick={() => navigate('/dashboard')}>
-                    Go to Dashboard
-                  </Button>
+                  </div>
                 </div>
               )}
-            </div>
+
           </div>
         </div>
+
+        {/* Similar Items Section */}
+        {similarItems.length > 0 && (
+          <div className="mt-16">
+            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+              You might also like
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {similarItems.map((similar) => (
+                <Link to={`/items/${similar.id}`} key={similar.id} className="group block space-y-2">
+                  <div className="aspect-square rounded-lg overflow-hidden bg-muted relative">
+                    <img 
+                      src={getThumbImage(similar.images[0])} 
+                      alt={similar.title} 
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    />
+                  </div>
+                  <div>
+                    <h3 className="font-medium truncate">{similar.title}</h3>
+                    <p className="font-bold text-primary">₹{similar.price.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(similar.created_at).toLocaleDateString()}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Report Modal */}
+      {/* Sticky Mobile Action Bar */}
+      {!isOwner && (
+        <div className="fixed bottom-0 left-0 right-0 p-3 bg-background border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] lg:hidden z-50 flex gap-2 items-center safe-area-pb">
+          <div className="flex flex-col px-2">
+            <span className="text-xs text-muted-foreground">Price</span>
+            <span className="font-bold text-lg text-primary">₹{item.price.toLocaleString()}</span>
+          </div>
+          <div className="flex-1 flex gap-2 justify-end">
+             <Button variant="outline" size="sm" onClick={() => handleChatClick()} disabled={isDisabled}>
+               Chat
+             </Button>
+             <Button className="flex-1" size="sm" onClick={handleBuyNow} disabled={isDisabled}>
+               {hasPendingOrder ? 'Reserved' : 'Buy Now'}
+             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox Modal */}
+      <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+        <DialogContent className="max-w-4xl w-full h-auto max-h-[90vh] p-0 bg-transparent border-none shadow-none flex items-center justify-center">
+            <div className="relative w-full h-full">
+               <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="absolute -top-10 right-0 text-white hover:bg-white/20 rounded-full z-50"
+                  onClick={() => setLightboxOpen(false)}
+                >
+                  <X className="h-6 w-6" />
+               </Button>
+               <img 
+                 src={getDetailImage(item.images[currentImageIndex])} 
+                 className="w-full h-auto max-h-[85vh] object-contain rounded-lg"
+                 alt="Full view"
+               />
+               
+               {/* Lightbox Navigation arrows could go here */}
+            </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Other Modals */}
       <ReportModal 
         isOpen={reportModalOpen}
         onClose={() => setReportModalOpen(false)}
@@ -913,7 +627,6 @@ const ItemDetail = () => {
         targetName={item?.title}
       />
 
-      {/* Bargaining Dialog */}
       <BargainingDialog
         isOpen={bargainingDialogOpen}
         onClose={() => setBargainingDialogOpen(false)}
@@ -924,5 +637,29 @@ const ItemDetail = () => {
     </div>
   );
 };
+
+// Simple sub-components for cleaner code
+const ItemSkeleton = () => (
+  <div className="container mx-auto px-4 py-8 max-w-6xl animate-pulse">
+    <div className="h-6 bg-muted rounded w-32 mb-6"></div>
+    <div className="grid lg:grid-cols-12 gap-8">
+      <div className="lg:col-span-7 aspect-[4/3] bg-muted rounded-xl"></div>
+      <div className="lg:col-span-5 space-y-4">
+        <div className="h-10 bg-muted rounded w-3/4"></div>
+        <div className="h-6 bg-muted rounded w-1/4"></div>
+        <div className="h-32 bg-muted rounded"></div>
+      </div>
+    </div>
+  </div>
+);
+
+const ItemNotFound = ({ navigate }: { navigate: any }) => (
+  <div className="min-h-screen flex flex-col items-center justify-center p-4">
+    <Package className="h-16 w-16 text-muted-foreground mb-4 opacity-50" />
+    <h1 className="text-2xl font-bold mb-2">Item Not Found</h1>
+    <p className="text-muted-foreground mb-6">This item may have been removed or sold.</p>
+    <Button onClick={() => navigate('/')}>Browse Items</Button>
+  </div>
+);
 
 export default ItemDetail;
