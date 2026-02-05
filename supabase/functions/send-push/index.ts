@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { encode as base64UrlEncode } from "https://deno.land/std@0.168.0/encoding/base64url.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,57 +26,25 @@ function sanitizeInput(input: string, maxLength: number): string {
   return input.slice(0, maxLength).replace(/[<>]/g, "");
 }
 
+// Base64url encode function that works with Uint8Array
+function base64UrlEncode(data: Uint8Array | ArrayBuffer): string {
+  const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
 // Convert base64url to Uint8Array
 function base64UrlToUint8Array(base64Url: string): Uint8Array {
   const padding = "=".repeat((4 - (base64Url.length % 4)) % 4);
   const base64 = (base64Url + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = atob(base64);
   return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
-}
-
-// Import VAPID private key for signing
-async function importVapidPrivateKey(privateKeyBase64: string): Promise<CryptoKey> {
-  const privateKeyBytes = base64UrlToUint8Array(privateKeyBase64);
-  
-  // Create the JWK for P-256 curve
-  const jwk = {
-    kty: "EC",
-    crv: "P-256",
-    d: privateKeyBase64,
-    x: "", // Will be derived
-    y: "", // Will be derived
-  };
-
-  // For VAPID, we need to derive x and y from the private key
-  // Since we only have the private key, we'll use a different approach
-  const keyData = new Uint8Array(32);
-  keyData.set(privateKeyBytes.slice(0, 32));
-
-  return await crypto.subtle.importKey(
-    "raw",
-    privateKeyBytes,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["sign"]
-  ).catch(async () => {
-    // Fallback: import as PKCS8 if raw fails
-    const pkcs8Header = new Uint8Array([
-      0x30, 0x41, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48,
-      0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03,
-      0x01, 0x07, 0x04, 0x27, 0x30, 0x25, 0x02, 0x01, 0x01, 0x04, 0x20,
-    ]);
-    const pkcs8Key = new Uint8Array(pkcs8Header.length + privateKeyBytes.length);
-    pkcs8Key.set(pkcs8Header);
-    pkcs8Key.set(privateKeyBytes, pkcs8Header.length);
-
-    return await crypto.subtle.importKey(
-      "pkcs8",
-      pkcs8Key,
-      { name: "ECDSA", namedCurve: "P-256" },
-      false,
-      ["sign"]
-    );
-  });
 }
 
 // Create VAPID JWT token
@@ -114,7 +81,7 @@ async function createVapidJwt(
 
   const cryptoKey = await crypto.subtle.importKey(
     "pkcs8",
-    pkcs8Key,
+    pkcs8Key.buffer as ArrayBuffer,
     { name: "ECDSA", namedCurve: "P-256" },
     false,
     ["sign"]
@@ -295,7 +262,7 @@ serve(async (req) => {
 
     const cryptoKey = await crypto.subtle.importKey(
       "pkcs8",
-      pkcs8Key,
+      pkcs8Key.buffer as ArrayBuffer,
       { name: "ECDSA", namedCurve: "P-256" },
       false,
       ["sign"]
