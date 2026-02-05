@@ -771,7 +771,7 @@ const ItemDetail = () => {
              ) : !isVerified ? (
                  /* If UNVERIFIED */
                  <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white" onClick={() => navigate('/kyc')}>
-                    <Shield className="h-4 w-4 mr-2" /> Verify to Buy
+                    <Shield className="h-4 w-4 mr-2" /> Verify to Buy/Chat
                  </Button>
              ) : (
                  /* NORMAL FLOW */
