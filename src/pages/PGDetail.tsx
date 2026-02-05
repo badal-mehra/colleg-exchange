@@ -9,7 +9,7 @@ import logo from '@/assets/mycampuskart-logo.png';
 import {
   ArrowLeft, MessageCircle, Phone, Share2, MapPin, Calendar, Eye, User,
   Home, Users, Wifi, Bed, Lamp, BookOpen, DoorOpen, Flame, WashingMachine,
-  Zap, Car, Clock, Cigarette, Wine, UserCheck, Utensils, Shield, ChevronLeft, ChevronRight
+  Zap, Car, Clock, Cigarette, Wine, UserCheck, Utensils, Shield, ChevronLeft, ChevronRight, LogIn
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
@@ -442,7 +442,34 @@ const PGDetail = () => {
       </div>
 
       {/* Fixed Bottom CTA */}
-      {!isOwner && (
+      {!user ? (
+        /* Logged out users - Show Login to Contact CTA */
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background to-transparent pt-8 pb-4 z-40">
+          <div className="container mx-auto px-4">
+            <div className="bg-card border-2 border-orange-500/30 rounded-xl p-4 shadow-xl">
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="flex-1 text-center sm:text-left">
+                  <h3 className="font-semibold text-foreground flex items-center justify-center sm:justify-start gap-2">
+                    <MessageCircle className="h-5 w-5 text-orange-500" />
+                    Interested in this listing?
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Login to contact the owner and start a conversation
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => navigate('/auth')} 
+                  className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6"
+                >
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Login to Contact
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : !isOwner ? (
+        /* Logged in users (not owner) - Show Chat/Call buttons */
         <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-40">
           <div className="container mx-auto flex gap-3">
             <Button variant="outline" className="flex-1" onClick={handleChatClick}>
@@ -469,7 +496,7 @@ const PGDetail = () => {
             )}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

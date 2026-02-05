@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // Added CardDescription
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Award, Star, Trophy, Package, User as UserIcon, AlertTriangle, Shield, CheckCircle } from 'lucide-react'; // Added Shield, CheckCircle
+import { ArrowLeft, Award, Star, Trophy, Package, User as UserIcon, AlertTriangle, Shield, CheckCircle, Home, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ReportModal } from '@/components/ReportModal';
 import { Separator } from '@/components/ui/separator'; // Added Separator
@@ -32,6 +32,19 @@ interface Item {
   created_at: string;
   is_sold: boolean;
   condition: string;
+}
+
+interface PGListing {
+  id: string;
+  property_type: string;
+  for_gender: string;
+  sharing_type: string;
+  rent_per_month: number;
+  area_locality: string;
+  images: string[];
+  created_at: string;
+  is_active: boolean;
+  status: string;
 }
 
 // ⭐ ADDED: Fetch Rating Utility - Common Function
@@ -61,6 +74,9 @@ const PublicProfile = () => {
   const [loading, setLoading] = useState(true);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   
+  // State for PG Listings
+  const [pgListings, setPgListings] = useState<PGListing[]>([]);
+
   // ADDED: State for Seller Rating
   const [sellerRating, setSellerRating] = useState({ avg: 0, count: 0 });
 
@@ -99,15 +115,26 @@ const PublicProfile = () => {
     }
     // END ADDED: Fetch Rating
     
-    // Fetch user's listings
-    const { data: itemsData, error: itemsError } = await supabase
+    // Fetch user's item listings
+    const { data: itemsData } = await supabase
       .from('items')
       .select('*')
       .eq('seller_id', profileData.user_id)
       .order('created_at', { ascending: false });
 
-    if (!itemsError && itemsData) {
-      setListings(itemsData);
+    if (itemsData) {
+      setListings(itemsData as Item[]);
+    }
+
+    // Fetch user's PG listings
+    const { data: pgData } = await supabase
+      .from('pg_listings')
+      .select('*')
+      .eq('seller_id', profileData.user_id)
+      .order('created_at', { ascending: false });
+
+    if (pgData) {
+      setPgListings(pgData as PGListing[]);
     }
 
     setLoading(false);
@@ -149,6 +176,7 @@ const PublicProfile = () => {
 
   const avatarUrl = getAvatarUrl(profile.avatar_url);
   const activeListings = listings.filter(item => !item.is_sold);
+  const activePGListings = pgListings.filter(pg => pg.is_active && pg.status !== 'rented');
 
   return (
     <div className="min-h-screen bg-background"> {/* Cleaned up background */}
@@ -321,6 +349,72 @@ const PublicProfile = () => {
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* PG Listings Section */}
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Home className="h-5 w-5 text-orange-500" />
+              PG/Room Listings <Badge variant="secondary">{activePGListings.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {pgListings.length === 0 ? (
+              <div className="text-center py-12">
+                <Home className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground text-lg font-medium">This user has no PG/Room listings yet.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {pgListings.map((pg) => {
+                  const isRented = pg.status === 'rented' || !pg.is_active;
+                  const propertyLabel = { pg: 'PG', room: 'Room', hostel: 'Hostel', flat: 'Flat' }[pg.property_type] || pg.property_type;
+                  const sharingLabel = { single: 'Single', double: 'Double', triple: 'Triple', any: 'Any' }[pg.sharing_type] || pg.sharing_type;
+                  
+                  return (
+                    <Card
+                      key={pg.id}
+                      className={`cursor-pointer transition-all duration-300 hover:shadow-lg ${isRented ? 'opacity-60 border-dashed hover:opacity-100 hover:shadow-none' : 'hover:scale-[1.02]'}`}
+                      onClick={() => navigate(`/pg/${pg.id}`)}
+                    >
+                      <div className="aspect-square relative overflow-hidden rounded-t-lg bg-muted">
+                        {pg.images && pg.images.length > 0 ? (
+                          <img
+                            src={pg.images[0]}
+                            alt={`${propertyLabel} in ${pg.area_locality}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Home className="h-16 w-16 text-muted-foreground/30" />
+                          </div>
+                        )}
+                        {isRented && (
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                            <Badge variant="secondary" className="text-lg font-bold">RENTED</Badge>
+                          </div>
+                        )}
+                        <Badge className="absolute top-2 left-2 bg-orange-500 text-white text-xs">
+                          {propertyLabel}
+                        </Badge>
+                      </div>
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+                          <MapPin className="h-3 w-3" />
+                          <span className="truncate">{pg.area_locality}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xl font-bold text-primary">₹{pg.rent_per_month.toLocaleString()}<span className="text-sm font-normal text-muted-foreground">/mo</span></span>
+                          <Badge variant="outline" className="text-xs">{sharingLabel}</Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </CardContent>
