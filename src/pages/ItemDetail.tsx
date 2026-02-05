@@ -11,8 +11,8 @@ import { Separator } from '@/components/ui/separator';
 import logo from '@/assets/mycampuskart-logo.png';
 import {
   ArrowLeft, MessageCircle, Heart, Share2, MapPin, Calendar, Eye,
-  User, AlertCircle, Shield, Star, AlertTriangle, DollarSign,
-  Package, Key, Clock, Banknote, LogIn, ChevronRight, X, Maximize2
+  User, AlertCircle, Shield, AlertTriangle, DollarSign,
+  Package, Key, LogIn, ChevronRight, X, Maximize2, Lock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
@@ -122,7 +122,7 @@ const ItemDetail = () => {
     }
   }, [user, id]);
 
-  // Combined checkPendingOrder function (Restored useCallback)
+  // Combined checkPendingOrder function
   const checkPendingOrder = useCallback(async (itemId: string, currentUserId: string) => {
     const { data: pendingOrder, error } = await supabase
       .from("orders")
@@ -132,7 +132,6 @@ const ItemDetail = () => {
       .maybeSingle();
 
     if (error) {
-        console.error("Error checking pending orders:", error);
         setHasPendingOrder(false);
         setIsPendingBySomeoneElse(false);
         return;
@@ -191,7 +190,6 @@ const ItemDetail = () => {
       .single();
 
     if (error) {
-      console.error("Item fetch failed:", error); 
       setItem(null); 
     } else {
       const itemData = data as Item;
@@ -264,11 +262,10 @@ const ItemDetail = () => {
 
   const toggleFavorite = async () => {
     if (!user) {
-      toast({ title: "Login Required", description: "Please login first", variant: "destructive" });
+      toast({ title: "Login Required", description: "Please login to add to cart", variant: "destructive" });
       navigate('/auth');
       return;
     }
-    // Removed strict KYC check for favorites to be more user friendly, add back if needed
     try {
       if (isFavorited) {
         await supabase.from('favorites').delete().eq('user_id', user.id).eq('item_id', id);
@@ -284,19 +281,21 @@ const ItemDetail = () => {
     }
   };
 
-  // --- BUY NOW LOGIC (Restored from your file) ---
   const handleBuyNow = async () => {
-    if (!user) return navigate("/auth");
-    if (!item) {
-        sonnerToast.error("Item data not loaded properly. Please refresh.");
-        return;
+    // 1. Check Login
+    if (!user) {
+        toast({ title: "Login Required", description: "Please login to buy items", variant: "default" });
+        return navigate("/auth");
     }
-
+    
+    // 2. Check Verification
     const isVerified = userProfile?.is_verified && userProfile?.verification_status === 'approved';
     if (!isVerified) {
-      toast({ title: "Verification Required", description: "Complete KYC to buy", variant: "destructive" });
+      toast({ title: "Verification Required", description: "Complete your Student KYC to buy", variant: "destructive" });
       return navigate("/kyc");
     }
+
+    if (!item) return;
 
     if (user.id === item.seller_id) {
       toast({ title: "Error", description: "You cannot buy your own item", variant: "destructive" });
@@ -304,7 +303,7 @@ const ItemDetail = () => {
     }
     
     if (item.is_sold) {
-      toast({ title: "Error", description: "This item has already been sold.", variant: "destructive" });
+      toast({ title: "Error", description: "This item is sold.", variant: "destructive" });
       return;
     }
 
@@ -317,12 +316,11 @@ const ItemDetail = () => {
     });
 
     if (rpcError) {
-      console.error("Order Failed (RPC Error):", rpcError);
       const errorText = JSON.stringify(rpcError).toLowerCase();
       if (errorText.includes("duplicate pending order") || errorText.includes("already reserved")) {
-        sonnerToast.error("This item has just been reserved by another buyer.");
+        sonnerToast.error("Item reserved by another buyer.");
       } else {
-        sonnerToast.error("Could not process order due to a system error.");
+        sonnerToast.error("System error processing order.");
       }
       return;
     }
@@ -330,12 +328,12 @@ const ItemDetail = () => {
     const response = rpcResponse as { success?: boolean; message?: string; error?: string } | null;
 
     if (!response?.success) {
-        sonnerToast.error(response?.error || "You already reserved this item.");
+        sonnerToast.error(response?.error || "Order failed.");
         navigate("/my-orders"); 
         return;
     }
 
-    sonnerToast.success(response.message || "Item reserved successfully!");
+    sonnerToast.success("Item reserved! Go to My Orders.");
     navigate("/my-orders");
     
     setHasPendingOrder(true);
@@ -343,12 +341,14 @@ const ItemDetail = () => {
   };
 
   const handleChatClick = async (offerPrice?: number) => {
+    // 1. Check Login
     if (!user) {
-      toast({ title: "Login Required", description: "Please login to chat", variant: "destructive" });
+      toast({ title: "Login Required", description: "Please login to chat", variant: "default" });
       navigate('/auth');
       return;
     }
 
+    // 2. Check Verification
     if (!userProfile?.is_verified || userProfile?.verification_status !== 'approved') {
       toast({ title: "Verification Required", description: "Please complete KYC", variant: "destructive" });
       navigate('/kyc');
@@ -407,7 +407,7 @@ const ItemDetail = () => {
       } catch (error) { console.log('Error sharing:', error); }
     } else {
       navigator.clipboard.writeText(window.location.href);
-      sonnerToast.success("Link copied to clipboard");
+      sonnerToast.success("Link copied");
     }
   };
 
@@ -441,8 +441,11 @@ const ItemDetail = () => {
 
   const isOwner = user?.id === item.seller_id;
   const isVerified = user && userProfile?.is_verified && userProfile?.verification_status === 'approved'; 
+  
+  // Logic for disabled states
   const isDisabled = !user || (!isVerified && !isOwner) || item.is_sold || hasPendingOrder || isPendingBySomeoneElse;
   
+  // Button text logic
   const buttonText = item.is_sold
     ? 'Sold Out'
     : isPendingBySomeoneElse
@@ -450,6 +453,21 @@ const ItemDetail = () => {
     : hasPendingOrder
     ? 'Already Reserved'
     : 'Buy Now';
+
+  // Smart Mobile Button Handler
+  const handleMobileMainAction = () => {
+      if (!user) return navigate('/auth');
+      if (!isVerified) return navigate('/kyc');
+      handleBuyNow();
+  };
+
+  const mobileButtonLabel = !user 
+      ? 'Login to Chat' 
+      : !isVerified 
+      ? 'Verify to Chat'
+      : hasPendingOrder 
+      ? 'Reserved' 
+      : 'Buy Now';
 
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-background pb-20 lg:pb-8">
@@ -628,63 +646,92 @@ const ItemDetail = () => {
                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </div>
 
-              {/* Desktop Actions (Hidden on Mobile) */}
+              {/* --- DESKTOP ACTION AREA --- */}
               <div className="hidden lg:flex flex-col gap-3 pt-2">
-                {!user ? (
-                   <Button className="w-full" onClick={() => navigate('/auth')}>
-                     <LogIn className="h-4 w-4 mr-2" /> Login to Buy
-                   </Button>
-                ) : !isOwner ? (
-                  <>
-                    <div className="flex gap-3">
-                      <Button 
-                        className="flex-1 h-12 text-base shadow-sm" 
-                        size="lg"
-                        onClick={handleBuyNow}
-                        disabled={isDisabled}
-                      >
-                        <Package className="h-5 w-5 mr-2" />
-                        {buttonText}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="icon"
-                        className={`h-12 w-12 border-2 ${isFavorited ? 'border-red-500 text-red-500 bg-red-50' : ''}`}
-                        onClick={toggleFavorite}
-                      >
-                         <Heart className={`h-6 w-6 ${isFavorited ? 'fill-current' : ''}`} />
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                       <Button variant="outline" onClick={() => setBargainingDialogOpen(true)} disabled={isDisabled}>
-                         <DollarSign className="h-4 w-4 mr-2" /> Make Offer
-                       </Button>
-                       <Button variant="secondary" onClick={() => handleChatClick()} disabled={isDisabled}>
-                         <MessageCircle className="h-4 w-4 mr-2" /> Chat
-                       </Button>
-                    </div>
-                  </>
-                ) : (
-                  <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard')}>
-                    Manage Your Listing
-                  </Button>
-                )}
                 
-                {/* Verification Warning */}
+                {/* CASE 1: NOT LOGGED IN */}
+                {!user && (
+                    <Card className="bg-primary/5 border-primary/20">
+                        <CardContent className="p-4 space-y-3 text-center">
+                            <div className="mx-auto w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                <LogIn className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold">Login to Buy & Chat</h3>
+                                <p className="text-xs text-muted-foreground">Create a free account to contact the seller.</p>
+                            </div>
+                            <Button className="w-full font-semibold" onClick={() => navigate('/auth')}>
+                                Login / Signup
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* CASE 2: LOGGED IN BUT UNVERIFIED (And not owner) */}
                 {user && !isVerified && !isOwner && (
-                  <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>KYC Verification required to interact.</span>
-                    <Link to="/kyc" className="underline font-semibold">Verify</Link>
-                  </div>
+                    <Card className="bg-amber-50 border-amber-200">
+                        <CardContent className="p-4 space-y-3">
+                            <div className="flex items-center gap-2 text-amber-800 font-semibold">
+                                <AlertCircle className="h-5 w-5" />
+                                <span>Verification Required</span>
+                            </div>
+                            <p className="text-xs text-amber-700">
+                                You must complete your student KYC verification to buy items or chat with sellers.
+                            </p>
+                            <Button variant="outline" className="w-full border-amber-300 text-amber-900 hover:bg-amber-100" onClick={() => navigate('/kyc')}>
+                                Verify My ID
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* CASE 3: LOGGED IN & VERIFIED (Normal Flow) */}
+                {user && (isVerified || isOwner) && (
+                  <>
+                    {!isOwner ? (
+                      <>
+                        <div className="flex gap-3">
+                          <Button 
+                            className="flex-1 h-12 text-base shadow-sm" 
+                            size="lg"
+                            onClick={handleBuyNow}
+                            disabled={isDisabled}
+                          >
+                            <Package className="h-5 w-5 mr-2" />
+                            {buttonText}
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            className={`h-12 w-12 border-2 ${isFavorited ? 'border-red-500 text-red-500 bg-red-50' : ''}`}
+                            onClick={toggleFavorite}
+                          >
+                             <Heart className={`h-6 w-6 ${isFavorited ? 'fill-current' : ''}`} />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                           <Button variant="outline" onClick={() => setBargainingDialogOpen(true)} disabled={isDisabled}>
+                             <DollarSign className="h-4 w-4 mr-2" /> Make Offer
+                           </Button>
+                           <Button variant="secondary" onClick={() => handleChatClick()} disabled={isDisabled}>
+                             <MessageCircle className="h-4 w-4 mr-2" /> Chat
+                           </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard')}>
+                        Manage Your Listing
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* --- Similar Items Section --- */}
-        {similarItems.length > 0 && (
+        {/* --- Similar Items Section (HIDDEN IF LOGGED OUT) --- */}
+        {user && similarItems.length > 0 && (
           <div className="mt-12">
             <h2 className="text-xl font-bold mb-6">You might also like</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -716,17 +763,32 @@ const ItemDetail = () => {
             <span className="font-bold text-lg text-primary">₹{item.price.toLocaleString()}</span>
           </div>
           <div className="flex-1 flex gap-2 justify-end">
-             <Button variant="outline" size="sm" className="flex-1" onClick={() => handleChatClick()} disabled={isDisabled}>
-               Chat
-             </Button>
-             <Button className="flex-[1.5]" size="sm" onClick={handleBuyNow} disabled={isDisabled}>
-               {hasPendingOrder ? 'Reserved' : 'Buy Now'}
-             </Button>
+             {/* If NOT LOGGED IN */}
+             {!user ? (
+                 <Button className="w-full" onClick={() => navigate('/auth')}>
+                    <LogIn className="h-4 w-4 mr-2" /> Login to Chat
+                 </Button>
+             ) : !isVerified ? (
+                 /* If UNVERIFIED */
+                 <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white" onClick={() => navigate('/kyc')}>
+                    <Shield className="h-4 w-4 mr-2" /> Verify to Buy
+                 </Button>
+             ) : (
+                 /* NORMAL FLOW */
+                 <>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => handleChatClick()} disabled={isDisabled}>
+                        Chat
+                    </Button>
+                    <Button className="flex-[1.5]" size="sm" onClick={handleBuyNow} disabled={isDisabled}>
+                        {hasPendingOrder ? 'Reserved' : 'Buy Now'}
+                    </Button>
+                 </>
+             )}
           </div>
         </div>
       )}
 
-      {/* --- Custom Lightbox (No Dialog Dependency) --- */}
+      {/* --- Custom Lightbox --- */}
       {lightboxOpen && (
         <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <button 
