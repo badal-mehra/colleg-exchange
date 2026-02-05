@@ -16,8 +16,8 @@ import {
 import { 
   ArrowLeft, Award, Star, Trophy, Package, User as UserIcon, 
   AlertTriangle, Shield, CheckCircle, Home, MapPin, 
-  MessageCircle, Calendar, Share2, Clock, Search, Filter,
-  ExternalLink, Copy, Phone, ArrowUpRight
+  MessageCircle, Calendar, Share2, Search, Filter,
+  ExternalLink, Copy, ArrowUpRight
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ReportModal } from '@/components/ReportModal';
@@ -67,15 +67,24 @@ interface PGListing {
 
 // --- Utilities ---
 
-// 1. Generate consistent gradient based on string (User Name)
+// Generates a unique gradient background based on the user's name
 const generateGradient = (str: string) => {
   let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
   const c1 = `hsl(${hash % 360}, 70%, 50%)`;
   const c2 = `hsl(${(hash + 80) % 360}, 70%, 40%)`;
   return `linear-gradient(135deg, ${c1}, ${c2})`;
+};
+
+// Generates initials (e.g. "John Doe" -> "JD")
+const getInitials = (name: string) => {
+  if (!name) return "U";
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 };
 
 const fetchUserRating = async (userId: string) => {
@@ -117,7 +126,7 @@ const PublicProfile = () => {
 
   useEffect(() => {
     fetchProfileAndListings();
-    window.scrollTo(0, 0); // Scroll to top on load
+    window.scrollTo(0, 0); 
   }, [mckId]);
 
   const fetchProfileAndListings = async () => {
@@ -138,7 +147,7 @@ const PublicProfile = () => {
 
     setProfile(profileData);
     
-    // Parallel Fetching for speed
+    // Parallel Fetching
     if (profileData.user_id) {
       const [ratingRes, itemsRes, pgsRes] = await Promise.all([
         fetchUserRating(profileData.user_id),
@@ -153,8 +162,9 @@ const PublicProfile = () => {
     setLoading(false);
   };
 
+  // --- FIXED AVATAR URL LOGIC ---
   const getAvatarUrl = (avatarPath: string | null) => {
-    if (!avatarPath) return null;
+    if (!avatarPath || avatarPath === 'null') return undefined; // Return undefined to trigger Fallback
     if (avatarPath.startsWith('http')) return avatarPath;
     const { data } = supabase.storage.from('avatars').getPublicUrl(avatarPath);
     return data.publicUrl;
@@ -162,17 +172,13 @@ const PublicProfile = () => {
 
   const handleShare = async () => {
     const shareData = {
-      title: `Check out ${profile?.full_name}'s store on MyCampusKart`,
-      text: `I found some great items from ${profile?.full_name}.`,
+      title: `${profile?.full_name}'s Profile`,
+      text: `Check out items from ${profile?.full_name} on MyCampusKart!`,
       url: window.location.href
     };
 
     if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch (err) {
-        console.log('Error sharing:', err);
-      }
+      try { await navigator.share(shareData); } catch (err) { console.log('Error sharing:', err); }
     } else {
       navigator.clipboard.writeText(window.location.href);
       toast({ title: "Link Copied", description: "Profile link copied to clipboard." });
@@ -184,11 +190,8 @@ const PublicProfile = () => {
     let items = listings.filter(item => 
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) && !item.is_sold
     );
-
     if (sortBy === 'price_asc') items.sort((a, b) => a.price - b.price);
     else if (sortBy === 'price_desc') items.sort((a, b) => b.price - a.price);
-    // Default is newest (already sorted by DB query usually, but safe to keep)
-    
     return items;
   }, [listings, searchQuery, sortBy]);
 
@@ -206,30 +209,35 @@ const PublicProfile = () => {
                 <div className="h-4 w-1/3 bg-muted rounded animate-pulse" />
               </div>
             </div>
-            <div className="h-12 w-full bg-muted rounded animate-pulse" />
           </div>
         </div>
       </div>
     );
   }
 
-  if (!profile) return <div className="p-8 text-center">Profile not found</div>;
+  if (!profile) return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center">
+        <UserIcon className="h-16 w-16 text-muted-foreground mb-4 opacity-20" />
+        <h2 className="text-xl font-semibold">User not found</h2>
+        <Button variant="link" onClick={() => navigate('/')}>Go Home</Button>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-12">
+    <div className="min-h-screen bg-background pb-24 md:pb-12">
       
       {/* 1. Dynamic Identity Banner */}
       <div 
         className="h-48 md:h-64 w-full relative overflow-hidden"
         style={{ background: generateGradient(profile.full_name || 'User') }}
       >
-        <div className="absolute inset-0 bg-black/10" /> {/* Overlay for contrast */}
+        <div className="absolute inset-0 bg-black/10" />
         <div className="container mx-auto px-4 py-6 relative z-10">
           <Button 
             variant="secondary" 
             size="sm" 
             onClick={() => navigate(-1)} 
-            className="bg-white/20 hover:bg-white/30 text-white backdrop-blur-md border-none shadow-lg"
+            className="bg-white/20 hover:bg-white/30 text-white backdrop-blur-md border-none shadow-sm"
           >
             <ArrowLeft className="h-4 w-4 mr-2" /> Back
           </Button>
@@ -238,25 +246,30 @@ const PublicProfile = () => {
 
       <div className="container mx-auto px-4 max-w-6xl -mt-24 relative z-10">
         
-        {/* 2. Glassmorphism Profile Card */}
+        {/* 2. Main Profile Card */}
         <Card className="mb-8 shadow-xl border-none overflow-hidden backdrop-blur-sm bg-card/95">
           <CardContent className="pt-0 pb-6 px-6">
             <div className="flex flex-col md:flex-row items-center md:items-end gap-6">
               
               {/* Avatar Section */}
               <div className="relative -mt-16 md:-mt-20 group">
-                <Avatar className="h-32 w-32 md:h-44 md:w-44 border-[6px] border-background shadow-2xl transition-transform transform group-hover:scale-105">
-                  <AvatarImage src={getAvatarUrl(profile.avatar_url) || undefined} alt={profile.full_name} className="object-cover" />
-                  <AvatarFallback className="text-4xl bg-gradient-to-br from-primary to-primary/60 text-primary-foreground">
-                    {profile.full_name?.charAt(0)}
+                <Avatar className="h-32 w-32 md:h-44 md:w-44 border-[6px] border-background shadow-xl transition-transform transform group-hover:scale-105 bg-background">
+                  <AvatarImage 
+                    src={getAvatarUrl(profile.avatar_url)} 
+                    alt={profile.full_name} 
+                    className="object-cover" 
+                  />
+                  <AvatarFallback className="text-4xl font-bold bg-primary/10 text-primary">
+                    {getInitials(profile.full_name)}
                   </AvatarFallback>
                 </Avatar>
+                
                 {profile.verification_status === 'approved' && (
                    <TooltipProvider>
                      <Tooltip>
                        <TooltipTrigger asChild>
-                        <div className="absolute bottom-2 right-2 bg-background rounded-full p-1.5 shadow-sm ring-1 ring-border">
-                          <Shield className="h-6 w-6 text-green-500 fill-green-500/10" />
+                        <div className="absolute bottom-2 right-2 bg-background rounded-full p-1.5 shadow-sm ring-1 ring-border cursor-help">
+                          <CheckCircle className="h-6 w-6 text-green-500 fill-green-100" />
                         </div>
                        </TooltipTrigger>
                        <TooltipContent><p>Verified Student Identity</p></TooltipContent>
@@ -268,37 +281,27 @@ const PublicProfile = () => {
               {/* Info Section */}
               <div className="flex-1 text-center md:text-left mt-2 md:mt-0 md:pb-4">
                 <div className="flex items-center justify-center md:justify-start gap-2">
-                  <h1 className="text-3xl font-extrabold text-foreground tracking-tight">
+                  <h1 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight">
                     {profile.full_name}
                   </h1>
                   {profile.trust_seller_badge && (
-                     <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger><Award className="h-6 w-6 text-yellow-500 animate-pulse" /></TooltipTrigger>
-                        <TooltipContent>Trusted Seller Badge</TooltipContent>
-                      </Tooltip>
-                     </TooltipProvider>
+                    <Award className="h-6 w-6 text-yellow-500" />
                   )}
                 </div>
                 
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 text-muted-foreground mt-2">
-                  <span className="flex items-center gap-1 text-sm bg-muted/50 px-2 py-1 rounded-md border">
-                    <UserIcon className="h-3 w-3" /> @{profile.mck_id}
-                  </span>
-                  <span className="flex items-center gap-1 text-sm">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 text-muted-foreground mt-3">
+                  <Badge variant="outline" className="font-normal text-sm px-3 py-1 border-primary/20 bg-primary/5 text-primary">
+                     @{profile.mck_id}
+                  </Badge>
+                  <div className="flex items-center gap-1 text-sm">
                     <MapPin className="h-3 w-3" /> {profile.university}
-                  </span>
-                  {profile.created_at && (
-                    <span className="flex items-center gap-1 text-sm">
-                      <Calendar className="h-3 w-3" /> Joined {new Date(profile.created_at).getFullYear()}
-                    </span>
-                  )}
+                  </div>
                 </div>
               </div>
 
               {/* Desktop Actions */}
               <div className="hidden md:flex gap-3 mb-4">
-                 <Button className="shadow-blue-500/20 shadow-lg" onClick={() => navigate(`/chat/${profile.user_id}`)}>
+                 <Button className="shadow-lg hover:shadow-xl transition-all" onClick={() => navigate(`/chat/${profile.user_id}`)}>
                     <MessageCircle className="h-4 w-4 mr-2" /> Message
                  </Button>
                  <DropdownMenu>
@@ -306,10 +309,13 @@ const PublicProfile = () => {
                       <Button variant="outline"><Share2 className="h-4 w-4 mr-2" /> Share</Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={handleShare}>
+                      <DropdownMenuItem onClick={() => {
+                         navigator.clipboard.writeText(window.location.href);
+                         toast({ title: "Copied!", description: "Link copied to clipboard" });
+                      }}>
                         <Copy className="h-4 w-4 mr-2" /> Copy Link
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.open(`https://wa.me/?text=Check out ${profile.full_name} on CampusKart: ${window.location.href}`, '_blank')}>
+                      <DropdownMenuItem onClick={() => window.open(`https://wa.me/?text=Check out ${profile.full_name} on MyCampusKart: ${window.location.href}`, '_blank')}>
                         <ExternalLink className="h-4 w-4 mr-2" /> WhatsApp
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -322,9 +328,9 @@ const PublicProfile = () => {
 
             <Separator className="my-6" />
 
-            {/* Stats Grid - Enhanced */}
+            {/* Stats Grid */}
             <div className="grid grid-cols-3 gap-4 md:gap-8 max-w-3xl mx-auto md:mx-0">
-               <div className="flex flex-col items-center md:items-start p-2 hover:bg-muted/50 rounded-lg transition-colors cursor-default">
+               <div className="flex flex-col items-center md:items-start p-2 rounded-lg transition-colors cursor-default">
                  <div className="flex items-center gap-2 mb-1">
                     <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
                     <span className="text-2xl font-bold">{sellerRating.avg}</span>
@@ -332,7 +338,7 @@ const PublicProfile = () => {
                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{sellerRating.count} Reviews</p>
                </div>
                
-               <div className="flex flex-col items-center md:items-start p-2 border-l border-r md:border-x-0 hover:bg-muted/50 rounded-lg transition-colors">
+               <div className="flex flex-col items-center md:items-start p-2 border-l border-r md:border-x-0 rounded-lg transition-colors">
                  <div className="flex items-center gap-2 mb-1">
                     <Package className="h-5 w-5 text-blue-500" />
                     <span className="text-2xl font-bold">{profile.deals_completed}</span>
@@ -340,7 +346,7 @@ const PublicProfile = () => {
                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Sold</p>
                </div>
 
-               <div className="flex flex-col items-center md:items-start p-2 hover:bg-muted/50 rounded-lg transition-colors">
+               <div className="flex flex-col items-center md:items-start p-2 rounded-lg transition-colors">
                  <div className="flex items-center gap-2 mb-1">
                     <Trophy className="h-5 w-5 text-orange-500" />
                     <span className="text-2xl font-bold">{profile.campus_points}</span>
@@ -351,32 +357,31 @@ const PublicProfile = () => {
           </CardContent>
         </Card>
 
-        {/* 3. Enhanced Tabs with Search */}
+        {/* 3. Listings Tabs */}
         <Tabs defaultValue="items" className="w-full space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
              <TabsList className="h-auto p-1 bg-muted/50 border self-start">
-                <TabsTrigger value="items" className="px-6 py-2 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  Marketplace <Badge variant="secondary" className="ml-2 text-[10px]">{listings.length}</Badge>
+                <TabsTrigger value="items" className="px-6 py-2 text-sm">
+                  Marketplace <Badge variant="secondary" className="ml-2">{listings.length}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="pgs" className="px-6 py-2 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  Properties <Badge variant="secondary" className="ml-2 text-[10px]">{pgListings.length}</Badge>
+                <TabsTrigger value="pgs" className="px-6 py-2 text-sm">
+                  Properties <Badge variant="secondary" className="ml-2">{pgListings.length}</Badge>
                 </TabsTrigger>
              </TabsList>
 
-             {/* Search & Filter Bar */}
              <div className="flex items-center gap-2 w-full md:w-auto">
                 <div className="relative flex-1 md:w-64">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input 
                     placeholder="Search listings..." 
-                    className="pl-9 bg-background"
+                    className="pl-9 bg-background h-10"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon"><Filter className="h-4 w-4" /></Button>
+                    <Button variant="outline" size="icon" className="h-10 w-10"><Filter className="h-4 w-4" /></Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => setSortBy('newest')}>Newest First</DropdownMenuItem>
@@ -387,7 +392,6 @@ const PublicProfile = () => {
              </div>
           </div>
 
-          {/* ITEM LISTINGS */}
           <TabsContent value="items" className="mt-0 min-h-[300px]">
             {filteredItems.length === 0 ? (
               <EmptyState 
@@ -404,7 +408,6 @@ const PublicProfile = () => {
             )}
           </TabsContent>
 
-          {/* PG LISTINGS */}
           <TabsContent value="pgs" className="mt-0 min-h-[300px]">
              {pgListings.length === 0 ? (
                <EmptyState icon={Home} title="No properties listed" desc="This user has no PG or Room listings available." />
@@ -419,13 +422,13 @@ const PublicProfile = () => {
         </Tabs>
       </div>
 
-      {/* 4. Mobile Sticky Action Bar (Like Instagram/Airbnb) */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-lg border-t p-4 z-50 md:hidden flex gap-3 pb-safe-area">
-         <Button className="flex-1 shadow-lg" onClick={() => navigate(`/chat/${profile.user_id}`)}>
-            <MessageCircle className="h-4 w-4 mr-2" /> Chat with Seller
+      {/* 4. Sticky Mobile Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-xl border-t p-4 z-50 md:hidden flex gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+         <Button className="flex-1 shadow-md h-12 text-base" onClick={() => navigate(`/chat/${profile.user_id}`)}>
+            <MessageCircle className="h-5 w-5 mr-2" /> Chat
          </Button>
-         <Button variant="outline" size="icon" onClick={handleShare}>
-            <Share2 className="h-4 w-4" />
+         <Button variant="outline" size="icon" className="h-12 w-12 border-primary/20" onClick={handleShare}>
+            <Share2 className="h-5 w-5" />
          </Button>
       </div>
 
@@ -454,7 +457,7 @@ const EmptyState = ({ icon: Icon, title, desc }: { icon: any, title: string, des
 
 const ItemCard = ({ item, onClick }: { item: Item, onClick: () => void }) => (
   <Card 
-    className="group cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-muted"
+    className="group cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-muted bg-card"
     onClick={onClick}
   >
     <div className="aspect-[4/3] relative bg-secondary/30 overflow-hidden">
@@ -468,24 +471,24 @@ const ItemCard = ({ item, onClick }: { item: Item, onClick: () => void }) => (
         <div className="flex h-full items-center justify-center"><Package className="h-10 w-10 text-muted-foreground/20" /></div>
       )}
       
-      {/* Overlay Gradient on Hover */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-      
       {/* Badges */}
+      <div className="absolute top-2 left-2">
+         {item.condition && <Badge className="text-[10px] bg-black/60 text-white hover:bg-black/70 border-none backdrop-blur-sm">{item.condition}</Badge>}
+      </div>
+      
       <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center">
          <Badge variant="secondary" className="text-[10px] bg-white/90 backdrop-blur text-black shadow-sm font-normal">
            {formatRelativeTime(item.created_at)}
          </Badge>
-         {item.condition && <Badge className="text-[10px] bg-black/60 text-white border-none">{item.condition}</Badge>}
       </div>
     </div>
     <CardContent className="p-3">
       <h3 className="font-medium text-sm truncate mb-1 group-hover:text-primary transition-colors">{item.title}</h3>
       <div className="flex items-center justify-between">
         <span className="font-bold text-base">₹{item.price.toLocaleString()}</span>
-        <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full -mr-2 text-muted-foreground hover:text-primary">
+        <div className="h-7 w-7 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground group-hover:bg-primary group-hover:text-white transition-colors">
            <ArrowUpRight className="h-4 w-4" />
-        </Button>
+        </div>
       </div>
     </CardContent>
   </Card>
