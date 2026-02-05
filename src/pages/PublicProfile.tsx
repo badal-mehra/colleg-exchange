@@ -16,8 +16,8 @@ import {
 import { 
   ArrowLeft, Award, Star, Trophy, Package, User as UserIcon, 
   AlertTriangle, Shield, CheckCircle, Home, MapPin, 
-  MessageCircle, Calendar, Share2, Search, Filter,
-  ExternalLink, Copy, ArrowUpRight
+  MessageCircle, Share2, Search, Filter,
+  ExternalLink, Copy, ArrowUpRight, Zap, Ghost
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ReportModal } from '@/components/ReportModal';
@@ -67,6 +67,19 @@ interface PGListing {
 
 // --- Utilities ---
 
+// Fun "Student Vibe" Generator for Retention/Humor
+const STUDENT_VIBES = [
+  { text: "Caffeine Powered ☕", color: "bg-amber-100 text-amber-800 border-amber-200" },
+  { text: "Academic Weapon 📚", color: "bg-blue-100 text-blue-800 border-blue-200" },
+  { text: "Sleep Deprived 😴", color: "bg-purple-100 text-purple-800 border-purple-200" },
+  { text: "Last Minute Legend ⚡", color: "bg-yellow-100 text-yellow-800 border-yellow-200" },
+  { text: "Broke but Happy 💸", color: "bg-green-100 text-green-800 border-green-200" },
+  { text: "Future CEO 🚀", color: "bg-indigo-100 text-indigo-800 border-indigo-200" },
+  { text: "Assignment Survivor 🛡️", color: "bg-red-100 text-red-800 border-red-200" },
+];
+
+const getRandomVibe = () => STUDENT_VIBES[Math.floor(Math.random() * STUDENT_VIBES.length)];
+
 // Generates a unique gradient background based on the user's name
 const generateGradient = (str: string) => {
   let hash = 0;
@@ -76,15 +89,9 @@ const generateGradient = (str: string) => {
   return `linear-gradient(135deg, ${c1}, ${c2})`;
 };
 
-// Generates initials (e.g. "John Doe" -> "JD")
 const getInitials = (name: string) => {
   if (!name) return "U";
-  return name
-    .split(' ')
-    .map(n => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+  return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 };
 
 const fetchUserRating = async (userId: string) => {
@@ -99,10 +106,8 @@ const formatRelativeTime = (dateString: string) => {
   const date = new Date(dateString);
   const now = new Date();
   const diffInHours = Math.abs(now.getTime() - date.getTime()) / 36e5;
-  
-  if (diffInHours < 24) return 'New today';
+  if (diffInHours < 24) return 'Fresh Drop 🔥';
   const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays === 1) return 'Yesterday';
   if (diffInDays < 7) return `${diffInDays}d ago`;
   return date.toLocaleDateString();
 };
@@ -118,6 +123,7 @@ const PublicProfile = () => {
   const [pgListings, setPgListings] = useState<PGListing[]>([]);
   const [sellerRating, setSellerRating] = useState({ avg: 0, count: 0 });
   const [loading, setLoading] = useState(true);
+  const [userVibe, setUserVibe] = useState(STUDENT_VIBES[0]); // Fun state
   
   // UI State
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -126,6 +132,7 @@ const PublicProfile = () => {
 
   useEffect(() => {
     fetchProfileAndListings();
+    setUserVibe(getRandomVibe()); // Set random vibe on load
     window.scrollTo(0, 0); 
   }, [mckId]);
 
@@ -162,9 +169,8 @@ const PublicProfile = () => {
     setLoading(false);
   };
 
-  // --- FIXED AVATAR URL LOGIC ---
   const getAvatarUrl = (avatarPath: string | null) => {
-    if (!avatarPath || avatarPath === 'null') return undefined; // Return undefined to trigger Fallback
+    if (!avatarPath || avatarPath === 'null') return undefined; 
     if (avatarPath.startsWith('http')) return avatarPath;
     const { data } = supabase.storage.from('avatars').getPublicUrl(avatarPath);
     return data.publicUrl;
@@ -181,11 +187,13 @@ const PublicProfile = () => {
       try { await navigator.share(shareData); } catch (err) { console.log('Error sharing:', err); }
     } else {
       navigator.clipboard.writeText(window.location.href);
-      toast({ title: "Link Copied", description: "Profile link copied to clipboard." });
+      toast({ 
+        title: "Link Copied! 🚀", 
+        description: "Share it with your friends and earn karma points (kidding, but do it anyway).",
+      });
     }
   };
 
-  // --- Filter Logic ---
   const filteredItems = useMemo(() => {
     let items = listings.filter(item => 
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) && !item.is_sold
@@ -195,7 +203,6 @@ const PublicProfile = () => {
     return items;
   }, [listings, searchQuery, sortBy]);
 
-  // --- Loading Skeleton ---
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -206,7 +213,6 @@ const PublicProfile = () => {
               <div className="h-32 w-32 rounded-full bg-muted animate-pulse border-4 border-background" />
               <div className="space-y-2 mb-2 flex-1">
                 <div className="h-8 w-1/2 bg-muted rounded animate-pulse" />
-                <div className="h-4 w-1/3 bg-muted rounded animate-pulse" />
               </div>
             </div>
           </div>
@@ -217,8 +223,9 @@ const PublicProfile = () => {
 
   if (!profile) return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center">
-        <UserIcon className="h-16 w-16 text-muted-foreground mb-4 opacity-20" />
-        <h2 className="text-xl font-semibold">User not found</h2>
+        <Ghost className="h-16 w-16 text-muted-foreground mb-4 opacity-20" />
+        <h2 className="text-xl font-semibold">User ghosted us?</h2>
+        <p className="text-muted-foreground">We couldn't find this profile.</p>
         <Button variant="link" onClick={() => navigate('/')}>Go Home</Button>
     </div>
   );
@@ -246,8 +253,8 @@ const PublicProfile = () => {
 
       <div className="container mx-auto px-4 max-w-6xl -mt-24 relative z-10">
         
-        {/* 2. Main Profile Card */}
-        <Card className="mb-8 shadow-xl border-none overflow-hidden backdrop-blur-sm bg-card/95">
+        {/* 2. Main Profile Card - FIXED: overflow-visible */}
+        <Card className="mb-8 shadow-xl border-none overflow-visible backdrop-blur-sm bg-card/95">
           <CardContent className="pt-0 pb-6 px-6">
             <div className="flex flex-col md:flex-row items-center md:items-end gap-6">
               
@@ -280,13 +287,17 @@ const PublicProfile = () => {
 
               {/* Info Section */}
               <div className="flex-1 text-center md:text-left mt-2 md:mt-0 md:pb-4">
-                <div className="flex items-center justify-center md:justify-start gap-2">
+                <div className="flex items-center justify-center md:justify-start gap-2 flex-wrap">
                   <h1 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight">
                     {profile.full_name}
                   </h1>
                   {profile.trust_seller_badge && (
                     <Award className="h-6 w-6 text-yellow-500" />
                   )}
+                  {/* FUN FEATURE: Dynamic User Vibe Badge */}
+                  <Badge variant="outline" className={`ml-2 ${userVibe.color} border hidden md:inline-flex`}>
+                     {userVibe.text}
+                  </Badge>
                 </div>
                 
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 text-muted-foreground mt-3">
@@ -330,7 +341,7 @@ const PublicProfile = () => {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-3 gap-4 md:gap-8 max-w-3xl mx-auto md:mx-0">
-               <div className="flex flex-col items-center md:items-start p-2 rounded-lg transition-colors cursor-default">
+               <div className="flex flex-col items-center md:items-start p-2 rounded-lg transition-colors cursor-default hover:bg-muted/50">
                  <div className="flex items-center gap-2 mb-1">
                     <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
                     <span className="text-2xl font-bold">{sellerRating.avg}</span>
@@ -338,7 +349,7 @@ const PublicProfile = () => {
                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{sellerRating.count} Reviews</p>
                </div>
                
-               <div className="flex flex-col items-center md:items-start p-2 border-l border-r md:border-x-0 rounded-lg transition-colors">
+               <div className="flex flex-col items-center md:items-start p-2 border-l border-r md:border-x-0 rounded-lg transition-colors hover:bg-muted/50">
                  <div className="flex items-center gap-2 mb-1">
                     <Package className="h-5 w-5 text-blue-500" />
                     <span className="text-2xl font-bold">{profile.deals_completed}</span>
@@ -346,7 +357,7 @@ const PublicProfile = () => {
                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Sold</p>
                </div>
 
-               <div className="flex flex-col items-center md:items-start p-2 rounded-lg transition-colors">
+               <div className="flex flex-col items-center md:items-start p-2 rounded-lg transition-colors hover:bg-muted/50">
                  <div className="flex items-center gap-2 mb-1">
                     <Trophy className="h-5 w-5 text-orange-500" />
                     <span className="text-2xl font-bold">{profile.campus_points}</span>
@@ -395,9 +406,9 @@ const PublicProfile = () => {
           <TabsContent value="items" className="mt-0 min-h-[300px]">
             {filteredItems.length === 0 ? (
               <EmptyState 
-                icon={Package} 
-                title={searchQuery ? "No matches found" : "No active listings"}
-                desc={searchQuery ? "Try adjusting your search terms." : "This seller hasn't listed any items recently."}
+                icon={Ghost} 
+                title={searchQuery ? "No matches" : "Ghost Town 👻"}
+                desc={searchQuery ? "Try searching for something else." : `${profile.full_name} hasn't listed anything yet. Maybe they're hoarding all the good stuff?`}
               />
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
@@ -410,7 +421,11 @@ const PublicProfile = () => {
 
           <TabsContent value="pgs" className="mt-0 min-h-[300px]">
              {pgListings.length === 0 ? (
-               <EmptyState icon={Home} title="No properties listed" desc="This user has no PG or Room listings available." />
+               <EmptyState 
+                  icon={Home} 
+                  title="No Cribs Found 🏠" 
+                  desc="This user has no PG or Room listings available right now." 
+               />
              ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {pgListings.map((pg) => (
@@ -446,11 +461,11 @@ const PublicProfile = () => {
 // --- Sub-Components ---
 
 const EmptyState = ({ icon: Icon, title, desc }: { icon: any, title: string, desc: string }) => (
-  <div className="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed rounded-xl bg-muted/20">
+  <div className="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed rounded-xl bg-muted/20 animate-in fade-in zoom-in duration-500">
     <div className="bg-background p-4 rounded-full shadow-sm mb-4">
       <Icon className="h-8 w-8 text-muted-foreground/50" />
     </div>
-    <h3 className="text-lg font-semibold">{title}</h3>
+    <h3 className="text-lg font-bold text-foreground">{title}</h3>
     <p className="text-sm text-muted-foreground mt-1 max-w-xs">{desc}</p>
   </div>
 );
@@ -471,13 +486,15 @@ const ItemCard = ({ item, onClick }: { item: Item, onClick: () => void }) => (
         <div className="flex h-full items-center justify-center"><Package className="h-10 w-10 text-muted-foreground/20" /></div>
       )}
       
-      {/* Badges */}
+      {/* Condition Badge */}
       <div className="absolute top-2 left-2">
          {item.condition && <Badge className="text-[10px] bg-black/60 text-white hover:bg-black/70 border-none backdrop-blur-sm">{item.condition}</Badge>}
       </div>
       
+      {/* Time Badge */}
       <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center">
-         <Badge variant="secondary" className="text-[10px] bg-white/90 backdrop-blur text-black shadow-sm font-normal">
+         <Badge variant="secondary" className="text-[10px] bg-white/90 backdrop-blur text-black shadow-sm font-normal flex items-center gap-1">
+           {item.created_at && new Date(item.created_at).getTime() > Date.now() - 86400000 && <Zap className="h-3 w-3 text-orange-500 fill-orange-500" />}
            {formatRelativeTime(item.created_at)}
          </Badge>
       </div>
