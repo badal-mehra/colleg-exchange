@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { ShoppingBag, Home, Repeat, Sparkles } from 'lucide-react';
+import React from 'react';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { ArrowRight, Wallet, PartyPopper, BedDouble } from 'lucide-react';
 
 export type ListingType = 'sell' | 'rent' | 'pg';
 
@@ -9,102 +10,108 @@ interface ListingTypeSelectorProps {
 }
 
 const ListingTypeSelector: React.FC<ListingTypeSelectorProps> = ({ onSelect }) => {
-  // We use state to track which card is being hovered to play the GIF
-  const [hovered, setHovered] = useState<ListingType | null>(null);
-
+  
   const options = [
     {
       id: 'sell',
-      title: 'Turn Trash to Cash',
-      desc: 'Sell old books & gadgets. Get rich quick(er).',
-      icon: ShoppingBag,
-      color: 'text-purple-500',
-      bgColor: 'bg-purple-500/10',
-      borderColor: 'hover:border-purple-500',
-      // Placeholder for a "Shut up and take my money" or "Stonks" meme
-      memeSrc: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbm91ZWN4Zmh4dzV4Y3J4Z3BwYWR1Z2t2ZnU3em53a3Z4Y3J4Z3BwYSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/LdOyjZ7io5Msw/giphy.gif', 
-      tags: ['Old Books', 'Gaming Gear', 'Ex-BFs Hoodie']
+      type: 'sell',
+      // Funny Copy
+      title: 'I need money ASAP',
+      subtitle: 'Sell your old textbooks, gadgets, or that guitar you never played.',
+      // Visuals
+      icon: Wallet,
+      badge: 'Instant Cash',
+      badgeColor: 'bg-green-100 text-green-700 hover:bg-green-100', // Subtle aesthetic colors
+      // Use a relatable image/meme here. 
+      // Example concept: "Stonks" or someone holding cash fan
+      imageSrc: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3', 
     },
     {
       id: 'rent',
-      title: 'Side Hustle / Rent',
-      desc: 'Got a bike or camera? Rent it out. Passive income baby.',
-      icon: Repeat,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
-      borderColor: 'hover:border-blue-500',
-      // Placeholder for "Modern problems require modern solutions"
-      memeSrc: 'https://media.giphy.com/media/9058ZMj6XDsKGzq7u3/giphy.gif?cid=ecf05e4787s9j5s73531737135317371&rid=giphy.gif',
-      tags: ['PS5 Controllers', 'Camera', 'Lab Coat']
+      type: 'rent',
+      // Funny Copy
+      title: 'Just for the weekend',
+      subtitle: 'Rent a DSLR for the trip or a suit for the interview. Don\'t buy it.',
+      // Visuals
+      icon: PartyPopper,
+      badge: 'Smart Move',
+      badgeColor: 'bg-blue-100 text-blue-700 hover:bg-blue-100',
+      // Example concept: "Modern problems require modern solutions" guy
+      imageSrc: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3',
     },
     {
       id: 'pg',
-      title: 'Find Your Den',
-      desc: 'No parents, no rules. Find a PG or flatmates.',
-      icon: Home,
-      color: 'text-orange-500',
-      bgColor: 'bg-orange-500/10',
-      borderColor: 'hover:border-orange-500',
-      // Placeholder for "This is fine" or a party gif
-      memeSrc: 'https://media.giphy.com/media/l0MYEqEzwMWFCg8rm/giphy.gif',
-      tags: ['No Curfew', 'Chill Landlord', 'WiFi + Food']
+      type: 'pg',
+      // Funny Copy
+      title: 'Escaping my parents',
+      subtitle: 'Find a PG, flat, or roommate who actually washes dishes.',
+      // Visuals
+      icon: BedDouble,
+      badge: 'Freedom',
+      badgeColor: 'bg-orange-100 text-orange-700 hover:bg-orange-100',
+      // Example concept: "Spongebob Ight Imma Head Out"
+      imageSrc: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3',
     }
   ];
 
   return (
-    <div className="space-y-8 py-8">
-      <div className="text-center space-y-2">
-        <h2 className="text-3xl font-black tracking-tight flex items-center justify-center gap-2">
-           What's the Move? <Sparkles className="w-6 h-6 text-yellow-500 animate-pulse" />
+    <div className="w-full max-w-6xl mx-auto py-10 px-4">
+      
+      {/* Header Section */}
+      <div className="text-center mb-10 space-y-2">
+        <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">
+          What are we doing today?
         </h2>
-        <p className="text-muted-foreground font-medium">Select a category to get started</p>
+        <p className="text-slate-500 text-lg">
+          Choose your path, weary student.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto px-4">
+      {/* Grid Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {options.map((option) => (
           <Card 
             key={option.id}
-            className={`relative overflow-hidden cursor-pointer group border-2 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 ${option.borderColor}`}
-            onClick={() => onSelect(option.id as ListingType)}
-            onMouseEnter={() => setHovered(option.id as ListingType)}
-            onMouseLeave={() => setHovered(null)}
+            className="group relative overflow-hidden border-slate-200 hover:border-slate-300 hover:shadow-xl transition-all duration-300 cursor-pointer rounded-2xl bg-white"
+            onClick={() => onSelect(option.type as ListingType)}
           >
-            <CardContent className="p-6 md:p-8 text-center space-y-5 h-full flex flex-col justify-between z-10 relative">
-              
-              {/* Image/Icon Container */}
-              <div className={`w-32 h-32 mx-auto rounded-2xl ${option.bgColor} flex items-center justify-center overflow-hidden transition-all duration-300`}>
-                {hovered === option.id ? (
-                  // The Meme Image (Shown on Hover)
-                  <img 
-                    src={option.memeSrc} 
-                    alt="Meme" 
-                    className="w-full h-full object-cover animate-in fade-in duration-300"
-                  />
-                ) : (
-                  // The Standard Icon (Shown by default)
-                  <option.icon className={`h-12 w-12 ${option.color} transform group-hover:scale-110 transition-transform`} />
-                )}
+            {/* Image Cover Area - This is where the Meme/Vibe lives */}
+            <div className="relative h-48 w-full overflow-hidden bg-slate-100">
+              <div className="absolute top-4 left-4 z-10">
+                <Badge className={`${option.badgeColor} border-0 px-3 py-1 font-semibold`}>
+                  {option.badge}
+                </Badge>
               </div>
+              <img 
+                src={option.imageSrc} 
+                alt={option.title}
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+              {/* Gradient Overlay for text readability if needed, or just style */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
 
-              {/* Text Content */}
-              <div>
-                <h3 className={`text-xl font-bold ${option.color} mb-2`}>
+            {/* Content Area */}
+            <CardContent className="p-6 pt-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`p-2 rounded-lg bg-slate-50 w-fit group-hover:bg-slate-100 transition-colors`}>
+                  <option.icon className="w-5 h-5 text-slate-700" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 group-hover:text-primary transition-colors">
                   {option.title}
                 </h3>
-                <p className="text-sm text-muted-foreground font-medium leading-relaxed">
-                  {option.desc}
-                </p>
               </div>
-
-              {/* Funny Tags */}
-              <div className="flex flex-wrap gap-2 justify-center pt-2">
-                {option.tags.map((tag, i) => (
-                  <span key={i} className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 bg-secondary text-secondary-foreground rounded-md">
-                    {tag}
-                  </span>
-                ))}
-              </div>
+              
+              <p className="text-slate-500 text-sm leading-relaxed font-medium">
+                {option.subtitle}
+              </p>
             </CardContent>
+
+            {/* Footer / Call to Action */}
+            <CardFooter className="p-6 pt-0 flex items-center justify-between text-sm font-semibold text-primary">
+              <span>Start Listing</span>
+              <ArrowRight className="w-4 h-4 transform -translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300" />
+            </CardFooter>
           </Card>
         ))}
       </div>
