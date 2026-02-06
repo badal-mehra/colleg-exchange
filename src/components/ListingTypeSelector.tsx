@@ -1,142 +1,158 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { ShoppingBag, Home, Repeat, ArrowRight } from 'lucide-react';
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils'; // Assuming you have a standard class merger utility
 
 export type ListingType = 'sell' | 'rent' | 'pg';
 
-interface ListingOption {
+interface ListingTypeSelectorProps {
+  onSelect: (type: ListingType) => void;
+}
+
+interface SelectionOption {
   id: ListingType;
   title: string;
   description: string;
   icon: React.ElementType;
-  color: string;
   tags: string[];
+  theme: {
+    text: string;
+    bg: string;
+    border: string;
+    ring: string;
+  };
 }
 
-const LISTING_OPTIONS: ListingOption[] = [
+const selectionOptions: SelectionOption[] = [
   {
     id: 'sell',
     title: 'Sell Item',
-    description: 'Sell products permanently to buyers',
+    description: 'Find new owners for your pre-loved items',
     icon: ShoppingBag,
-    color: 'text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20',
-    tags: ['Electronics', 'Books', 'Furniture']
+    tags: ['Electronics', 'Furniture', 'Fashion'],
+    theme: {
+      text: 'text-emerald-600',
+      bg: 'bg-emerald-500/10 group-hover:bg-emerald-500/20',
+      border: 'group-hover:border-emerald-500/50',
+      ring: 'group-hover:ring-emerald-500/20',
+    },
   },
   {
     id: 'rent',
     title: 'Rent Item',
-    description: 'Lend items temporarily for a fee',
+    description: 'Lend your gear temporarily for a fee',
     icon: Repeat,
-    color: 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-500/10 dark:border-blue-500/20',
-    tags: ['Camera', 'Bike', 'Projector']
+    tags: ['Cameras', 'Vehicles', 'Tools'],
+    theme: {
+      text: 'text-blue-600',
+      bg: 'bg-blue-500/10 group-hover:bg-blue-500/20',
+      border: 'group-hover:border-blue-500/50',
+      ring: 'group-hover:ring-blue-500/20',
+    },
   },
   {
     id: 'pg',
     title: 'PG / Room',
-    description: 'List accommodation for students',
+    description: 'List accommodations and living spaces',
     icon: Home,
-    color: 'text-orange-600 bg-orange-50 border-orange-200 dark:bg-orange-500/10 dark:border-orange-500/20',
-    tags: ['PG', 'Room', 'Hostel']
-  }
+    tags: ['Student PG', 'Flat', 'Hostel'],
+    theme: {
+      text: 'text-orange-600',
+      bg: 'bg-orange-500/10 group-hover:bg-orange-500/20',
+      border: 'group-hover:border-orange-500/50',
+      ring: 'group-hover:ring-orange-500/20',
+    },
+  },
 ];
 
-interface ListingTypeSelectorProps {
-  onSelect: (type: ListingType) => void;
-  selectedType?: ListingType;
-}
+const ListingTypeSelector: React.FC<ListingTypeSelectorProps> = ({ onSelect }) => {
+  const handleKeyDown = (e: React.KeyboardEvent, type: ListingType) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSelect(type);
+    }
+  };
 
-const ListingTypeSelector: React.FC<ListingTypeSelectorProps> = ({ onSelect, selectedType }) => {
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 py-8 space-y-8">
-      {/* Header Section */}
-      <div className="text-center space-y-2">
-        <motion.h2 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground"
-        >
-          What are you listing today?
-        </motion.h2>
-        <motion.p 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="text-muted-foreground text-sm md:text-base max-w-md mx-auto"
-        >
-          Select the category that best fits your needs to get started with your listing.
-        </motion.p>
-      </div>
+    <div className="w-full py-8 px-4 animate-in fade-in zoom-in duration-500">
+      <div className="space-y-8 max-w-5xl mx-auto">
+        {/* Header Section */}
+        <div className="text-center space-y-3">
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">
+            What are you listing today?
+          </h2>
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            Select a category below to start creating your listing.
+          </p>
+        </div>
 
-      {/* Grid Container */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {LISTING_OPTIONS.map((option, index) => {
-          const Icon = option.icon;
-          const isSelected = selectedType === option.id;
-
-          return (
-            <motion.div
-              key={option.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              whileHover={{ y: -5 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Card 
-                role="button"
+        {/* Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {selectionOptions.map((option) => {
+            const Icon = option.icon;
+            return (
+              <Card
+                key={option.id}
                 tabIndex={0}
+                role="button"
+                aria-label={`Select ${option.title}`}
                 onClick={() => onSelect(option.id)}
-                onKeyDown={(e) => e.key === 'Enter' && onSelect(option.id)}
+                onKeyDown={(e) => handleKeyDown(e, option.id)}
                 className={cn(
-                  "relative h-full cursor-pointer overflow-hidden transition-all duration-300",
-                  "border-2 hover:shadow-xl",
-                  isSelected ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/50"
+                  "relative h-full cursor-pointer transition-all duration-300 ease-out",
+                  "hover:-translate-y-1 hover:shadow-xl hover:ring-2 ring-transparent",
+                  "border-border/60 bg-card/50 backdrop-blur-sm",
+                  "group overflow-hidden",
+                  option.theme.border,
+                  option.theme.ring
                 )}
               >
-                <CardContent className="p-6 flex flex-col h-full">
-                  {/* Icon Header */}
+                {/* Decorative background gradient */}
+                <div className={cn(
+                  "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500",
+                  "bg-gradient-to-br from-transparent via-transparent to-muted/30"
+                )} />
+
+                <CardContent className="p-6 md:p-8 flex flex-col items-center text-center h-full relative z-10">
+                  {/* Icon Circle */}
                   <div className={cn(
-                    "w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110",
-                    option.color
+                    "w-20 h-20 rounded-2xl flex items-center justify-center mb-6 transition-colors duration-300",
+                    option.theme.bg
                   )}>
-                    <Icon className="h-7 w-7" />
+                    <Icon className={cn("h-10 w-10 transition-transform duration-300 group-hover:scale-110", option.theme.text)} />
                   </div>
 
-                  {/* Content */}
-                  <div className="flex-grow space-y-2">
-                    <h3 className="text-xl font-bold flex items-center gap-2">
+                  {/* Text Content */}
+                  <div className="flex-1 space-y-2 mb-6">
+                    <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
                       {option.title}
-                      {isSelected && <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />}
                     </h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed">
+                    <p className="text-sm text-muted-foreground leading-relaxed">
                       {option.description}
                     </p>
                   </div>
 
                   {/* Tags */}
-                  <div className="mt-6 flex flex-wrap gap-2">
-                    {option.tags.map(tag => (
+                  <div className="flex flex-wrap gap-2 justify-center mt-auto">
+                    {option.tags.map((tag) => (
                       <span 
                         key={tag} 
-                        className="text-[10px] font-medium uppercase tracking-wider px-2 py-1 bg-secondary text-secondary-foreground rounded-md"
+                        className="text-[10px] font-medium px-2.5 py-1 bg-muted/80 text-muted-foreground rounded-md border border-transparent group-hover:border-border/50 transition-colors"
                       >
                         {tag}
                       </span>
                     ))}
                   </div>
-
-                  {/* Action Hint (Desktop only) */}
-                  <div className="mt-6 pt-4 border-t border-border flex items-center text-primary font-medium text-sm">
-                    Select category
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                  
+                  {/* Mobile-only arrow indicator (UX improvement) */}
+                  <div className="md:hidden mt-4 text-muted-foreground/50">
+                    <ArrowRight className="h-5 w-5" />
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
