@@ -1,119 +1,142 @@
 import React from 'react';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Wallet, PartyPopper, BedDouble } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Card, CardContent } from '@/components/ui/card';
+import { ShoppingBag, Home, Repeat, ArrowRight } from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 export type ListingType = 'sell' | 'rent' | 'pg';
 
-interface ListingTypeSelectorProps {
-  onSelect: (type: ListingType) => void;
+interface ListingOption {
+  id: ListingType;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  color: string;
+  tags: string[];
 }
 
-const ListingTypeSelector: React.FC<ListingTypeSelectorProps> = ({ onSelect }) => {
-  
-  const options = [
-    {
-      id: 'sell',
-      type: 'sell',
-      // Funny Copy
-      title: 'I need money ASAP',
-      subtitle: 'Sell your old textbooks, gadgets, or that guitar you never played.',
-      // Visuals
-      icon: Wallet,
-      badge: 'Instant Cash',
-      badgeColor: 'bg-green-100 text-green-700 hover:bg-green-100', // Subtle aesthetic colors
-      // Use a relatable image/meme here. 
-      // Example concept: "Stonks" or someone holding cash fan
-      imageSrc: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3', 
-    },
-    {
-      id: 'rent',
-      type: 'rent',
-      // Funny Copy
-      title: 'Just for the weekend',
-      subtitle: 'Rent a DSLR for the trip or a suit for the interview. Don\'t buy it.',
-      // Visuals
-      icon: PartyPopper,
-      badge: 'Smart Move',
-      badgeColor: 'bg-blue-100 text-blue-700 hover:bg-blue-100',
-      // Example concept: "Modern problems require modern solutions" guy
-      imageSrc: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3',
-    },
-    {
-      id: 'pg',
-      type: 'pg',
-      // Funny Copy
-      title: 'Escaping my parents',
-      subtitle: 'Find a PG, flat, or roommate who actually washes dishes.',
-      // Visuals
-      icon: BedDouble,
-      badge: 'Freedom',
-      badgeColor: 'bg-orange-100 text-orange-700 hover:bg-orange-100',
-      // Example concept: "Spongebob Ight Imma Head Out"
-      imageSrc: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3',
-    }
-  ];
+const LISTING_OPTIONS: ListingOption[] = [
+  {
+    id: 'sell',
+    title: 'Sell Item',
+    description: 'Sell products permanently to buyers',
+    icon: ShoppingBag,
+    color: 'text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20',
+    tags: ['Electronics', 'Books', 'Furniture']
+  },
+  {
+    id: 'rent',
+    title: 'Rent Item',
+    description: 'Lend items temporarily for a fee',
+    icon: Repeat,
+    color: 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-500/10 dark:border-blue-500/20',
+    tags: ['Camera', 'Bike', 'Projector']
+  },
+  {
+    id: 'pg',
+    title: 'PG / Room',
+    description: 'List accommodation for students',
+    icon: Home,
+    color: 'text-orange-600 bg-orange-50 border-orange-200 dark:bg-orange-500/10 dark:border-orange-500/20',
+    tags: ['PG', 'Room', 'Hostel']
+  }
+];
 
+interface ListingTypeSelectorProps {
+  onSelect: (type: ListingType) => void;
+  selectedType?: ListingType;
+}
+
+const ListingTypeSelector: React.FC<ListingTypeSelectorProps> = ({ onSelect, selectedType }) => {
   return (
-    <div className="w-full max-w-6xl mx-auto py-10 px-4">
-      
+    <div className="w-full max-w-5xl mx-auto px-4 py-8 space-y-8">
       {/* Header Section */}
-      <div className="text-center mb-10 space-y-2">
-        <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">
-          What are we doing today?
-        </h2>
-        <p className="text-slate-500 text-lg">
-          Choose your path, weary student.
-        </p>
+      <div className="text-center space-y-2">
+        <motion.h2 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground"
+        >
+          What are you listing today?
+        </motion.h2>
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="text-muted-foreground text-sm md:text-base max-w-md mx-auto"
+        >
+          Select the category that best fits your needs to get started with your listing.
+        </motion.p>
       </div>
 
-      {/* Grid Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {options.map((option) => (
-          <Card 
-            key={option.id}
-            className="group relative overflow-hidden border-slate-200 hover:border-slate-300 hover:shadow-xl transition-all duration-300 cursor-pointer rounded-2xl bg-white"
-            onClick={() => onSelect(option.type as ListingType)}
-          >
-            {/* Image Cover Area - This is where the Meme/Vibe lives */}
-            <div className="relative h-48 w-full overflow-hidden bg-slate-100">
-              <div className="absolute top-4 left-4 z-10">
-                <Badge className={`${option.badgeColor} border-0 px-3 py-1 font-semibold`}>
-                  {option.badge}
-                </Badge>
-              </div>
-              <img 
-                src={option.imageSrc} 
-                alt={option.title}
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-              {/* Gradient Overlay for text readability if needed, or just style */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
+      {/* Grid Container */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        {LISTING_OPTIONS.map((option, index) => {
+          const Icon = option.icon;
+          const isSelected = selectedType === option.id;
 
-            {/* Content Area */}
-            <CardContent className="p-6 pt-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className={`p-2 rounded-lg bg-slate-50 w-fit group-hover:bg-slate-100 transition-colors`}>
-                  <option.icon className="w-5 h-5 text-slate-700" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 group-hover:text-primary transition-colors">
-                  {option.title}
-                </h3>
-              </div>
-              
-              <p className="text-slate-500 text-sm leading-relaxed font-medium">
-                {option.subtitle}
-              </p>
-            </CardContent>
+          return (
+            <motion.div
+              key={option.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              whileHover={{ y: -5 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Card 
+                role="button"
+                tabIndex={0}
+                onClick={() => onSelect(option.id)}
+                onKeyDown={(e) => e.key === 'Enter' && onSelect(option.id)}
+                className={cn(
+                  "relative h-full cursor-pointer overflow-hidden transition-all duration-300",
+                  "border-2 hover:shadow-xl",
+                  isSelected ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/50"
+                )}
+              >
+                <CardContent className="p-6 flex flex-col h-full">
+                  {/* Icon Header */}
+                  <div className={cn(
+                    "w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110",
+                    option.color
+                  )}>
+                    <Icon className="h-7 w-7" />
+                  </div>
 
-            {/* Footer / Call to Action */}
-            <CardFooter className="p-6 pt-0 flex items-center justify-between text-sm font-semibold text-primary">
-              <span>Start Listing</span>
-              <ArrowRight className="w-4 h-4 transform -translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300" />
-            </CardFooter>
-          </Card>
-        ))}
+                  {/* Content */}
+                  <div className="flex-grow space-y-2">
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                      {option.title}
+                      {isSelected && <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />}
+                    </h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {option.description}
+                    </p>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    {option.tags.map(tag => (
+                      <span 
+                        key={tag} 
+                        className="text-[10px] font-medium uppercase tracking-wider px-2 py-1 bg-secondary text-secondary-foreground rounded-md"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Action Hint (Desktop only) */}
+                  <div className="mt-6 pt-4 border-t border-border flex items-center text-primary font-medium text-sm">
+                    Select category
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );
