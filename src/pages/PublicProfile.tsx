@@ -211,7 +211,7 @@ const PublicProfile = () => {
                 <h1 className="text-3xl font-bold text-foreground flex items-center justify-center md:justify-start gap-2">
                   {profile.full_name}
                   {profile.trust_seller_badge && (
-                    <Award className="h-6 w-6 text-yellow-500" title="Trusted Seller" />
+                    <Award className="h-6 w-6 text-yellow-500" />
                   )}
                 </h1>
                 
