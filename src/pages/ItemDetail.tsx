@@ -736,7 +736,7 @@ const ItemDetail = () => {
             <h2 className="text-xl font-bold mb-6">You might also like</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {similarItems.map((similar) => (
-                <Link to={`/items/${similar.id}`} key={similar.id} className="group block bg-card rounded-lg border overflow-hidden hover:shadow-md transition-all">
+                <Link to={`/item/${similar.id}`} key={similar.id} className="group block bg-card rounded-lg border overflow-hidden hover:shadow-md transition-all">
                   <div className="aspect-square bg-muted relative overflow-hidden">
                     <img 
                       src={getThumbImage(similar.images[0])} 
