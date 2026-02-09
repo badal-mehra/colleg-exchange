@@ -1,488 +1,403 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  ArrowLeft, Award, Star, Trophy, Package, 
-  AlertTriangle, Shield, MapPin, 
-  MessageCircle, Calendar, Share2, Clock, 
-  Search, Filter, LayoutGrid, List as ListIcon, 
-  Wifi, Zap, Utensils, Home
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // NEW
+import { 
+  ArrowLeft, Award, Star, Trophy, Package, User as UserIcon, 
+  AlertTriangle, Shield, CheckCircle, Home, MapPin, 
+  MessageCircle, Calendar, Share2, Clock 
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ReportModal } from '@/components/ReportModal';
 import { Separator } from '@/components/ui/separator';
-import { Skeleton } from '@/components/ui/skeleton';
 
-// --- Types ---
+// --- Interfaces ---
 interface Profile {
-  id: string;
-  user_id: string;
-  full_name: string;
-  mck_id: string;
-  university: string;
-  campus_points: number;
-  deals_completed: number;
-  trust_seller_badge: boolean;
-  avatar_url: string | null;
-  verification_status: 'approved' | 'pending' | 'rejected';
-  created_at?: string;
+  id: string;
+  user_id: string;
+  full_name: string;
+  mck_id: string;
+  university: string;
+  campus_points: number;
+  deals_completed: number;
+  trust_seller_badge: boolean;
+  avatar_url: string | null;
+  verification_status: string;
+  created_at?: string; // Assumed field for "Member Since"
 }
 
 interface Item {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  images: string[];
-  created_at: string;
-  is_sold: boolean;
-  condition: string;
-  seller_id: string;
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  images: string[];
+  created_at: string;
+  is_sold: boolean;
+  condition: string;
+  seller_id: string;
 }
 
 interface PGListing {
-  id: string;
-  property_type: string;
-  for_gender: string;
-  sharing_type: string;
-  rent_per_month: number;
-  area_locality: string;
-  images: string[];
-  created_at: string;
-  is_active: boolean;
-  status: string;
-  seller_id: string;
-  amenities?: string[]; // New virtual field
+  id: string;
+  property_type: string;
+  for_gender: string;
+  sharing_type: string;
+  rent_per_month: number;
+  area_locality: string;
+  images: string[];
+  created_at: string;
+  is_active: boolean;
+  status: string;
+  seller_id: string;
 }
 
-// --- Helpers ---
-const formatCurrency = (amount: number) => 
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+// --- Utilities ---
+const fetchUserRating = async (userId: string) => {
+  const { data, error } = await supabase
+    .from("ratings")
+    .select("rating")
+    .eq("to_user_id", userId);
+
+  if (error || !data) return { avg: 0, count: 0 };
+  const count = data.length;
+  const avg = count === 0 ? 0 : data.reduce((sum, item) => sum + item.rating, 0) / count;
+  return { avg: parseFloat(avg.toFixed(1)), count };
+};
 
 const formatRelativeTime = (dateString: string) => {
-  const diff = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / (1000 * 3600 * 24));
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Yesterday';
-  return diff < 7 ? `${diff} days ago` : new Date(dateString).toLocaleDateString();
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 3600 * 24));
+  
+  if (diffInDays === 0) return 'Today';
+  if (diffInDays === 1) return 'Yesterday';
+  if (diffInDays < 7) return `${diffInDays} days ago`;
+  if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
+  return date.toLocaleDateString();
 };
 
 const PublicProfile = () => {
-  const { mckId } = useParams();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  
-  // Data State
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [listings, setListings] = useState<Item[]>([]);
-  const [pgListings, setPgListings] = useState<PGListing[]>([]);
-  const [sellerRating, setSellerRating] = useState({ avg: 0, count: 0 });
-  
-  // UI State
-  const [loading, setLoading] = useState(true);
-  const [reportModalOpen, setReportModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("newest");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const { mckId } = useParams();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [listings, setListings] = useState<Item[]>([]);
+  const [pgListings, setPgListings] = useState<PGListing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [sellerRating, setSellerRating] = useState({ avg: 0, count: 0 });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!mckId) return;
-      setLoading(true);
+  useEffect(() => {
+    fetchProfileAndListings();
+  }, [mckId]);
 
-      // 1. Fetch Profile
-      const { data: profileData, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('mck_id', mckId)
-        .single();
+  const fetchProfileAndListings = async () => {
+    if (!mckId) return;
+    setLoading(true);
+    
+    // 1. Fetch Profile
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('mck_id', mckId)
+      .single();
 
-      if (error || !profileData) {
-        toast({ title: "Error", description: "Profile not found", variant: "destructive" });
-        setLoading(false);
-        return;
-      }
+    if (profileError || !profileData) {
+      toast({ title: "Error", description: "Profile not found", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
 
-      setProfile(profileData);
+    setProfile(profileData);
+    
+    // 2. Fetch Rating & Listings Parallelly
+    if (profileData.user_id) {
+      const [rating, items, pgs] = await Promise.all([
+        fetchUserRating(profileData.user_id),
+        supabase.from('items').select('*').eq('seller_id', profileData.user_id).order('created_at', { ascending: false }),
+        supabase.from('pg_listings').select('*').eq('seller_id', profileData.user_id).order('created_at', { ascending: false })
+      ]);
 
-      // 2. Fetch Associated Data
-      if (profileData.user_id) {
-        const [ratingRes, itemsRes, pgsRes] = await Promise.all([
-          supabase.from("ratings").select("rating").eq("to_user_id", profileData.user_id),
-          supabase.from('items').select('*').eq('seller_id', profileData.user_id),
-          supabase.from('pg_listings').select('*').eq('seller_id', profileData.user_id)
-        ]);
+      setSellerRating(rating);
+      if (items.data) setListings(items.data as Item[]);
+      if (pgs.data) setPgListings(pgs.data as PGListing[]);
+    }
 
-        // Calculate Rating
-        const ratings = ratingRes.data || [];
-        const avg = ratings.length ? ratings.reduce((a, b) => a + b.rating, 0) / ratings.length : 0;
-        setSellerRating({ avg: parseFloat(avg.toFixed(1)), count: ratings.length });
+    setLoading(false);
+  };
 
-        setListings(itemsRes.data as Item[] || []);
-        setPgListings(pgsRes.data as PGListing[] || []);
-      }
-      setLoading(false);
-    };
+  const getAvatarUrl = (avatarPath: string | null) => {
+    if (!avatarPath) return null;
+    if (avatarPath.startsWith('http')) return avatarPath;
+    const { data } = supabase.storage.from('avatars').getPublicUrl(avatarPath);
+    return data.publicUrl;
+  };
 
-    fetchData();
-  }, [mckId, toast]);
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast({ title: "Link Copied", description: "Profile link copied to clipboard." });
+  };
 
-  // --- Filtering Logic ---
-  const filteredItems = useMemo(() => {
-    let result = [...listings];
-    // Search
-    if (searchQuery) {
-      result = result.filter(i => 
-        i.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        i.description.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    // Sort
-    if (sortBy === 'price_asc') result.sort((a, b) => a.price - b.price);
-    if (sortBy === 'price_desc') result.sort((a, b) => b.price - a.price);
-    if (sortBy === 'newest') result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    
-    return result;
-  }, [listings, searchQuery, sortBy]);
+  const handleMessage = () => {
+    if(!profile) return;
+    // Assuming you have a chat route
+    navigate(`/chat/${profile.user_id}`);
+  };
 
-  const filteredPGs = useMemo(() => {
-    let result = [...pgListings];
-    if (searchQuery) {
-      result = result.filter(p => p.area_locality.toLowerCase().includes(searchQuery.toLowerCase()));
-    }
-    return result;
-  }, [pgListings, searchQuery]);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse space-y-4 w-full max-w-4xl px-4">
+          <div className="h-48 bg-muted rounded-lg w-full"></div>
+          <div className="h-24 w-24 rounded-full bg-muted mx-auto -mt-12"></div>
+          <div className="h-8 bg-muted rounded w-1/3 mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
 
-  // --- Handlers ---
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    toast({ title: "Copied!", description: "Profile link copied to clipboard." });
-  };
+  if (!profile) return null;
 
-  if (loading) return <ProfileSkeleton />;
-  if (!profile) return null;
+  const avatarUrl = getAvatarUrl(profile.avatar_url);
+  const activeListings = listings.filter(item => !item.is_sold);
+  const activePGListings = pgListings.filter(pg => pg.is_active && pg.status !== 'rented');
 
-  return (
-    <div className="min-h-screen bg-slate-50/50 pb-12">
-      {/* 1. Interactive Banner */}
-      <div className="h-60 bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-800 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
-        <div className="container mx-auto px-4 py-6 relative z-10">
-          <Button variant="ghost" className="text-white hover:bg-white/10" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4 mr-2" /> Back
-          </Button>
-        </div>
-      </div>
+  return (
+    <div className="min-h-screen bg-background pb-12">
+      {/* 1. Gradient Banner */}
+      <div className="h-48 md:h-64 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 w-full relative">
+        <div className="container mx-auto px-4 py-6">
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={() => navigate(-1)} 
+            className="bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm border-none"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back
+          </Button>
+        </div>
+      </div>
 
-      <div className="container mx-auto px-4 max-w-6xl -mt-20 relative z-20">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          
-          {/* 2. Left Column: Identity Card */}
-          <div className="md:col-span-4 lg:col-span-3">
-             <Card className="shadow-lg border-t-4 border-t-indigo-500 overflow-hidden">
-               <div className="flex flex-col items-center pt-8 pb-6 px-4 text-center">
-                 <div className="relative mb-4">
-                   <Avatar className="h-32 w-32 border-4 border-white shadow-md">
-                     <AvatarImage src={profile.avatar_url ? supabase.storage.from('avatars').getPublicUrl(profile.avatar_url).data.publicUrl : undefined} />
-                     <AvatarFallback className="text-3xl bg-indigo-100 text-indigo-700">{profile.full_name[0]}</AvatarFallback>
-                   </Avatar>
-                   {profile.trust_seller_badge && (
-                     <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-white p-1.5 rounded-full border-2 border-white shadow-sm" title="Trusted Seller">
-                        <Award className="h-4 w-4 fill-white" />
-                     </div>
-                   )}
-                 </div>
-                 
-                 <h1 className="text-xl font-bold text-slate-900 mb-1">{profile.full_name}</h1>
-                 <p className="text-sm text-slate-500 mb-4">{profile.university}</p>
-                 
-                 <div className="flex items-center gap-2 mb-6">
-                   <Badge variant={profile.verification_status === 'approved' ? 'default' : 'secondary'} className="gap-1">
-                     {profile.verification_status === 'approved' ? <Shield className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
-                     {profile.verification_status === 'approved' ? 'Verified Student' : 'Unverified'}
-                   </Badge>
-                 </div>
+      <div className="container mx-auto px-4 max-w-6xl -mt-24 relative z-10">
+        
+        {/* 2. Main Profile Card */}
+        <Card className="mb-8 shadow-xl overflow-visible border-none">
+          <CardContent className="pt-0 pb-6 px-6">
+            <div className="flex flex-col md:flex-row items-center md:items-end gap-6">
+              
+              {/* Avatar */}
+              <div className="relative -mt-16 md:-mt-20">
+                <Avatar className="h-32 w-32 md:h-40 md:w-40 border-[6px] border-background shadow-md">
+                  <AvatarImage src={avatarUrl || undefined} alt={profile.full_name} className="object-cover" />
+                  <AvatarFallback className="text-4xl bg-primary text-primary-foreground">
+                    {profile.full_name?.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                {profile.verification_status === 'approved' && (
+                  <div className="absolute bottom-2 right-2 bg-background rounded-full p-1">
+                    <Shield className="h-6 w-6 text-green-500 fill-green-500/20" />
+                  </div>
+                )}
+              </div>
 
-                 <div className="grid grid-cols-2 gap-2 w-full mb-6">
-                    <ContactModal profile={profile} />
-                    <Button variant="outline" onClick={handleShare}><Share2 className="h-4 w-4" /></Button>
-                 </div>
+              {/* Name & Basic Info */}
+              <div className="flex-1 text-center md:text-left mt-2 md:mt-0 md:pb-2">
+                <h1 className="text-3xl font-bold text-foreground flex items-center justify-center md:justify-start gap-2">
+                  {profile.full_name}
+                  {profile.trust_seller_badge && (
+                    <Award className="h-6 w-6 text-yellow-500" />
+                  )}
+                </h1>
+                
+                <div className="flex flex-col md:flex-row items-center gap-2 text-muted-foreground mt-1">
+                  <span className="font-mono bg-muted px-2 py-0.5 rounded text-sm">@{profile.mck_id}</span>
+                  <span className="hidden md:inline">•</span>
+                  <span>{profile.university}</span>
+                </div>
 
-                 <div className="w-full text-left bg-slate-50 rounded-lg p-4 space-y-3">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-500">Member Since</span>
-                      <span className="font-medium">{new Date(profile.created_at || Date.now()).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-500">Last Active</span>
-                      <span className="font-medium text-green-600 flex items-center gap-1"><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"/> Online</span>
-                    </div>
-                    <Button 
-                      variant="link" 
-                      className="h-auto p-0 text-slate-400 text-xs hover:text-red-500 transition-colors"
-                      onClick={() => setReportModalOpen(true)}
-                    >
-                      Report this profile
-                    </Button>
-                 </div>
-               </div>
-             </Card>
-          </div>
+                {/* Date Joined */}
+                {profile.created_at && (
+                   <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2 justify-center md:justify-start">
+                     <Calendar className="h-3 w-3" />
+                     <span>Joined {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+                   </div>
+                )}
+              </div>
 
-          {/* 3. Right Column: Content */}
-          <div className="md:col-span-8 lg:col-span-9 space-y-6">
-            
-            {/* Stats Bar */}
-            <div className="grid grid-cols-3 gap-4">
-               <StatsCard icon={Star} value={sellerRating.avg} label={`${sellerRating.count} Reviews`} color="text-yellow-500" />
-               <StatsCard icon={Package} value={profile.deals_completed} label="Deals Closed" color="text-blue-500" />
-               <StatsCard icon={Trophy} value={profile.campus_points} label="Campus Points" color="text-orange-500" />
-            </div>
+              {/* Action Buttons */}
+              <div className="flex gap-3 mb-2 w-full md:w-auto">
+                 <Button className="flex-1 md:flex-none shadow-sm" onClick={handleMessage}>
+                    <MessageCircle className="h-4 w-4 mr-2" /> Message
+                 </Button>
+                 <Button variant="outline" size="icon" onClick={handleShare}>
+                    <Share2 className="h-4 w-4" />
+                 </Button>
+                 <Button 
+                   variant="ghost" 
+                   size="icon"
+                   className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                   onClick={() => setReportModalOpen(true)}
+                 >
+                   <AlertTriangle className="h-4 w-4" />
+                 </Button>
+              </div>
+            </div>
 
-            {/* Listings Area */}
-            <Card className="shadow-sm min-h-[500px]">
-              <Tabs defaultValue="items" className="w-full">
-                
-                <div className="p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white rounded-t-lg sticky top-0 z-10">
-                  <TabsList>
-                    <TabsTrigger value="items">Marketplace ({listings.length})</TabsTrigger>
-                    <TabsTrigger value="pgs">Real Estate ({pgListings.length})</TabsTrigger>
-                  </TabsList>
-                  
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <div className="relative w-full sm:w-48">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
-                      <Input 
-                        placeholder="Search..." 
-                        className="pl-8 h-9" 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                      />
-                    </div>
-                    
-                    <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="w-[130px] h-9">
-                        <Filter className="w-3 h-3 mr-2" /> <SelectValue placeholder="Sort" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="newest">Newest</SelectItem>
-                        <SelectItem value="price_asc">Price: Low</SelectItem>
-                        <SelectItem value="price_desc">Price: High</SelectItem>
-                      </SelectContent>
-                    </Select>
+            <Separator className="my-6" />
 
-                    <div className="border-l pl-2 hidden sm:flex gap-1">
-                      <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-9 w-9" onClick={() => setViewMode('grid')}><LayoutGrid className="h-4 w-4"/></Button>
-                      <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-9 w-9" onClick={() => setViewMode('list')}><ListIcon className="h-4 w-4"/></Button>
-                    </div>
-                  </div>
-                </div>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-3 gap-4 md:gap-8 max-w-3xl mx-auto md:mx-0">
+               <div className="text-center md:text-left border-r last:border-0 md:border-none">
+                 <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
+                    <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                    <span className="text-2xl font-bold">{sellerRating.avg}</span>
+                 </div>
+                 <p className="text-xs text-muted-foreground">{sellerRating.count} Ratings</p>
+               </div>
+               
+               <div className="text-center md:text-left border-r last:border-0 md:border-none">
+                 <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
+                    <Package className="h-5 w-5 text-blue-500" />
+                    <span className="text-2xl font-bold">{profile.deals_completed}</span>
+                 </div>
+                 <p className="text-xs text-muted-foreground">Deals Done</p>
+               </div>
 
-                <div className="p-6 bg-slate-50/30">
-                  <TabsContent value="items" className="mt-0">
-                    {filteredItems.length === 0 ? (
-                      <EmptyState type="items" />
-                    ) : (
-                      <div className={viewMode === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
-                        {filteredItems.map(item => (
-                          <ItemCard key={item.id} item={item} viewMode={viewMode} onClick={() => navigate(`/item/${item.id}`)} />
-                        ))}
-                      </div>
-                    )}
-                  </TabsContent>
+               <div className="text-center md:text-left">
+                 <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
+                    <Trophy className="h-5 w-5 text-orange-500" />
+                    <span className="text-2xl font-bold">{profile.campus_points}</span>
+                 </div>
+                 <p className="text-xs text-muted-foreground">Campus Points</p>
+               </div>
+            </div>
+          </CardContent>
+        </Card>
 
-                  <TabsContent value="pgs" className="mt-0">
-                    {filteredPGs.length === 0 ? (
-                      <EmptyState type="pgs" />
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {filteredPGs.map(pg => (
-                          <PGCard key={pg.id} pg={pg} onClick={() => navigate(`/pg/${pg.id}`)} />
-                        ))}
-                      </div>
-                    )}
-                  </TabsContent>
-                </div>
-              </Tabs>
-            </Card>
-          </div>
-        </div>
-      </div>
+        {/* 3. TABS for Listings */}
+        <Tabs defaultValue="items" className="w-full">
+          <div className="flex items-center justify-between mb-4">
+             <TabsList className="bg-background border h-12 p-1 shadow-sm">
+                <TabsTrigger value="items" className="px-6 text-base data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  Items <Badge variant="secondary" className="ml-2 bg-muted-foreground/10">{listings.length}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="pgs" className="px-6 text-base data-[state=active]:bg-orange-50 data-[state=active]:text-orange-600">
+                  PGs / Rooms <Badge variant="secondary" className="ml-2 bg-muted-foreground/10">{pgListings.length}</Badge>
+                </TabsTrigger>
+             </TabsList>
+          </div>
 
-      <ReportModal 
-        isOpen={reportModalOpen}
-        onClose={() => setReportModalOpen(false)}
-        reportType="seller"
-        targetId={profile.user_id}
-        targetName={profile.full_name}
-      />
-    </div>
-  );
+          {/* ITEM LISTINGS TAB */}
+          <TabsContent value="items" className="mt-0">
+            {listings.length === 0 ? (
+              <EmptyState icon={Package} text="No items listed yet." />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {listings.map((item) => (
+                  <ItemCard key={item.id} item={item} onClick={() => navigate(`/item/${item.id}`)} />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* PG LISTINGS TAB */}
+          <TabsContent value="pgs" className="mt-0">
+             {pgListings.length === 0 ? (
+               <EmptyState icon={Home} text="No properties listed yet." />
+             ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {pgListings.map((pg) => (
+                  <PGCard key={pg.id} pg={pg} onClick={() => navigate(`/pg/${pg.id}`)} />
+                ))}
+              </div>
+             )}
+          </TabsContent>
+        </Tabs>
+
+      </div>
+
+      <ReportModal 
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        reportType="seller"
+        targetId={profile?.user_id}
+        targetName={profile?.full_name}
+      />
+    </div>
+  );
 };
 
-// --- Sub-Components ---
+// --- Sub-Components for cleaner code ---
 
-const StatsCard = ({ icon: Icon, value, label, color }: any) => (
-  <Card className="border-none shadow-md hover:shadow-lg transition-shadow">
-    <CardContent className="p-4 flex items-center gap-4">
-      <div className={`p-3 rounded-full bg-slate-50 ${color}`}>
-        <Icon className="h-6 w-6" />
-      </div>
-      <div>
-        <div className="text-2xl font-bold text-slate-900">{value}</div>
-        <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</div>
-      </div>
-    </CardContent>
-  </Card>
+const EmptyState = ({ icon: Icon, text }: { icon: any, text: string }) => (
+  <Card className="border-dashed shadow-sm">
+    <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="bg-muted p-4 rounded-full mb-4">
+        <Icon className="h-8 w-8 text-muted-foreground" />
+      </div>
+      <p className="text-lg font-medium text-foreground">{text}</p>
+    </CardContent>
+  </Card>
 );
 
-const ContactModal = ({ profile }: { profile: Profile }) => {
-  const navigate = useNavigate();
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button className="w-full bg-indigo-600 hover:bg-indigo-700 shadow-sm">
-          <MessageCircle className="h-4 w-4 mr-2" /> Contact
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Contact {profile.full_name}</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <p className="text-sm text-muted-foreground">Choose a quick message to send to start the conversation:</p>
-          <div className="grid gap-2">
-            {["Is this still available?", "I'm interested in your listing.", "Can we negotiate the price?"].map((msg) => (
-              <Button key={msg} variant="outline" className="justify-start h-auto py-3 px-4" onClick={() => navigate(`/chat/${profile.user_id}?msg=${encodeURIComponent(msg)}`)}>
-                {msg}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-const ItemCard = ({ item, onClick, viewMode }: { item: Item, onClick: () => void, viewMode: 'grid' | 'list' }) => {
-  if (viewMode === 'list') {
-    return (
-      <Card className="flex overflow-hidden cursor-pointer hover:border-indigo-300 transition-all group" onClick={onClick}>
-        <div className="w-32 h-32 bg-slate-200 shrink-0">
-          <img src={item.images[0] || '/placeholder.png'} className="w-full h-full object-cover" alt={item.title} />
-        </div>
-        <div className="p-4 flex-1 flex justify-between items-center">
-          <div>
-            <h3 className="font-semibold text-lg group-hover:text-indigo-600">{item.title}</h3>
-            <p className="text-sm text-slate-500 line-clamp-1">{item.description}</p>
-            <div className="mt-2 flex gap-2">
-              <Badge variant="outline">{item.condition}</Badge>
-              {item.is_sold && <Badge variant="destructive">SOLD</Badge>}
-            </div>
-          </div>
-          <div className="text-xl font-bold text-slate-900">{formatCurrency(item.price)}</div>
-        </div>
-      </Card>
-    )
-  }
-
-  return (
-    <Card className="group cursor-pointer overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1" onClick={onClick}>
-      <div className="aspect-[4/3] relative bg-slate-200 overflow-hidden">
-        {item.images?.[0] ? (
-          <img src={item.images[0]} alt={item.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-        ) : (
-          <div className="flex h-full items-center justify-center"><Package className="h-10 w-10 text-slate-300" /></div>
-        )}
-        <div className="absolute top-2 right-2">
-          <Badge className="bg-white/90 text-slate-900 backdrop-blur-sm shadow-sm hover:bg-white">{item.condition}</Badge>
-        </div>
-        {item.is_sold && <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><span className="text-white font-bold tracking-widest border-2 border-white px-4 py-1">SOLD</span></div>}
-      </div>
-      <CardContent className="p-4">
-        <h3 className="font-semibold text-slate-900 truncate mb-1 group-hover:text-indigo-600 transition-colors">{item.title}</h3>
-        <div className="flex items-center justify-between mt-2">
-          <span className="text-lg font-bold text-slate-900">{formatCurrency(item.price)}</span>
-          <span className="text-xs text-slate-400 flex items-center gap-1"><Clock className="h-3 w-3" /> {formatRelativeTime(item.created_at)}</span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
+const ItemCard = ({ item, onClick }: { item: Item, onClick: () => void }) => (
+  <Card 
+    className={`group cursor-pointer overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1 ${item.is_sold ? 'opacity-75 grayscale' : ''}`}
+    onClick={onClick}
+  >
+    <div className="aspect-square relative bg-muted">
+      {item.images?.[0] ? (
+        <img src={item.images[0]} alt={item.title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+      ) : (
+        <div className="flex h-full items-center justify-center"><Package className="h-10 w-10 text-muted-foreground/20" /></div>
+      )}
+      {item.is_sold && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><span className="font-bold text-white tracking-widest border-2 border-white px-3 py-1">SOLD</span></div>}
+      <Badge variant="secondary" className="absolute bottom-2 left-2 text-[10px] bg-background/80 backdrop-blur-sm shadow-sm flex items-center gap-1">
+        <Clock className="h-3 w-3" /> {formatRelativeTime(item.created_at)}
+      </Badge>
+    </div>
+    <CardContent className="p-3">
+      <h3 className="font-medium truncate mb-1">{item.title}</h3>
+      <div className="flex items-center justify-between">
+        <span className="font-bold">₹{item.price}</span>
+        <Badge variant="outline" className="text-[10px] h-5">{item.condition}</Badge>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const PGCard = ({ pg, onClick }: { pg: PGListing, onClick: () => void }) => {
-  // Simulating amenities detection based on lack of real data structure
-  const hasWifi = Math.random() > 0.5; 
-  const hasAC = pg.rent_per_month > 8000;
-
-  return (
-    <Card className="cursor-pointer overflow-hidden hover:shadow-lg transition-all border-l-4 border-l-orange-500" onClick={onClick}>
-      <div className="flex flex-col sm:flex-row h-full">
-        <div className="sm:w-2/5 aspect-video sm:aspect-auto relative bg-slate-200">
-           <img src={pg.images?.[0] || '/placeholder-house.png'} className="w-full h-full object-cover" alt="PG" />
-           <Badge className="absolute top-2 left-2 bg-black/50 hover:bg-black/70">{pg.property_type}</Badge>
-        </div>
-        <CardContent className="flex-1 p-4 flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-start">
-               <h3 className="font-bold text-lg line-clamp-1">{pg.area_locality}</h3>
-               <Badge variant="outline" className="shrink-0">{pg.sharing_type}</Badge>
-            </div>
-            <div className="flex gap-3 mt-3 text-slate-500">
-              {hasWifi && <div className="flex items-center gap-1 text-xs"><Wifi className="h-3 w-3" /> Wifi</div>}
-              {hasAC && <div className="flex items-center gap-1 text-xs"><Zap className="h-3 w-3" /> AC</div>}
-              <div className="flex items-center gap-1 text-xs"><Utensils className="h-3 w-3" /> Mess</div>
-            </div>
-          </div>
-          
-          <div className="mt-4 pt-4 border-t flex items-center justify-between">
-            <div>
-              <span className="text-xl font-bold text-indigo-600">{formatCurrency(pg.rent_per_month)}</span>
-              <span className="text-xs text-slate-500"> /mo</span>
-            </div>
-            <Button size="sm" variant="secondary" className="h-8">View</Button>
-          </div>
-        </CardContent>
-      </div>
-    </Card>
-  );
+  const isRented = pg.status === 'rented';
+  return (
+    <Card className="cursor-pointer overflow-hidden transition-all hover:shadow-md hover:border-primary/50" onClick={onClick}>
+      <div className="aspect-video relative bg-muted">
+         {pg.images?.[0] ? (
+            <img src={pg.images[0]} alt="Property" className="w-full h-full object-cover" />
+         ) : (
+            <div className="flex h-full items-center justify-center"><Home className="h-10 w-10 text-muted-foreground/20" /></div>
+         )}
+         <Badge className="absolute top-2 right-2 bg-orange-500 hover:bg-orange-600">{pg.property_type.toUpperCase()}</Badge>
+         {isRented && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><span className="text-xl font-bold text-muted-foreground">No Longer Available</span></div>}
+      </div>
+      <CardContent className="p-4">
+        <div className="flex justify-between items-start mb-2">
+          <div>
+             <div className="text-xl font-bold text-primary">₹{pg.rent_per_month}<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
+             <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                <MapPin className="h-3 w-3" /> {pg.area_locality}
+             </div>
+          </div>
+          <Badge variant="outline">{pg.sharing_type} Share</Badge>
+        </div>
+      </CardContent>
+    </Card>
+  )
 };
-
-const EmptyState = ({ type }: { type: 'items' | 'pgs' }) => (
-  <div className="flex flex-col items-center justify-center py-12 text-center text-slate-400">
-    <div className="bg-slate-100 p-4 rounded-full mb-3">
-      {type === 'items' ? <Package className="h-8 w-8 text-slate-300" /> : <Home className="h-8 w-8 text-slate-300" />}
-    </div>
-    <p>No listings found matching your criteria.</p>
-    <Button variant="link" className="mt-2" onClick={() => window.location.reload()}>Reset Filters</Button>
-  </div>
-);
-
-const ProfileSkeleton = () => (
-  <div className="container mx-auto px-4 max-w-6xl mt-8">
-     <Skeleton className="h-64 w-full rounded-xl mb-8" />
-     <div className="grid grid-cols-12 gap-8">
-       <div className="col-span-3">
-         <Skeleton className="h-96 w-full rounded-xl" />
-       </div>
-       <div className="col-span-9 space-y-6">
-         <div className="flex gap-4">
-           <Skeleton className="h-24 w-1/3 rounded-xl" />
-           <Skeleton className="h-24 w-1/3 rounded-xl" />
-           <Skeleton className="h-24 w-1/3 rounded-xl" />
-         </div>
-         <Skeleton className="h-96 w-full rounded-xl" />
-       </div>
-     </div>
-  </div>
-);
 
 export default PublicProfile;
