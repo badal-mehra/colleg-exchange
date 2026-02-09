@@ -232,9 +232,9 @@ const PublicProfile = () => {
 
               {/* Action Buttons */}
               <div className="flex gap-3 mb-2 w-full md:w-auto">
-                 <Button className="flex-1 md:flex-none shadow-sm" onClick={handleMessage}>
+                 {/* <Button className="flex-1 md:flex-none shadow-sm" onClick={handleMessage}>
                     <MessageCircle className="h-4 w-4 mr-2" /> Message
-                 </Button>
+                 </Button> */}
                  <Button variant="outline" size="icon" onClick={handleShare}>
                     <Share2 className="h-4 w-4" />
                  </Button>
