@@ -539,6 +539,19 @@ const Browse = () => {
                 </>
               ) : (
                 <>
+                  {/*DOWNLOAD APP BUTTON */}
+{showInstallBtn && (
+  <Button 
+    variant="ghost" 
+    size="sm" 
+    onClick={handleInstallClick}
+    className="hidden sm:flex text-primary hover:text-primary-foreground hover:bg-primary/10"
+  >
+    <Zap className="h-4 w-4 mr-2" />
+    Install App
+  </Button>
+)}
+                  
                   <Button variant="outline" size="sm" onClick={() => navigate('/auth')}>
                     <LogIn className="h-4 w-4 mr-2" />
                     Login
