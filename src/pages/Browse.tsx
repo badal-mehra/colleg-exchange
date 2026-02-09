@@ -539,23 +539,6 @@ const Browse = () => {
                 </>
               ) : (
                 <>
-                  {/*DOWNLOAD APP BUTTON */}
-<div className="flex items-center space-x-2">
-  {/* 1. Install App Button (Visible only if PWA is ready and user is logged out) */}
-  {!isLoggedIn && showInstallBtn && (
-    <Button 
-      variant="ghost" 
-      size="sm" 
-      onClick={handleInstallClick}
-      className="text-primary hover:bg-primary/10 flex items-center"
-    >
-      <Zap className="h-4 w-4 mr-1 sm:mr-2" />
-      <span className="hidden xs:inline">Install App</span>
-    </Button>
-  )}
-
-</div>
-                  
                   <Button variant="outline" size="sm" onClick={() => navigate('/auth')}>
                     <LogIn className="h-4 w-4 mr-2" />
                     Login
