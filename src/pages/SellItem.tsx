@@ -508,12 +508,12 @@ const SellItem = () => {
                       <Input
                         id="whatsapp_number"
                         type="tel"
-                        placeholder="e.g., 919876543210"
+                        placeholder="e.g., 98765432xx"
                         value={formData.whatsapp_number}
                         onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value.replace(/\D/g, '') })}
                         maxLength={15}
                       />
-                      <p className="text-xs text-muted-foreground">Add your WhatsApp number with country code for buyers to contact you directly.</p>
+                      <p className="text-xs text-muted-foreground">Add your WhatsApp number for buyers to contact you directly.</p>
                     </div>
 
                     {/* Location & Negotiable */}
