@@ -162,7 +162,7 @@ const SellItem = () => {
     rental_duration: '',
     rental_deposit: '',
   });
-const [mobileNumber, setMobileNumber] = useState('');
+
 
 
   // --- Data Fetching ---
@@ -309,7 +309,6 @@ const [mobileNumber, setMobileNumber] = useState('');
         is_negotiable: formData.is_negotiable,
         ad_priority: adPriority, 
         tags: tags,
-        mobile_number: mobileNumber ? mobileNumber : null,
         // Add rental metadata if it's a rental listing
         rental_metadata: isRental ? {
           is_rental: true,
@@ -502,20 +501,6 @@ const [mobileNumber, setMobileNumber] = useState('');
                     </div>
 
                     {/* Location & Negotiable */}
-                    {/* Mobile Number */}
-<div className="space-y-2">
-  <Label htmlFor="mobile_number">Mobile Number (Optional)</Label>
-  <Input
-    id="mobile_number"
-    type="tel"
-    placeholder="Enter mobile number"
-    value={mobileNumber}
-    onChange={(e) =>
-      setMobileNumber(e.target.value.replace(/\D/g, ''))
-    }
-  />
-</div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="location">Campus Location</Label>
