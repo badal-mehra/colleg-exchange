@@ -12,7 +12,7 @@ import logo from '@/assets/mycampuskart-logo.png';
 import {
   ArrowLeft, MessageCircle, Heart, Share2, MapPin, Calendar, Eye,
   User, AlertCircle, Shield, AlertTriangle, DollarSign,
-  Package, Key, LogIn, ChevronRight, X, Maximize2, Lock
+  Package, Key, LogIn, ChevronRight, X, Maximize2, Lock, Phone
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
@@ -77,6 +77,7 @@ interface Item {
   profiles: Profile | null;
   rental_metadata?: RentalMetadata | null;
   is_negotiable?: boolean;
+  whatsapp_number?: string | null;
 }
 
 const ItemDetail = () => {
@@ -716,6 +717,15 @@ const ItemDetail = () => {
                            <Button variant="secondary" onClick={() => handleChatClick()} disabled={isDisabled}>
                              <MessageCircle className="h-4 w-4 mr-2" /> Chat
                            </Button>
+                           {item.whatsapp_number && (
+                             <Button 
+                               variant="outline" 
+                               className="col-span-2 border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20"
+                               onClick={() => window.open(`https://wa.me/${item.whatsapp_number}?text=Hi! I'm interested in "${item.title}" listed on MyCampusKart.`, '_blank')}
+                             >
+                               <Phone className="h-4 w-4 mr-2" /> WhatsApp Seller
+                             </Button>
+                           )}
                         </div>
                       </>
                     ) : (
@@ -776,12 +786,22 @@ const ItemDetail = () => {
              ) : (
                  /* NORMAL FLOW */
                  <>
-                    <Button variant="outline" size="sm" className="flex-1" onClick={() => handleChatClick()} disabled={isDisabled}>
-                        Chat
-                    </Button>
-                    <Button className="flex-[1.5]" size="sm" onClick={handleBuyNow} disabled={isDisabled}>
-                        {hasPendingOrder ? 'Reserved' : 'Buy Now'}
-                    </Button>
+                     <Button variant="outline" size="sm" className="flex-1" onClick={() => handleChatClick()} disabled={isDisabled}>
+                         Chat
+                     </Button>
+                     {item.whatsapp_number && (
+                       <Button 
+                         variant="outline" 
+                         size="sm"
+                         className="border-green-500 text-green-600"
+                         onClick={() => window.open(`https://wa.me/${item.whatsapp_number}?text=Hi! I'm interested in "${item.title}" listed on MyCampusKart.`, '_blank')}
+                       >
+                         <Phone className="h-3 w-3" />
+                       </Button>
+                     )}
+                     <Button className="flex-[1.5]" size="sm" onClick={handleBuyNow} disabled={isDisabled}>
+                         {hasPendingOrder ? 'Reserved' : 'Buy Now'}
+                     </Button>
                  </>
              )}
           </div>

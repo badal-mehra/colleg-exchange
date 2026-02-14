@@ -161,6 +161,7 @@ const SellItem = () => {
     // Rental specific fields
     rental_duration: '',
     rental_deposit: '',
+    whatsapp_number: '',
   });
 
 
@@ -309,6 +310,7 @@ const SellItem = () => {
         is_negotiable: formData.is_negotiable,
         ad_priority: adPriority, 
         tags: tags,
+        whatsapp_number: formData.whatsapp_number.trim() || null,
         // Add rental metadata if it's a rental listing
         rental_metadata: isRental ? {
           is_rental: true,
@@ -498,6 +500,20 @@ const SellItem = () => {
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+
+                    {/* WhatsApp Number (Optional) */}
+                    <div className="space-y-2">
+                      <Label htmlFor="whatsapp_number">WhatsApp Number (Optional)</Label>
+                      <Input
+                        id="whatsapp_number"
+                        type="tel"
+                        placeholder="e.g., 919876543210"
+                        value={formData.whatsapp_number}
+                        onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value.replace(/\D/g, '') })}
+                        maxLength={15}
+                      />
+                      <p className="text-xs text-muted-foreground">Add your WhatsApp number with country code for buyers to contact you directly.</p>
                     </div>
 
                     {/* Location & Negotiable */}

@@ -1,0 +1,1 @@
+ALTER TABLE public.items ADD COLUMN whatsapp_number text DEFAULT NULL;
