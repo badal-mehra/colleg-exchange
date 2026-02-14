@@ -1,4 +1,3 @@
-// ItemDetail.tsx
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -397,6 +396,24 @@ const ItemDetail = () => {
     });
   };
 
+  const handleWhatsAppClick = () => {
+    if (!item?.whatsapp_number) return;
+
+    // 1. Sanitize: Remove non-numeric chars
+    let phone = item.whatsapp_number.replace(/\D/g, '');
+
+    // 2. Add Country Code if missing (assuming India +91)
+    if (phone.length === 10) {
+      phone = `91${phone}`;
+    }
+
+    // 3. Construct text
+    const text = `Hi! I'm interested in "${item.title}" listed on MyCampusKart. Is it still available?`;
+    
+    // 4. Open API
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
   const handleShare = async () => {
     if (navigator.share) {
       try {
@@ -455,23 +472,8 @@ const ItemDetail = () => {
     ? 'Already Reserved'
     : 'Buy Now';
 
-  // Smart Mobile Button Handler
-  const handleMobileMainAction = () => {
-      if (!user) return navigate('/auth');
-      if (!isVerified) return navigate('/kyc');
-      handleBuyNow();
-  };
-
-  const mobileButtonLabel = !user 
-      ? 'Login to Chat' 
-      : !isVerified 
-      ? 'Verify to Chat'
-      : hasPendingOrder 
-      ? 'Reserved' 
-      : 'Buy Now';
-
   return (
-    <div className="min-h-screen bg-gray-50/50 dark:bg-background pb-20 lg:pb-8">
+    <div className="min-h-screen bg-gray-50/50 dark:bg-background pb-24 lg:pb-8">
       {/* --- Header --- */}
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -721,7 +723,7 @@ const ItemDetail = () => {
                              <Button 
                                variant="outline" 
                                className="col-span-2 border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20"
-                               onClick={() => window.open(`https://wa.me/${item.whatsapp_number}?text=Hi! I'm interested in "${item.title}" listed on MyCampusKart.`, '_blank')}
+                               onClick={handleWhatsAppClick}
                              >
                                <Phone className="h-4 w-4 mr-2" /> WhatsApp Seller
                              </Button>
@@ -784,22 +786,45 @@ const ItemDetail = () => {
                     <Shield className="h-4 w-4 mr-2" /> Verify to Buy/Chat
                  </Button>
              ) : (
-                 /* NORMAL FLOW */
+                 /* NORMAL FLOW - Mobile */
                  <>
-                     <Button variant="outline" size="sm" className="flex-1" onClick={() => handleChatClick()} disabled={isDisabled}>
-                         Chat
+                    {/* Make Offer Button */}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setBargainingDialogOpen(true)} 
+                      disabled={isDisabled}
+                      className="px-2"
+                    >
+                      <DollarSign className="h-4 w-4" />
+                    </Button>
+
+                     {/* Chat Button */}
+                     <Button 
+                       variant="outline" 
+                       size="sm" 
+                       onClick={() => handleChatClick()} 
+                       disabled={isDisabled}
+                       className="px-3"
+                     >
+                       <MessageCircle className="h-4 w-4" />
                      </Button>
+
+                     {/* WhatsApp Button */}
                      {item.whatsapp_number && (
                        <Button 
                          variant="outline" 
                          size="sm"
-                         className="border-green-500 text-green-600"
-                         onClick={() => window.open(`https://wa.me/${item.whatsapp_number}?text=Hi! I'm interested in "${item.title}" listed on MyCampusKart.`, '_blank')}
+                         className="border-green-500 text-green-600 hover:bg-green-50 px-2"
+                         onClick={handleWhatsAppClick}
+                         disabled={isDisabled}
                        >
-                         <Phone className="h-3 w-3" />
+                         <Phone className="h-4 w-4" />
                        </Button>
                      )}
-                     <Button className="flex-[1.5]" size="sm" onClick={handleBuyNow} disabled={isDisabled}>
+
+                     {/* Buy Now Button */}
+                     <Button className="flex-1" size="sm" onClick={handleBuyNow} disabled={isDisabled}>
                          {hasPendingOrder ? 'Reserved' : 'Buy Now'}
                      </Button>
                  </>
