@@ -25,7 +25,8 @@ import {
   Zap,
   MapPin,
   Check,
-  Image as ImageIcon
+  Image as ImageIcon,
+  MessageCircle // Added MessageCircle icon
 } from 'lucide-react';
 
 interface Category {
@@ -83,6 +84,7 @@ const PWASellItem = () => {
     condition: '',
     category_id: '',
     location: '',
+    whatsapp_number: '', // Added new field
     ad_type: 'basic' as AdPackage['ad_type'],
     is_negotiable: true,
     // Rental specific fields
@@ -172,6 +174,7 @@ const PWASellItem = () => {
       expires_at: new Date(Date.now() + selectedPackage.duration_days * 24 * 60 * 60 * 1000).toISOString(),
       is_negotiable: formData.is_negotiable,
       ad_priority: AD_PRIORITY_MAP[selectedPackage.ad_type],
+      whatsapp_number: formData.whatsapp_number.trim() || null, // Added to insert payload
       // Add rental metadata if it's a rental listing
       rental_metadata: isRental ? {
         is_rental: true,
@@ -262,7 +265,7 @@ const PWASellItem = () => {
         </div>
       )}
 
-      {/* Step 2: Photos */}
+      {/* Step 2: Photos (unchanged) */}
       {step === 'photos' && (
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
           {/* Progress */}
@@ -277,7 +280,7 @@ const PWASellItem = () => {
             <p className="text-sm md:text-base text-muted-foreground">First photo will be the cover image</p>
           </div>
 
-          {/* Image Grid - now using local preview URLs */}
+          {/* Image Grid */}
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 md:gap-4">
             {localImages.map((img, index) => (
               <div key={img.id} className="relative aspect-square rounded-xl overflow-hidden bg-muted">
@@ -472,6 +475,23 @@ const PWASellItem = () => {
             />
           </div>
 
+          {/* WhatsApp Number (New Field) */}
+          <div className="space-y-2">
+            <Label className="text-sm md:text-base font-medium">WhatsApp Number (Optional)</Label>
+            <div className="relative">
+              <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                type="tel"
+                value={formData.whatsapp_number}
+                onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value.replace(/\D/g, '') })}
+                placeholder="e.g., 919876543210"
+                maxLength={15}
+                className="h-12 md:h-14 rounded-xl text-base md:text-lg pl-10"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground pl-1">Add your WhatsApp number for faster deals.</p>
+          </div>
+
           {/* Location */}
           <div className="space-y-2">
             <Label className="text-sm md:text-base font-medium">Location</Label>
@@ -497,11 +517,12 @@ const PWASellItem = () => {
         </div>
       )}
 
+      {/* Steps 4 and 5 remain unchanged... */}
       {/* Step 4: Package Selection */}
       {step === 'package' && (
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
-          {/* Progress */}
-          <div className="flex gap-1">
+           {/* Progress */}
+           <div className="flex gap-1">
             {['photos', 'details', 'package', 'review'].map((s, i) => (
               <div key={s} className={`h-1 flex-1 rounded-full ${i <= 2 ? 'bg-primary' : 'bg-muted'}`} />
             ))}
@@ -603,6 +624,11 @@ const PWASellItem = () => {
                 {formData.location && (
                   <Badge variant="outline" className="flex items-center gap-1 md:text-sm">
                     <MapPin className="h-3 w-3" /> {formData.location}
+                  </Badge>
+                )}
+                 {formData.whatsapp_number && (
+                  <Badge variant="outline" className="flex items-center gap-1 md:text-sm border-green-500 text-green-600 bg-green-50">
+                    <MessageCircle className="h-3 w-3" /> WhatsApp
                   </Badge>
                 )}
               </div>
