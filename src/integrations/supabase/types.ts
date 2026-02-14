@@ -380,6 +380,7 @@ export type Database = {
           updated_at: string
           upgrade_transaction_id: string | null
           views: number | null
+          whatsapp_number: string | null
         }
         Insert: {
           ad_duration_days?: number | null
@@ -413,6 +414,7 @@ export type Database = {
           updated_at?: string
           upgrade_transaction_id?: string | null
           views?: number | null
+          whatsapp_number?: string | null
         }
         Update: {
           ad_duration_days?: number | null
@@ -446,6 +448,7 @@ export type Database = {
           updated_at?: string
           upgrade_transaction_id?: string | null
           views?: number | null
+          whatsapp_number?: string | null
         }
         Relationships: [
           {

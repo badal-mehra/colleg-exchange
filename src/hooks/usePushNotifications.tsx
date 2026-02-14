@@ -38,7 +38,7 @@ export async function subscribeToPush(userId: string) {
   }
 
   const reg = await navigator.serviceWorker.ready;
-
+  // @ts-ignore - pushManager exists on ServiceWorkerRegistration in browsers with Push API support
   const sub = await reg.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(
