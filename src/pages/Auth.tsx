@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, EyeOff, Loader2, Quote, CheckSquare } from 'lucide-react'; 
+import { Eye, EyeOff, Loader2, Quote, AlertCircle } from 'lucide-react'; 
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import logo from '@/assets/mycampuskart-logo.png';
@@ -39,7 +39,7 @@ const LoadingOverlay = () => (
 );
 
 // 2. Pro Password Input
-const PasswordInput = ({ id, name, placeholder, disabled, value, onChange }: any) => {
+const PasswordInput = ({ id, name, placeholder, disabled }: any) => {
     const [show, setShow] = useState(false);
     return (
         <div className="relative">
@@ -74,11 +74,14 @@ const Auth = () => {
   const [selectedUniversity, setSelectedUniversity] = useState(UNIVERSITY_OPTIONS[0].value);
   const [quoteIndex, setQuoteIndex] = useState(0);
 
-  // --- NEW: Terms State (Pre-ticked by default) ---
+  // --- TERMS STATE (Pre-ticked) ---
   const [signInTerms, setSignInTerms] = useState(true);
   const [signUpTerms, setSignUpTerms] = useState(true);
+  
+  // --- RED ALERT STATE ---
+  // We use this to trigger the "red shake" effect on the checkbox container
+  const [termsErrorShake, setTermsErrorShake] = useState(false);
 
-  // Rotate quotes
   useEffect(() => {
     const interval = setInterval(() => {
         setQuoteIndex((prev) => (prev + 1) % STUDENT_QUOTES.length);
@@ -88,17 +91,24 @@ const Auth = () => {
 
   if (user) return <Navigate to="/dashboard" replace />;
 
-  const handleGoogleSignIn = async (isSignUpContext: boolean = false) => {
-    // Check terms before Google Login
+  // Helper to trigger the red shake animation
+  const triggerTermsError = () => {
+    setTermsErrorShake(true);
+    setTimeout(() => setTermsErrorShake(false), 600); // Remove class after animation
+    toast({ 
+        title: "Agreement Required", 
+        description: "Please check the box to agree to Terms & Conditions.", 
+        variant: "destructive" 
+    });
+  };
+
+  const handleGoogleSignIn = async (isSignUpContext: boolean) => {
+    // 1. STRICT CHECK: Stop everything if terms are unchecked
     const termsAccepted = isSignUpContext ? signUpTerms : signInTerms;
     
     if (!termsAccepted) {
-        toast({ 
-            title: "Terms Required", 
-            description: "Please confirm terms and conditions first.", 
-            variant: "destructive" 
-        });
-        return;
+        triggerTermsError();
+        return; // STOP HERE
     }
 
     setIsLoading(true);
@@ -117,11 +127,7 @@ const Auth = () => {
     e.preventDefault();
     
     if (!signInTerms) {
-        toast({ 
-            title: "Terms Required", 
-            description: "Please confirm terms and conditions first.", 
-            variant: "destructive" 
-        });
+        triggerTermsError();
         return;
     }
 
@@ -135,11 +141,7 @@ const Auth = () => {
     e.preventDefault();
     
     if (!signUpTerms) {
-        toast({ 
-            title: "Terms Required", 
-            description: "Please confirm terms and conditions first.", 
-            variant: "destructive" 
-        });
+        triggerTermsError();
         return;
     }
 
@@ -162,8 +164,6 @@ const Auth = () => {
 
     if (result?.data?.user) {
         toast({ title: "Success! 🎉", description: "Account created. Check email for verification link." });
-        
-        // Record Terms Acceptance
         const { data: activeTerms } = await supabase.from('terms_and_conditions').select('id').eq('is_active', true).single();
         if (activeTerms) await supabase.from('user_terms_acceptance').insert({ user_id: result.data.user.id, terms_id: activeTerms.id });
     }
@@ -172,15 +172,47 @@ const Auth = () => {
 
   const openTerms = () => window.open('/terms', '_blank');
 
+  // Helper Component for the Checkbox to avoid code duplication
+  const TermsCheckbox = ({ 
+      id, 
+      checked, 
+      onChange 
+  }: { id: string, checked: boolean, onChange: (v: boolean) => void }) => (
+    <div 
+        className={`
+            flex items-center space-x-2 p-3 rounded-md border transition-all duration-300
+            ${!checked && termsErrorShake 
+                ? "bg-red-50 border-red-500 animate-[pulse_0.5s_ease-in-out]" // The Red Alert Style
+                : "bg-gray-50/50 border-transparent hover:bg-gray-100"
+            }
+        `}
+    >
+        <div className="relative flex items-center">
+            <input 
+                type="checkbox" 
+                id={id} 
+                checked={checked}
+                onChange={(e) => onChange(e.target.checked)}
+                className={`
+                    peer h-4 w-4 shrink-0 rounded-sm border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50
+                    ${!checked && termsErrorShake ? "border-red-500" : "border-primary text-primary focus:ring-primary"}
+                `}
+            />
+        </div>
+        <Label htmlFor={id} className={`text-sm font-normal cursor-pointer select-none flex-1 ${!checked && termsErrorShake ? "text-red-600 font-medium" : "text-gray-500"}`}>
+            I agree to the <span className="text-primary hover:underline font-medium" onClick={(e) => { e.preventDefault(); openTerms(); }}>Terms & Conditions</span>
+            {!checked && termsErrorShake && <AlertCircle className="inline ml-2 h-4 w-4" />}
+        </Label>
+    </div>
+  );
+
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gray-50 p-4 font-sans selection:bg-primary/20">
       
       {isLoading && <LoadingOverlay />}
 
-      {/* Main Card */}
       <Card className="w-full max-w-[420px] shadow-2xl border-0 animate-in fade-in zoom-in-95 duration-500">
         
-        {/* Header */}
         <CardHeader className="text-center pb-2">
             <div className="mx-auto mb-2 bg-white p-2 rounded-full shadow-sm w-fit">
                 <img src={logo} alt="MyCampusKart" className="h-12 w-auto" />
@@ -206,12 +238,11 @@ const Auth = () => {
                 {/* --- SIGN IN FORM --- */}
                 <TabsContent value="signin" className="space-y-4 animate-in slide-in-from-left-2 duration-300">
                     
-                    {/* Google Button (Now Protected by Checkbox) */}
                     <Button 
                         type="button" 
                         variant="outline" 
                         className="w-full relative hover:bg-gray-50" 
-                        onClick={() => handleGoogleSignIn(false)} // false = sign in context
+                        onClick={() => handleGoogleSignIn(false)}
                         disabled={isLoading}
                     >
                         <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
@@ -236,19 +267,12 @@ const Auth = () => {
                             <PasswordInput id="si-pass" name="password" placeholder="••••••••" disabled={isLoading} />
                         </div>
 
-                        {/* Terms Checkbox for Sign In (Controlled State) */}
-                        <div className="flex items-center space-x-2 bg-gray-50/50 p-2 rounded-md">
-                            <input 
-                                type="checkbox" 
-                                id="terms_signin" 
-                                checked={signInTerms} // PRE-TICKED
-                                onChange={(e) => setSignInTerms(e.target.checked)}
-                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer" 
-                            />
-                            <Label htmlFor="terms_signin" className="text-sm text-gray-500 font-normal cursor-pointer select-none">
-                                I agree to the <span className="text-primary hover:underline font-medium" onClick={(e) => { e.preventDefault(); openTerms(); }}>Terms & Conditions</span>
-                            </Label>
-                        </div>
+                        {/* Terms Checkbox with Red Alert Effect */}
+                        <TermsCheckbox 
+                            id="terms_signin" 
+                            checked={signInTerms} 
+                            onChange={setSignInTerms} 
+                        />
 
                         <Button type="submit" className="w-full" disabled={isLoading}>
                             {isLoading ? "Signing in..." : "Sign In"}
@@ -262,10 +286,9 @@ const Auth = () => {
                         type="button" 
                         variant="outline" 
                         className="w-full relative hover:bg-gray-50" 
-                        onClick={() => handleGoogleSignIn(true)} // true = sign up context
+                        onClick={() => handleGoogleSignIn(true)}
                         disabled={isLoading}
                     >
-                         {/* Google SVG */}
                         <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
                         Create with Google
                     </Button>
@@ -302,18 +325,13 @@ const Auth = () => {
                             </div>
                         </div>
 
-                        {/* Terms Checkbox for Sign Up (Controlled State) */}
-                        <div className="flex items-center space-x-2 mt-2 bg-gray-50/50 p-2 rounded-md">
-                             <input 
-                                type="checkbox" 
+                        {/* Terms Checkbox with Red Alert Effect */}
+                        <div className="mt-2">
+                             <TermsCheckbox 
                                 id="terms_signup" 
-                                checked={signUpTerms} // PRE-TICKED
-                                onChange={(e) => setSignUpTerms(e.target.checked)}
-                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer" 
+                                checked={signUpTerms} 
+                                onChange={setSignUpTerms} 
                             />
-                             <Label htmlFor="terms_signup" className="text-sm text-gray-500 font-normal cursor-pointer select-none">
-                                I agree to the <span className="text-primary hover:underline font-medium" onClick={(e) => { e.preventDefault(); openTerms(); }}>Terms & Conditions</span>
-                            </Label>
                         </div>
 
                         <Button type="submit" className="w-full" disabled={isLoading}>
@@ -325,7 +343,6 @@ const Auth = () => {
         </CardContent>
       </Card>
       
-      {/* Footer Back Button */}
       <Button variant="link" className="mt-4 text-muted-foreground hover:text-gray-900" onClick={() => navigate('/')}>
         ← Back to Home
       </Button>
