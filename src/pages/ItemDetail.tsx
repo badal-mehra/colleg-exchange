@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,16 +9,23 @@ import logo from '@/assets/mycampuskart-logo.png';
 import {
   ArrowLeft, MessageCircle, Heart, Share2, MapPin, Calendar, Eye,
   AlertCircle, Shield, AlertTriangle, DollarSign,
-  Package, Key, LogIn, ChevronRight, X, Maximize2, Phone,
+  Package, Key, LogIn, ChevronRight, X, Maximize2,
   Star, CheckCircle2, Clock, Tag, ChevronLeft, ZoomIn,
-  Sparkles, TrendingUp, Users
+  Sparkles, TrendingUp, Users, IndianRupee
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
 import { ReportModal } from '@/components/ReportModal';
 import { BargainingDialog } from '@/components/BargainingDialog';
 
-// ─── Cloudinary helpers ────────────────────────────────────────────────────────
+/* ─── WhatsApp SVG Icon ─────────────────────────────────────────────────── */
+const WhatsAppIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+  </svg>
+);
+
+/* ─── Cloudinary helpers ─────────────────────────────────────────────────── */
 const getDetailImage = (url: string) =>
   url?.includes('cloudinary.com')
     ? url.replace('/upload/', '/upload/f_auto,q_auto:best,w_1200/')
@@ -29,66 +36,46 @@ const getThumbImage = (url: string) =>
     ? url.replace('/upload/', '/upload/f_auto,q_auto:low,w_120,h_120,c_fill/')
     : url;
 
-// ─── Interfaces ───────────────────────────────────────────────────────────────
+/* ─── Interfaces ─────────────────────────────────────────────────────────── */
 interface Profile {
-  id: string;
-  user_id: string;
-  full_name: string;
-  email: string;
-  is_verified: boolean;
-  verification_status: string;
-  avatar_url: string | null;
-  mck_id: string;
-  trust_seller_badge: boolean;
-  campus_points: number;
-  deals_completed: number;
+  id: string; user_id: string; full_name: string; email: string;
+  is_verified: boolean; verification_status: string; avatar_url: string | null;
+  mck_id: string; trust_seller_badge: boolean; campus_points: number; deals_completed: number;
 }
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  icon: string;
-}
-interface RentalMetadata {
-  rental_duration?: string;
-  rental_deposit?: number;
-}
+interface Category { id: string; name: string; slug: string; icon: string; }
+interface RentalMetadata { rental_duration?: string; rental_deposit?: number; }
 interface Item {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  condition: string;
-  images: string[];
-  location: string;
-  is_sold: boolean;
-  views: number;
-  created_at: string;
-  seller_id: string;
-  categories: Category | null;
-  profiles: Profile | null;
+  id: string; title: string; description: string; price: number;
+  condition: string; images: string[]; location: string; is_sold: boolean;
+  views: number; created_at: string; seller_id: string;
+  categories: Category | null; profiles: Profile | null;
   rental_metadata?: RentalMetadata | null;
-  is_negotiable?: boolean;
-  whatsapp_number?: string | null;
+  is_negotiable?: boolean; whatsapp_number?: string | null;
 }
 
-// ─── Condition config ─────────────────────────────────────────────────────────
+/* ─── Condition config ───────────────────────────────────────────────────── */
 const conditionConfig: Record<string, { label: string; color: string; dot: string }> = {
-  'Brand New':    { label: 'Brand New',    color: 'bg-emerald-100 text-emerald-700 border-emerald-200',   dot: 'bg-emerald-500' },
-  'Like New':     { label: 'Like New',     color: 'bg-teal-100 text-teal-700 border-teal-200',           dot: 'bg-teal-500' },
-  'Good':         { label: 'Good',         color: 'bg-blue-100 text-blue-700 border-blue-200',           dot: 'bg-blue-500' },
-  'Fair':         { label: 'Fair',         color: 'bg-amber-100 text-amber-700 border-amber-200',         dot: 'bg-amber-500' },
-  'For Parts':    { label: 'For Parts',    color: 'bg-red-100 text-red-700 border-red-200',              dot: 'bg-red-500' },
+  'Brand New':  { label: 'Brand New', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
+  'Like New':   { label: 'Like New',  color: 'bg-teal-100 text-teal-700 border-teal-200',          dot: 'bg-teal-500' },
+  'Good':       { label: 'Good',      color: 'bg-sky-100 text-sky-700 border-sky-200',             dot: 'bg-sky-500' },
+  'Fair':       { label: 'Fair',      color: 'bg-amber-100 text-amber-700 border-amber-200',       dot: 'bg-amber-500' },
+  'For Parts':  { label: 'For Parts', color: 'bg-red-100 text-red-700 border-red-200',             dot: 'bg-red-500' },
 };
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
+/* ─── Skeleton ───────────────────────────────────────────────────────────── */
 const SkeletonBlock = ({ className }: { className?: string }) => (
-  <div className={`animate-pulse bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:400%_100%] rounded-xl ${className}`}
-    style={{ animation: 'shimmer 1.6s ease-in-out infinite', backgroundSize: '400% 100%' }} />
+  <div
+    className={`rounded-xl ${className}`}
+    style={{
+      background: 'linear-gradient(90deg, #efefef 25%, #f9f9f9 50%, #efefef 75%)',
+      backgroundSize: '400% 100%',
+      animation: 'shimmer 1.6s ease-in-out infinite',
+    }}
+  />
 );
 
 const ItemDetailSkeleton = () => (
-  <div className="min-h-screen bg-[#f8f7f5]">
+  <div className="min-h-screen bg-[#F3F4F6]">
     <style>{`@keyframes shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}`}</style>
     <div className="h-14 bg-white border-b" />
     <div className="max-w-6xl mx-auto px-4 pt-6 pb-32">
@@ -96,9 +83,7 @@ const ItemDetailSkeleton = () => (
       <div className="grid lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 space-y-3">
           <SkeletonBlock className="aspect-[4/3] w-full" />
-          <div className="flex gap-2">
-            {[1,2,3].map(i => <SkeletonBlock key={i} className="w-20 h-20" />)}
-          </div>
+          <div className="flex gap-2">{[1,2,3].map(i => <SkeletonBlock key={i} className="w-20 h-20" />)}</div>
         </div>
         <div className="lg:col-span-5 space-y-4">
           <SkeletonBlock className="h-8 w-3/4" />
@@ -112,7 +97,7 @@ const ItemDetailSkeleton = () => (
   </div>
 );
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+/* ─── Main Component ─────────────────────────────────────────────────────── */
 const ItemDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -126,16 +111,19 @@ const ItemDetail = () => {
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [isFavorited, setIsFavorited] = useState(false);
   const [isTogglingFav, setIsTogglingFav] = useState(false);
-
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [bargainingDialogOpen, setBargainingDialogOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-
   const [hasPendingOrder, setHasPendingOrder] = useState(false);
   const [isPendingBySomeoneElse, setIsPendingBySomeoneElse] = useState(false);
   const [isBuying, setIsBuying] = useState(false);
 
-  // ── Effects ──────────────────────────────────────────────────────────────────
+  // Touch swipe refs
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const isDragging = useRef(false);
+
+  /* ── Effects ─────────────────────────────────────────────────────────────── */
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
     if (id) fetchItem();
@@ -154,9 +142,7 @@ const ItemDetail = () => {
     if (data) {
       setHasPendingOrder(data.buyer_id === currentUserId);
       setIsPendingBySomeoneElse(data.buyer_id !== currentUserId);
-    } else {
-      setHasPendingOrder(false); setIsPendingBySomeoneElse(false);
-    }
+    } else { setHasPendingOrder(false); setIsPendingBySomeoneElse(false); }
   }, []);
 
   useEffect(() => {
@@ -169,19 +155,49 @@ const ItemDetail = () => {
     return () => { supabase.removeChannel(ch); };
   }, [user?.id, item?.id, checkPendingOrder]);
 
-  // ── Keyboard nav for lightbox ─────────────────────────────────────────────
   useEffect(() => {
     if (!lightboxOpen || !item) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') setCurrentImageIndex(i => (i + 1) % item.images.length);
-      if (e.key === 'ArrowLeft')  setCurrentImageIndex(i => (i - 1 + item.images.length) % item.images.length);
+      if (e.key === 'ArrowRight') nextImage();
+      if (e.key === 'ArrowLeft') prevImage();
       if (e.key === 'Escape') setLightboxOpen(false);
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [lightboxOpen, item]);
 
-  // ── Fetch fns ─────────────────────────────────────────────────────────────
+  /* ── Image navigation ───────────────────────────────────────────────────── */
+  const nextImage = () => {
+    if (!item) return;
+    setCurrentImageIndex(i => (i + 1) % item.images.length);
+  };
+  const prevImage = () => {
+    if (!item) return;
+    setCurrentImageIndex(i => (i - 1 + item.images.length) % item.images.length);
+  };
+
+  /* ── Touch handlers ─────────────────────────────────────────────────────── */
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    isDragging.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const dx = Math.abs(e.touches[0].clientX - touchStartX.current);
+    const dy = Math.abs(e.touches[0].clientY - touchStartY.current);
+    if (dx > dy && dx > 10) isDragging.current = true;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!item || item.images.length <= 1) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (isDragging.current && Math.abs(diff) > 40) {
+      if (diff > 0) nextImage(); else prevImage();
+    }
+  };
+
+  /* ── Fetch fns ──────────────────────────────────────────────────────────── */
   const fetchItem = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -220,7 +236,7 @@ const ItemDetail = () => {
     setIsFavorited(!error && !!data);
   };
 
-  // ── Actions ───────────────────────────────────────────────────────────────
+  /* ── Actions ────────────────────────────────────────────────────────────── */
   const toggleFavorite = async () => {
     if (!user) { navigate('/auth'); return; }
     setIsTogglingFav(true);
@@ -241,7 +257,10 @@ const ItemDetail = () => {
   const handleBuyNow = async () => {
     if (!user) return navigate('/auth');
     const verified = userProfile?.is_verified && userProfile?.verification_status === 'approved';
-    if (!verified) { toast({ title: 'KYC Required', description: 'Complete student verification first', variant: 'destructive' }); return navigate('/kyc'); }
+    if (!verified) {
+      toast({ title: 'KYC Required', description: 'Complete student verification first', variant: 'destructive' });
+      return navigate('/kyc');
+    }
     if (!item || user.id === item.seller_id || item.is_sold) return;
     setIsBuying(true);
     const { data: rpcResponse, error: rpcError } = await supabase.rpc('create_new_order', {
@@ -251,7 +270,8 @@ const ItemDetail = () => {
     setIsBuying(false);
     if (rpcError) {
       const t = JSON.stringify(rpcError).toLowerCase();
-      sonnerToast.error(t.includes('duplicate') || t.includes('reserved') ? 'Item reserved by another buyer.' : 'Order failed. Try again.');
+      sonnerToast.error(t.includes('duplicate') || t.includes('reserved')
+        ? 'Item reserved by another buyer.' : 'Order failed. Try again.');
       return;
     }
     const res = rpcResponse as { success?: boolean; error?: string } | null;
@@ -310,63 +330,71 @@ const ItemDetail = () => {
     }
   };
 
-  // ── Render states ─────────────────────────────────────────────────────────
+  /* ── Loading / not found ─────────────────────────────────────────────────── */
   if (loading) return <ItemDetailSkeleton />;
 
   if (!item) return (
-    <div className="min-h-screen bg-[#f8f7f5] flex flex-col items-center justify-center p-6 text-center">
-      <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-        <Package className="h-10 w-10 text-gray-400" />
+    <div className="min-h-screen bg-[#F3F4F6] flex flex-col items-center justify-center p-6 text-center">
+      <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center mb-4 shadow-sm">
+        <Package className="h-10 w-10 text-gray-300" />
       </div>
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Item Not Found</h1>
-      <p className="text-gray-500 mb-6">This listing may have been removed or doesn't exist.</p>
-      <Button onClick={() => navigate('/')} className="rounded-full px-8">Back to Home</Button>
+      <p className="text-gray-500 mb-6">This listing may have been removed.</p>
+      <Button onClick={() => navigate('/')} className="rounded-full px-8 bg-gray-900 hover:bg-gray-800">
+        Back to Home
+      </Button>
     </div>
   );
 
-  // ── Derived state ────────────────────────────────────────────────────────
+  /* ── Derived state ───────────────────────────────────────────────────────── */
   const isOwner   = user?.id === item.seller_id;
   const isVerified = user && userProfile?.is_verified && userProfile?.verification_status === 'approved';
   const isDisabled = !user || (!isVerified && !isOwner) || item.is_sold || hasPendingOrder || isPendingBySomeoneElse;
-  const cond       = conditionConfig[item.condition] ?? { label: item.condition, color: 'bg-gray-100 text-gray-700 border-gray-200', dot: 'bg-gray-400' };
-  const isRental   = !!item.rental_metadata?.rental_duration;
-  const daysAgo    = Math.floor((Date.now() - new Date(item.created_at).getTime()) / 86400000);
+  const cond      = conditionConfig[item.condition] ?? { label: item.condition, color: 'bg-gray-100 text-gray-700 border-gray-200', dot: 'bg-gray-400' };
+  const isRental  = !!item.rental_metadata?.rental_duration;
+  const daysAgo   = Math.floor((Date.now() - new Date(item.created_at).getTime()) / 86400000);
   const listedText = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo}d ago`;
+  const images    = item.images || [];
 
-  const buttonLabel = item.is_sold ? '🚫 Sold Out'
-    : isPendingBySomeoneElse ? '⏳ Reserved by Another'
-    : hasPendingOrder ? ' Already Reserved'
-    : isBuying ? 'Reserving…'
-    : isRental ? '📦 Reserve Rental'
-    : ' Buy Now';
+  const buttonLabel = item.is_sold        ? '🚫 Sold Out'
+    : isPendingBySomeoneElse              ? '⏳ Reserved'
+    : hasPendingOrder                     ? '✓ Reserved'
+    : isBuying                            ? 'Reserving…'
+    : isRental                            ? 'Reserve Rental'
+    : 'Buy Now';
 
+  /* ─────────────────────────────────────────────────────────────────────────
+     Render
+  ───────────────────────────────────────────────────────────────────────── */
   return (
     <>
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(12px); }
+          from { opacity: 0; transform: translateY(14px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        .fade-up { animation: fadeUp 0.35s ease both; }
+        .fade-up { animation: fadeUp 0.32s cubic-bezier(.4,0,.2,1) both; }
         @keyframes heartPop {
           0%   { transform: scale(1); }
-          40%  { transform: scale(1.35); }
-          70%  { transform: scale(0.9); }
+          40%  { transform: scale(1.4); }
+          70%  { transform: scale(0.88); }
           100% { transform: scale(1); }
         }
-        .heart-pop { animation: heartPop 0.4s ease; }
+        .heart-pop { animation: heartPop 0.38s ease; }
+        @keyframes shimmer { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+        .img-slide { transition: opacity 0.22s ease; }
       `}</style>
 
-      <div className="min-h-screen bg-[#f8f7f5] font-sans">
+      <div className="min-h-screen bg-[#F3F4F6]" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
 
-        {/* ── Header ──────────────────────────────────────────────────────── */}
-        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-200/60 shadow-sm">
+        {/* ══ HEADER ══════════════════════════════════════════════════════════ */}
+        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-[0_1px_12px_rgba(0,0,0,0.06)]">
           <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
             <button
               onClick={() => navigate(-1)}
-              className="flex items-center gap-1.5 text-gray-700 hover:text-gray-900 transition-colors font-medium text-sm"
+              className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 transition-colors font-medium text-sm active:scale-95"
             >
               <ArrowLeft className="h-4 w-4" /> Back
             </button>
@@ -376,15 +404,13 @@ const ItemDetail = () => {
             <div className="flex items-center gap-1">
               <button
                 onClick={handleShare}
-                className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-600"
-                title="Share"
+                className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500 active:scale-95"
               >
                 <Share2 className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setReportModalOpen(true)}
-                className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-red-50 transition-colors text-red-400"
-                title="Report"
+                className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-red-50 transition-colors text-red-400 active:scale-95"
               >
                 <AlertTriangle className="h-4 w-4" />
               </button>
@@ -392,9 +418,9 @@ const ItemDetail = () => {
           </div>
         </header>
 
-        <div className="max-w-6xl mx-auto px-4 pt-5 pb-32 lg:pb-12">
+        <div className="max-w-6xl mx-auto px-4 pt-5 pb-36 lg:pb-12">
 
-          {/* ── Breadcrumbs ─────────────────────────────────────────────── */}
+          {/* Breadcrumbs */}
           <nav className="flex items-center gap-1.5 text-xs text-gray-400 mb-5 overflow-hidden whitespace-nowrap">
             <Link to="/" className="hover:text-gray-600 transition-colors">Home</Link>
             {item.categories && (
@@ -409,43 +435,91 @@ const ItemDetail = () => {
             <span className="truncate text-gray-600 font-medium">{item.title}</span>
           </nav>
 
-          {/* ── Sold banner ─────────────────────────────────────────────── */}
+          {/* Sold banner */}
           {item.is_sold && (
             <div className="mb-5 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-3">
               <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <Package className="h-4 w-4 text-red-600" />
+                <Package className="h-4 w-4 text-red-500" />
               </div>
               <div>
                 <p className="font-semibold text-red-800 text-sm">This item has been sold</p>
-                <p className="text-xs text-red-600">Check out similar items below</p>
+                <p className="text-xs text-red-500">Check out similar items below</p>
               </div>
             </div>
           )}
 
           <div className="grid lg:grid-cols-12 gap-6 lg:gap-10">
 
-            {/* ── LEFT col: Images ────────────────────────────────────── */}
+            {/* ══ LEFT: IMAGE GALLERY ════════════════════════════════════════ */}
             <div className="lg:col-span-7 space-y-3 fade-up">
 
-              {/* Main image */}
+              {/* ── Main swipeable image ── */}
               <div
-                className="relative rounded-2xl overflow-hidden bg-white border border-gray-200/80 shadow-sm cursor-zoom-in group"
+                className="relative rounded-2xl overflow-hidden bg-white border border-gray-100 shadow-sm select-none"
                 style={{ aspectRatio: '4/3' }}
-                onClick={() => setLightboxOpen(true)}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
               >
-                {item.images?.length > 0 ? (
+                {images.length > 0 ? (
                   <>
                     <img
-                      src={getDetailImage(item.images[currentImageIndex])}
+                      key={currentImageIndex}
+                      src={getDetailImage(images[currentImageIndex])}
                       alt={item.title}
-                      className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.02]"
+                      className="w-full h-full object-contain img-slide cursor-zoom-in"
+                      onClick={() => setLightboxOpen(true)}
+                      draggable={false}
                     />
-                    {/* Hover overlay */}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center">
-                      <div className="bg-black/60 text-white rounded-full px-4 py-2 text-xs font-medium flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg">
+
+                    {/* Zoom hint on desktop */}
+                    <div className="hidden lg:flex absolute inset-0 items-center justify-center pointer-events-none opacity-0 hover:opacity-100 transition-opacity duration-200 bg-black/5">
+                      <div className="bg-black/60 text-white rounded-full px-3.5 py-1.5 text-xs font-medium flex items-center gap-1.5 shadow-lg pointer-events-auto cursor-zoom-in" onClick={() => setLightboxOpen(true)}>
                         <ZoomIn className="h-3.5 w-3.5" /> View Full Size
                       </div>
                     </div>
+
+                    {/* Prev / Next arrows — desktop only */}
+                    {images.length > 1 && (
+                      <>
+                        <button
+                          onClick={prevImage}
+                          className="hidden lg:flex absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/90 hover:bg-white shadow-md rounded-full items-center justify-center text-gray-700 transition-all hover:scale-105 active:scale-95 z-10"
+                        >
+                          <ChevronLeft className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={nextImage}
+                          className="hidden lg:flex absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/90 hover:bg-white shadow-md rounded-full items-center justify-center text-gray-700 transition-all hover:scale-105 active:scale-95 z-10"
+                        >
+                          <ChevronRight className="h-5 w-5" />
+                        </button>
+                      </>
+                    )}
+
+                    {/* Swipe dots (mobile) */}
+                    {images.length > 1 && (
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 lg:hidden">
+                        {images.map((_, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setCurrentImageIndex(idx)}
+                            className={`rounded-full transition-all duration-200 ${
+                              idx === currentImageIndex
+                                ? 'w-5 h-1.5 bg-gray-900'
+                                : 'w-1.5 h-1.5 bg-gray-900/30'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Counter pill */}
+                    {images.length > 1 && (
+                      <div className="absolute top-3 right-3 bg-black/50 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-sm font-medium tabular-nums">
+                        {currentImageIndex + 1} / {images.length}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-gray-300 gap-3">
@@ -462,51 +536,44 @@ const ItemDetail = () => {
 
                 {/* Negotiable badge */}
                 {item.is_negotiable && !item.is_sold && (
-                  <div className="absolute top-3 right-3 bg-violet-600/90 text-white px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-sm flex items-center gap-1">
+                  <div className="absolute bottom-3 right-3 bg-gray-900/80 text-white px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-sm flex items-center gap-1 lg:flex hidden">
                     <TrendingUp className="h-3 w-3" /> Negotiable
-                  </div>
-                )}
-
-                {/* Image counter */}
-                {item.images?.length > 1 && (
-                  <div className="absolute bottom-3 right-3 bg-black/50 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-sm">
-                    {currentImageIndex + 1} / {item.images.length}
                   </div>
                 )}
               </div>
 
-              {/* Thumbnail strip */}
-              {item.images?.length > 1 && (
+              {/* ── Thumbnail scroll strip ── */}
+              {images.length > 1 && (
                 <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
-                  {item.images.map((img, idx) => (
+                  {images.map((img, idx) => (
                     <button
                       key={idx}
                       onClick={() => setCurrentImageIndex(idx)}
-                      className={`relative w-[72px] h-[72px] flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all duration-200 ${
+                      className={`relative flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all duration-200 active:scale-95 ${
                         idx === currentImageIndex
-                          ? 'border-violet-500 ring-2 ring-violet-200 shadow-md'
-                          : 'border-gray-200 opacity-60 hover:opacity-90 hover:border-gray-300'
+                          ? 'border-gray-900 ring-2 ring-gray-200 shadow-md w-[72px] h-[72px]'
+                          : 'border-transparent opacity-50 hover:opacity-80 w-[68px] h-[68px]'
                       }`}
                     >
-                      <img src={getThumbImage(img)} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
+                      <img src={getThumbImage(img)} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
               )}
 
-              {/* ── Safety Card ──────────────────────────────────────── */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50/60 border border-blue-100 rounded-2xl p-4 mt-2">
-                <div className="flex items-center gap-2 text-blue-700 font-semibold text-sm mb-3">
-                  <Shield className="h-4 w-4" /> Safety Reminder
+              {/* ── Safety Card ── */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-gray-800 font-semibold text-sm mb-3">
+                  <Shield className="h-4 w-4 text-blue-500" /> Safety Tips
                 </div>
                 <div className="space-y-2">
                   {[
-                    'Meet in public, well-lit campus areas only',
+                    'Meet in a public, well-lit campus area',
                     'Inspect the item carefully before paying',
                     'Use MyCampusKart chat — avoid outside contact',
                   ].map((tip, i) => (
-                    <div key={i} className="flex items-start gap-2 text-xs text-blue-700/80">
-                      <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-blue-500" />
+                    <div key={i} className="flex items-start gap-2 text-xs text-gray-500">
+                      <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-blue-400" />
                       <span>{tip}</span>
                     </div>
                   ))}
@@ -514,17 +581,17 @@ const ItemDetail = () => {
               </div>
             </div>
 
-            {/* ── RIGHT col: Details & Actions ────────────────────── */}
-            <div className="lg:col-span-5 space-y-4 fade-up" style={{ animationDelay: '0.1s' }}>
+            {/* ══ RIGHT: DETAILS + ACTIONS ═══════════════════════════════════ */}
+            <div className="lg:col-span-5 space-y-4 fade-up" style={{ animationDelay: '0.08s' }}>
 
-              {/* ── Main info card ──────────────────────────────────── */}
-              <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-5 space-y-4">
+              {/* ── Main info card ── */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
 
                 {/* Category chip */}
                 {item.categories && (
-                  <div className="inline-flex items-center gap-1.5 bg-violet-50 text-violet-700 border border-violet-100 px-3 py-1 rounded-full text-xs font-medium">
-                    <Tag className="h-3 w-3" /> {item.categories.name}
-                  </div>
+                  <span className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-medium">
+                    <span>{item.categories.icon}</span> {item.categories.name}
+                  </span>
                 )}
 
                 {/* Title */}
@@ -533,7 +600,7 @@ const ItemDetail = () => {
                 </h1>
 
                 {/* Meta row */}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-500">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-400">
                   <span className="flex items-center gap-1">
                     <Eye className="h-3.5 w-3.5" /> {item.views.toLocaleString()} views
                   </span>
@@ -541,7 +608,7 @@ const ItemDetail = () => {
                     <Clock className="h-3.5 w-3.5" /> {listedText}
                   </span>
                   {item.location && (
-                    <span className="flex items-center gap-1 text-violet-600 font-medium">
+                    <span className="flex items-center gap-1 text-gray-600 font-medium">
                       <MapPin className="h-3.5 w-3.5" /> {item.location}
                     </span>
                   )}
@@ -558,7 +625,7 @@ const ItemDetail = () => {
                     </span>
                   )}
                   {item.is_negotiable && (
-                    <span className="ml-1 text-xs bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full font-medium">
+                    <span className="ml-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
                       Negotiable
                     </span>
                   )}
@@ -566,16 +633,18 @@ const ItemDetail = () => {
 
                 {/* Rental box */}
                 {isRental && (
-                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3.5 flex items-start gap-3">
-                    <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Key className="h-4 w-4 text-emerald-700" />
+                  <div className="bg-amber-50 border border-amber-100 rounded-xl p-3.5 flex items-start gap-3">
+                    <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Key className="h-4 w-4 text-amber-700" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs font-semibold text-emerald-800 mb-1">Rental Item</p>
-                      <div className="flex justify-between text-xs text-emerald-700">
+                      <p className="text-xs font-semibold text-amber-900 mb-1">Rental Item</p>
+                      <div className="flex justify-between text-xs text-amber-700">
                         <span>Security deposit</span>
                         <span className="font-bold">
-                          {item.rental_metadata?.rental_deposit ? `₹${item.rental_metadata.rental_deposit.toLocaleString()}` : 'None'}
+                          {item.rental_metadata?.rental_deposit
+                            ? `₹${item.rental_metadata.rental_deposit.toLocaleString()}`
+                            : 'None'}
                         </span>
                       </div>
                     </div>
@@ -587,21 +656,21 @@ const ItemDetail = () => {
                 {/* Description */}
                 <div>
                   <h3 className="text-sm font-semibold text-gray-800 mb-2">About this item</h3>
-                  <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                  <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-wrap">
                     {item.description}
                   </p>
                 </div>
 
                 <div className="h-px bg-gray-100" />
 
-                {/* Seller info */}
+                {/* Seller */}
                 <button
-                  className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors text-left group"
+                  className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 transition-colors text-left group"
                   onClick={() => item.profiles?.mck_id && navigate(`/profile/${item.profiles.mck_id}`)}
                 >
-                  <Avatar className="h-11 w-11 border-2 border-gray-100 shadow-sm flex-shrink-0">
+                  <Avatar className="h-11 w-11 border-2 border-gray-100 flex-shrink-0">
                     <AvatarImage src={item.profiles?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-violet-100 text-violet-700 font-bold text-base">
+                    <AvatarFallback className="bg-gray-100 text-gray-700 font-bold text-base">
                       {item.profiles?.full_name?.charAt(0) || 'U'}
                     </AvatarFallback>
                   </Avatar>
@@ -620,29 +689,29 @@ const ItemDetail = () => {
                       )}
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5 truncate">
-                      {item.profiles?.mck_id} 
+                      {item.profiles?.mck_id}
                       {item.profiles?.deals_completed ? ` · ${item.profiles.deals_completed} deals` : ''}
                     </p>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0" />
                 </button>
               </div>
 
-              {/* ── DESKTOP Action Area ──────────────────────────────── */}
-              <div className="hidden lg:block bg-white rounded-2xl border border-gray-200/80 shadow-sm p-5">
+              {/* ── DESKTOP Action Area ── */}
+              <div className="hidden lg:block bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
 
                 {/* NOT LOGGED IN */}
                 {!user && (
                   <div className="text-center space-y-3">
-                    <div className="w-12 h-12 bg-violet-100 rounded-full flex items-center justify-center mx-auto">
-                      <LogIn className="h-6 w-6 text-violet-600" />
+                    <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto">
+                      <LogIn className="h-6 w-6 text-gray-700" />
                     </div>
                     <div>
                       <h3 className="font-bold text-gray-900">Login to Continue</h3>
-                      <p className="text-xs text-gray-500 mt-0.5">Create a free account to buy or chat with the seller.</p>
+                      <p className="text-xs text-gray-400 mt-0.5">Create a free account to buy or chat with the seller.</p>
                     </div>
                     <Button
-                      className="w-full h-11 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow-sm"
+                      className="w-full h-11 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-semibold"
                       onClick={() => navigate('/auth')}
                     >
                       <LogIn className="h-4 w-4 mr-2" /> Login / Sign Up
@@ -654,10 +723,10 @@ const ItemDetail = () => {
                 {user && !isVerified && !isOwner && (
                   <div className="space-y-3">
                     <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3.5">
-                      <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="font-semibold text-amber-900 text-sm">KYC Required</p>
-                        <p className="text-xs text-amber-700 mt-0.5">Complete student verification to buy items or chat with sellers.</p>
+                        <p className="text-xs text-amber-700 mt-0.5">Complete student verification to buy or chat.</p>
                       </div>
                     </div>
                     <Button
@@ -669,12 +738,13 @@ const ItemDetail = () => {
                   </div>
                 )}
 
-                {/* VERIFIED - not owner */}
+                {/* VERIFIED */}
                 {user && (isVerified || isOwner) && !isOwner && (
                   <div className="space-y-3">
+                    {/* Buy + Wishlist row */}
                     <div className="flex gap-2">
                       <Button
-                        className="flex-1 h-12 rounded-xl font-bold text-base shadow-sm bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-60"
+                        className="flex-1 h-12 rounded-xl font-bold text-base bg-gray-900 hover:bg-gray-800 text-white disabled:opacity-50"
                         onClick={handleBuyNow}
                         disabled={isDisabled || isBuying}
                       >
@@ -683,16 +753,17 @@ const ItemDetail = () => {
                       <button
                         onClick={toggleFavorite}
                         disabled={isTogglingFav}
-                        className={`h-12 w-12 rounded-xl border-2 flex items-center justify-center transition-all duration-200 flex-shrink-0 ${
+                        className={`h-12 w-12 rounded-xl border-2 flex items-center justify-center transition-all flex-shrink-0 ${
                           isFavorited
                             ? 'border-red-400 bg-red-50 text-red-500'
-                            : 'border-gray-200 bg-white text-gray-400 hover:border-red-300 hover:text-red-400'
+                            : 'border-gray-200 text-gray-400 hover:border-red-300 hover:text-red-400'
                         }`}
                       >
                         <Heart className={`h-5 w-5 transition-all ${isFavorited ? 'fill-current heart-pop' : ''}`} />
                       </button>
                     </div>
 
+                    {/* Secondary actions */}
                     <div className={`grid gap-2 ${item.whatsapp_number ? 'grid-cols-2' : 'grid-cols-2'}`}>
                       <Button
                         variant="outline"
@@ -712,11 +783,11 @@ const ItemDetail = () => {
                       </Button>
                       {item.whatsapp_number && (
                         <Button
-                          className="col-span-2 h-11 rounded-xl bg-green-500 hover:bg-green-600 text-white font-medium"
+                          className="col-span-2 h-11 rounded-xl bg-[#25D366] hover:bg-[#1ebe5d] text-white font-semibold"
                           onClick={handleWhatsAppClick}
                           disabled={isDisabled}
                         >
-                          <Phone className="h-4 w-4 mr-2" /> WhatsApp Seller
+                          <WhatsAppIcon className="h-4 w-4 mr-2" /> WhatsApp Seller
                         </Button>
                       )}
                     </div>
@@ -737,12 +808,12 @@ const ItemDetail = () => {
             </div>
           </div>
 
-          {/* ── Similar Items ──────────────────────────────────────────────── */}
-          {user && similarItems.length > 0 && (
-            <div className="mt-10 fade-up" style={{ animationDelay: '0.2s' }}>
+          {/* ══ SIMILAR ITEMS ══════════════════════════════════════════════════ */}
+          {similarItems.length > 0 && (
+            <div className="mt-10 fade-up" style={{ animationDelay: '0.18s' }}>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <Users className="h-5 w-5 text-violet-500" /> You might also like
+                  <Users className="h-5 w-5 text-gray-400" /> You might also like
                 </h2>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
@@ -750,7 +821,7 @@ const ItemDetail = () => {
                   <Link
                     to={`/item/${s.id}`}
                     key={s.id}
-                    className="group block bg-white rounded-xl border border-gray-200/80 overflow-hidden hover:shadow-md hover:border-violet-200 transition-all duration-200"
+                    className="group block bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md hover:border-gray-200 transition-all duration-200 active:scale-[0.98]"
                   >
                     <div className="aspect-square bg-gray-50 overflow-hidden">
                       <img
@@ -760,8 +831,8 @@ const ItemDetail = () => {
                       />
                     </div>
                     <div className="p-2.5">
-                      <h3 className="font-medium text-gray-900 text-xs truncate leading-snug">{s.title}</h3>
-                      <p className="font-bold text-violet-600 text-sm mt-0.5">₹{s.price.toLocaleString()}</p>
+                      <h3 className="font-medium text-gray-800 text-xs truncate">{s.title}</h3>
+                      <p className="font-bold text-gray-900 text-sm mt-0.5">₹{s.price.toLocaleString()}</p>
                     </div>
                   </Link>
                 ))}
@@ -770,37 +841,38 @@ const ItemDetail = () => {
           )}
         </div>
 
-        {/* ── MOBILE Sticky Action Bar ───────────────────────────────────── */}
+        {/* ══ MOBILE STICKY ACTION BAR ═══════════════════════════════════════ */}
         {!isOwner && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white/95 backdrop-blur-md border-t border-gray-200/80 shadow-[0_-8px_30px_rgba(0,0,0,0.08)]">
-            <div className="px-4 py-3 flex items-center gap-3">
+          <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white border-t border-gray-100 shadow-[0_-8px_24px_rgba(0,0,0,0.07)]">
+            <div className="px-4 py-3 flex items-center gap-2.5 max-w-lg mx-auto">
+
               {/* Price */}
-              <div className="flex flex-col min-w-0">
-                <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Price</span>
-                <span className="font-extrabold text-lg text-gray-900 leading-tight tracking-tight">
+              <div className="flex flex-col flex-shrink-0 min-w-0 mr-1">
+                <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-widest">Price</span>
+                <span className="font-extrabold text-lg text-gray-900 leading-tight tabular-nums">
                   ₹{item.price.toLocaleString()}
                 </span>
               </div>
 
-              <div className="flex-1 flex items-center gap-2 justify-end">
+              <div className="flex-1 flex items-center gap-2 justify-end overflow-hidden">
 
                 {/* NOT LOGGED IN */}
                 {!user && (
                   <Button
-                    className="flex-1 h-11 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-sm"
+                    className="flex-1 h-11 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-bold text-sm"
                     onClick={() => navigate('/auth')}
                   >
-                    <LogIn className="h-4 w-4 mr-2" /> Login to Buy
+                    <LogIn className="h-4 w-4 mr-2 flex-shrink-0" /> Login to Buy
                   </Button>
                 )}
 
                 {/* UNVERIFIED */}
                 {user && !isVerified && (
                   <Button
-                    className="flex-1 h-11 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold"
+                    className="flex-1 h-11 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm"
                     onClick={() => navigate('/kyc')}
                   >
-                    <Shield className="h-4 w-4 mr-2" /> Verify to Buy
+                    <Shield className="h-4 w-4 mr-2 flex-shrink-0" /> Verify to Buy
                   </Button>
                 )}
 
@@ -811,18 +883,18 @@ const ItemDetail = () => {
                     <button
                       onClick={toggleFavorite}
                       disabled={isTogglingFav}
-                      className={`h-11 w-11 rounded-xl border-2 flex-shrink-0 flex items-center justify-center transition-all ${
+                      className={`h-11 w-11 rounded-xl border-2 flex-shrink-0 flex items-center justify-center transition-all active:scale-95 ${
                         isFavorited ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200 text-gray-400'
                       }`}
                     >
                       <Heart className={`h-5 w-5 ${isFavorited ? 'fill-current' : ''}`} />
                     </button>
 
-                    {/* Make Offer */}
+                    {/* Make offer */}
                     <button
                       onClick={() => setBargainingDialogOpen(true)}
                       disabled={isDisabled}
-                      className="h-11 w-11 rounded-xl border-2 border-gray-200 flex-shrink-0 flex items-center justify-center text-gray-600 disabled:opacity-40"
+                      className="h-11 w-11 rounded-xl border-2 border-gray-200 flex-shrink-0 flex items-center justify-center text-gray-500 disabled:opacity-40 active:scale-95 transition-all"
                     >
                       <DollarSign className="h-5 w-5" />
                     </button>
@@ -831,7 +903,7 @@ const ItemDetail = () => {
                     <button
                       onClick={() => handleChatClick()}
                       disabled={isDisabled}
-                      className="h-11 w-11 rounded-xl border-2 border-gray-200 flex-shrink-0 flex items-center justify-center text-gray-600 disabled:opacity-40"
+                      className="h-11 w-11 rounded-xl border-2 border-gray-200 flex-shrink-0 flex items-center justify-center text-gray-500 disabled:opacity-40 active:scale-95 transition-all"
                     >
                       <MessageCircle className="h-5 w-5" />
                     </button>
@@ -841,49 +913,59 @@ const ItemDetail = () => {
                       <button
                         onClick={handleWhatsAppClick}
                         disabled={isDisabled}
-                        className="h-11 w-11 rounded-xl border-2 border-green-300 bg-green-50 flex-shrink-0 flex items-center justify-center text-green-600 disabled:opacity-40"
+                        className="h-11 w-11 rounded-xl border-2 border-[#25D366]/50 bg-[#25D366]/10 flex-shrink-0 flex items-center justify-center text-[#25D366] disabled:opacity-40 active:scale-95 transition-all"
                       >
-                        <Phone className="h-5 w-5" />
+                        <WhatsAppIcon className="h-5 w-5" />
                       </button>
                     )}
 
                     {/* Buy Now */}
                     <Button
-                      className="h-11 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold px-5 shadow-sm flex-shrink-0 disabled:opacity-60"
+                      className="h-11 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-bold px-4 flex-shrink-0 disabled:opacity-50 active:scale-95 transition-all text-sm"
                       onClick={handleBuyNow}
                       disabled={isDisabled || isBuying}
                     >
-                      {item.is_sold ? 'Sold' : isPendingBySomeoneElse ? 'Reserved' : hasPendingOrder ? 'Reserved ✓' : isBuying ? '...' : 'Buy Now'}
+                      {item.is_sold ? 'Sold' : isPendingBySomeoneElse ? 'Reserved' : hasPendingOrder ? 'Reserved ✓' : isBuying ? '…' : 'Buy Now'}
                     </Button>
                   </>
                 )}
               </div>
             </div>
-            {/* Safe area spacing for iOS */}
             <div className="h-[env(safe-area-inset-bottom)]" />
           </div>
         )}
 
-        {/* ── Lightbox ────────────────────────────────────────────────────── */}
-        {lightboxOpen && item.images?.length > 0 && (
+        {/* ══ LIGHTBOX ═══════════════════════════════════════════════════════ */}
+        {lightboxOpen && images.length > 0 && (
           <div
-            className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-4"
-            style={{ animation: 'fadeUp 0.2s ease' }}
+            className="fixed inset-0 z-[60] bg-black/96 flex items-center justify-center"
             onClick={(e) => e.target === e.currentTarget && setLightboxOpen(false)}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={(e) => {
+              if (!item) return;
+              const diff = touchStartX.current - e.changedTouches[0].clientX;
+              if (Math.abs(diff) > 40) { if (diff > 0) nextImage(); else prevImage(); }
+            }}
           >
             {/* Close */}
             <button
               onClick={() => setLightboxOpen(false)}
-              className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-10"
+              className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-10 active:scale-95"
             >
               <X className="h-5 w-5" />
             </button>
 
+            {/* Counter */}
+            <div className="absolute top-4 left-4 text-white/60 text-sm font-medium tabular-nums">
+              {currentImageIndex + 1} / {images.length}
+            </div>
+
             {/* Prev */}
-            {item.images.length > 1 && (
+            {images.length > 1 && (
               <button
-                onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(i => (i - 1 + item.images.length) % item.images.length); }}
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-10"
+                onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-10 active:scale-95"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
@@ -892,43 +974,40 @@ const ItemDetail = () => {
             {/* Image */}
             <img
               key={currentImageIndex}
-              src={getDetailImage(item.images[currentImageIndex])}
-              alt={`Image ${currentImageIndex + 1}`}
-              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
-              style={{ animation: 'fadeUp 0.2s ease' }}
+              src={getDetailImage(images[currentImageIndex])}
+              alt={`Photo ${currentImageIndex + 1}`}
+              className="max-w-full max-h-[88vh] object-contain rounded-xl shadow-2xl img-slide"
+              draggable={false}
             />
 
             {/* Next */}
-            {item.images.length > 1 && (
+            {images.length > 1 && (
               <button
-                onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(i => (i + 1) % item.images.length); }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-10"
+                onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-10 active:scale-95"
               >
                 <ChevronRight className="h-5 w-5" />
               </button>
             )}
 
-            {/* Dots */}
-            {item.images.length > 1 && (
-              <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2">
-                {item.images.map((_, idx) => (
+            {/* Dot nav */}
+            {images.length > 1 && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+                {images.map((_, idx) => (
                   <button
                     key={idx}
                     onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(idx); }}
-                    className={`h-2 rounded-full transition-all duration-200 ${idx === currentImageIndex ? 'w-6 bg-white' : 'w-2 bg-white/40 hover:bg-white/70'}`}
+                    className={`rounded-full transition-all duration-200 ${
+                      idx === currentImageIndex ? 'w-6 h-2 bg-white' : 'w-2 h-2 bg-white/30 hover:bg-white/60'
+                    }`}
                   />
                 ))}
               </div>
             )}
-
-            {/* Counter */}
-            <div className="absolute top-4 left-4 text-white/70 text-sm font-medium">
-              {currentImageIndex + 1} / {item.images.length}
-            </div>
           </div>
         )}
 
-        {/* ── Modals ──────────────────────────────────────────────────────── */}
+        {/* ══ MODALS ══════════════════════════════════════════════════════════ */}
         <ReportModal
           isOpen={reportModalOpen}
           onClose={() => setReportModalOpen(false)}
