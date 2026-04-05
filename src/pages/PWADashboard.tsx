@@ -1,20 +1,42 @@
-import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useNotificationCounts } from "@/hooks/useNotificationCounts";
 import {
-  Loader2, Package, Home, RefreshCw, SlidersHorizontal,
-  Bell, MapPin, TrendingUp, ArrowUpDown, CheckCircle2,
-  Search, X, ChevronRight, Sparkles, Star
+  Package,
+  Home,
+  SlidersHorizontal,
+  Bell,
+  CheckCircle2,
+  Search,
+  X,
+  ArrowUpDown,
+  CheckCheck,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
-  Select, SelectContent, SelectItem,
-  SelectTrigger, SelectValue
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import PWASearchBar from "@/components/PWASearchBar";
 import PWACategoryChip from "@/components/PWACategoryChip";
@@ -22,7 +44,9 @@ import PWAListingCard from "@/components/PWAListingCard";
 import PGListingCard from "@/components/PGListingCard";
 import PWAImageSlider from "@/components/PWAImageSlider";
 
-// ─── Interfaces ────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface Profile {
   full_name: string | null;
@@ -68,28 +92,37 @@ interface PGListing {
   created_at: string;
 }
 
-type SortOption = "newest" | "price_asc" | "price_desc" | "popular";
+type SortOption = "newest" | "price_asc" | "price_desc";
 type TabType = "products" | "pg";
 
-// ─── Skeleton Card ──────────────────────────────────────────────────────────────
+const SORT_LABELS: Record<SortOption, string> = {
+  newest: "Newest first",
+  price_asc: "Price: Low to High",
+  price_desc: "Price: High to Low",
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Skeleton loader card
+// ─────────────────────────────────────────────────────────────────────────────
 
 const SkeletonCard = ({ variant = "product" }: { variant?: "product" | "pg" }) => (
   <div
-    className={`rounded-2xl overflow-hidden bg-gradient-to-br from-muted/60 to-muted/30 animate-pulse ${
-      variant === "pg" ? "h-64" : "h-56"
+    className={`rounded-xl overflow-hidden animate-pulse bg-muted/50 ${
+      variant === "pg" ? "h-64" : "h-52"
     }`}
-    style={{ animationDelay: `${Math.random() * 0.4}s` }}
   >
-    <div className="h-3/5 bg-muted/60" />
-    <div className="p-3 space-y-2">
-      <div className="h-3 bg-muted/60 rounded-full w-3/4" />
-      <div className="h-3 bg-muted/40 rounded-full w-1/2" />
-      <div className="h-4 bg-muted/60 rounded-full w-1/3" />
+    <div className="h-[55%] bg-muted/70" />
+    <div className="p-3 space-y-2.5">
+      <div className="h-3 bg-muted/70 rounded-full w-2/3" />
+      <div className="h-3 bg-muted/50 rounded-full w-5/6" />
+      <div className="h-4 bg-muted/70 rounded-full w-1/3" />
     </div>
   </div>
 );
 
-// ─── Empty State ────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Empty state
+// ─────────────────────────────────────────────────────────────────────────────
 
 const EmptyState = ({
   icon: Icon,
@@ -102,60 +135,42 @@ const EmptyState = ({
   subtitle: string;
   onClear: () => void;
 }) => (
-  <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-    <div className="relative mb-6">
-      <div className="absolute inset-0 rounded-full bg-primary/10 blur-2xl scale-150" />
-      <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
-        <Icon className="h-10 w-10 text-primary/40" />
-      </div>
+  <div className="flex flex-col items-center justify-center py-24 px-8 text-center">
+    <div className="h-20 w-20 rounded-3xl bg-muted flex items-center justify-center mb-5">
+      <Icon className="h-9 w-9 text-muted-foreground/50" />
     </div>
-    <h3 className="font-bold text-xl mb-2 text-foreground">{title}</h3>
-    <p className="text-muted-foreground text-sm mb-6 max-w-xs leading-relaxed">{subtitle}</p>
+    <h3 className="font-bold text-lg text-foreground mb-1.5">{title}</h3>
+    <p className="text-sm text-muted-foreground mb-6 max-w-[260px] leading-relaxed">
+      {subtitle}
+    </p>
     <Button
       variant="outline"
       onClick={onClear}
-      className="rounded-full px-6 h-10 border-primary/30 text-primary hover:bg-primary/5 font-medium"
+      className="rounded-full px-6 h-10 font-medium text-sm"
     >
       Clear Filters
     </Button>
   </div>
 );
 
-// ─── Active Filter Badge ────────────────────────────────────────────────────────
-
-const FilterBadge = ({ count }: { count: number }) =>
-  count > 0 ? (
-    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
-      {count}
-    </span>
-  ) : null;
-
-// ─── Sort Pill ─────────────────────────────────────────────────────────────────
-
-const SORT_LABELS: Record<SortOption, string> = {
-  newest: "Newest",
-  price_asc: "Price ↑",
-  price_desc: "Price ↓",
-  popular: "Popular",
-};
-
-// ─── Main Component ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Main component
+// ─────────────────────────────────────────────────────────────────────────────
 
 const PWADashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { unreadChats } = useNotificationCounts();
 
-  // Core state
+  // ── Data state ──────────────────────────────────────────────────────────────
   const [profile, setProfile] = useState<Profile | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [pgListings, setPgListings] = useState<PGListing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
-  // Filter & UI state
+  // ── UI state ────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<TabType>("products");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -163,18 +178,17 @@ const PWADashboard = () => {
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false);
 
-  // PG specific filters
+  // ── PG filters ──────────────────────────────────────────────────────────────
   const [pgPropertyType, setPgPropertyType] = useState("all");
   const [pgSharingType, setPgSharingType] = useState("all");
   const [pgGender, setPgGender] = useState("all");
 
-  // Pull-to-refresh touch refs
+  // ── Pull-to-refresh ─────────────────────────────────────────────────────────
   const touchStartY = useRef(0);
-  const mainRef = useRef<HTMLDivElement>(null);
+  const [pullIndicator, setPullIndicator] = useState(false);
 
-  // ─── Derived ─────────────────────────────────────────────────────────────────
+  // ─── Derived values ─────────────────────────────────────────────────────────
 
   const isVerified = useMemo(
     () => profile?.is_verified && profile?.verification_status === "approved",
@@ -182,60 +196,46 @@ const PWADashboard = () => {
   );
 
   const activeFilterCount = useMemo(() => {
-    let count = 0;
     if (activeTab === "products") {
-      if (priceRange !== "all") count++;
-      if (selectedCategory !== "all") count++;
-    } else {
-      if (pgPropertyType !== "all") count++;
-      if (pgSharingType !== "all") count++;
-      if (pgGender !== "all") count++;
+      return (priceRange !== "all" ? 1 : 0) + (selectedCategory !== "all" ? 1 : 0);
     }
-    return count;
+    return (
+      (pgPropertyType !== "all" ? 1 : 0) +
+      (pgSharingType !== "all" ? 1 : 0) +
+      (pgGender !== "all" ? 1 : 0)
+    );
   }, [activeTab, priceRange, selectedCategory, pgPropertyType, pgSharingType, pgGender]);
 
   const sortedItems = useMemo(() => {
     const arr = [...items];
     if (sortBy === "price_asc") return arr.sort((a, b) => a.price - b.price);
     if (sortBy === "price_desc") return arr.sort((a, b) => b.price - a.price);
-    return arr; // newest is default from DB
+    return arr;
   }, [items, sortBy]);
 
-  // ─── Data fetching ────────────────────────────────────────────────────────────
+  // ─── Fetchers ────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!user) return;
-    (async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("full_name, avatar_url, is_verified, verification_status")
-        .eq("user_id", user.id)
-        .single();
-      if (data) setProfile(data);
-    })();
+    supabase
+      .from("profiles")
+      .select("full_name, avatar_url, is_verified, verification_status")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) setProfile(data);
+      });
   }, [user]);
 
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("categories")
-        .select("id, name, icon")
-        .order("name");
-      if (data) setCategories(data);
-    })();
+    supabase
+      .from("categories")
+      .select("id, name, icon")
+      .order("name")
+      .then(({ data }) => {
+        if (data) setCategories(data);
+      });
   }, []);
-
-  // Load user's existing favorites for UI highlighting
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const { data } = await supabase
-        .from("favorites")
-        .select("item_id")
-        .eq("user_id", user.id);
-      if (data) setFavorites(new Set(data.map((f) => f.item_id)));
-    })();
-  }, [user]);
 
   const fetchItems = useCallback(async () => {
     let query = supabase
@@ -249,42 +249,49 @@ const PWADashboard = () => {
       .limit(60);
 
     if (selectedCategory !== "all") query = query.eq("category_id", selectedCategory);
-    if (searchTerm) {
-      query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
-    }
+    if (searchTerm)
+      query = query.or(
+        `title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`
+      );
     if (priceRange !== "all") {
       const [min, max] = priceRange.split("-").map(Number);
-      query = max ? query.gte("price", min).lte("price", max) : query.gte("price", min);
+      query = max
+        ? query.gte("price", min).lte("price", max)
+        : query.gte("price", min);
     }
 
     const { data: itemsData, error } = await query;
     if (error) {
-      toast({ title: "Error", description: "Failed to load items", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to load listings", variant: "destructive" });
       return;
     }
-    if (!itemsData?.length) { setItems([]); return; }
+    if (!itemsData?.length) {
+      setItems([]);
+      return;
+    }
 
-    const itemIds = itemsData.map((i) => i.id);
+    // Filter out items reserved by other users
     const { data: pendingOrders } = await supabase
       .from("orders")
       .select("item_id, buyer_id")
-      .in("item_id", itemIds)
+      .in("item_id", itemsData.map((i) => i.id))
       .eq("status", "pending");
 
     const reservedByOthers = new Set(
-      (pendingOrders || [])
+      (pendingOrders ?? [])
         .filter((o) => o.buyer_id !== user?.id)
         .map((o) => o.item_id)
     );
 
-    const filteredItems = itemsData
-      .filter((item) => !reservedByOthers.has(item.id))
-      .map((item) => ({
-        ...item,
-        rental_metadata: item.rental_metadata as RentalMetadata | null,
-      }));
-
-    setItems(filteredItems.slice(0, 40));
+    setItems(
+      itemsData
+        .filter((item) => !reservedByOthers.has(item.id))
+        .map((item) => ({
+          ...item,
+          rental_metadata: item.rental_metadata as RentalMetadata | null,
+        }))
+        .slice(0, 40)
+    );
   }, [searchTerm, selectedCategory, priceRange, toast, user?.id]);
 
   const fetchPGListings = useCallback(async () => {
@@ -303,11 +310,9 @@ const PWADashboard = () => {
     if (pgGender !== "all") query = query.eq("for_gender", pgGender);
 
     const { data, error } = await query;
-    if (error) {
+    if (error)
       toast({ title: "Error", description: "Failed to load PG listings", variant: "destructive" });
-    } else {
-      setPgListings(data || []);
-    }
+    else setPgListings(data ?? []);
   }, [pgPropertyType, pgSharingType, pgGender, toast]);
 
   useEffect(() => {
@@ -318,49 +323,52 @@ const PWADashboard = () => {
     })();
   }, [fetchItems, fetchPGListings]);
 
-  // ─── Actions ──────────────────────────────────────────────────────────────────
+  // ─── Handlers ────────────────────────────────────────────────────────────────
 
-  const handleRefresh = async () => {
-    if (refreshing) return;
-    setRefreshing(true);
+  const doRefresh = useCallback(async () => {
     await Promise.all([fetchItems(), fetchPGListings()]);
-    setRefreshing(false);
-    toast({ title: "✓ Refreshed", description: "Listings are up to date" });
+  }, [fetchItems, fetchPGListings]);
+
+  // Native pull-to-refresh (swipe down from top)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const delta = e.changedTouches[0].clientY - touchStartY.current;
+    if (delta > 90 && window.scrollY === 0) {
+      setPullIndicator(true);
+      doRefresh().finally(() => setPullIndicator(false));
+    }
   };
 
   const handleFavorite = async (e: React.MouseEvent, itemId: string) => {
     e.stopPropagation();
     if (!user) {
-      toast({ title: "Sign In Required", description: "Please sign in to save favorites", variant: "destructive" });
+      toast({ title: "Sign in required", variant: "destructive" });
       return;
     }
     if (!isVerified) {
-      toast({ title: "Verification Required", description: "Verify your account to save favorites", variant: "destructive" });
+      toast({ title: "Verification required", description: "Verify your account to save favourites", variant: "destructive" });
       return;
     }
 
-    const isFav = favorites.has(itemId);
-    // Optimistic update
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      isFav ? next.delete(itemId) : next.add(itemId);
-      return next;
-    });
+    // Check current favourite status
+    const { data: existing } = await supabase
+      .from("favorites")
+      .select("item_id")
+      .match({ user_id: user.id, item_id: itemId })
+      .maybeSingle();
 
-    if (isFav) {
+    if (existing) {
       await supabase.from("favorites").delete().match({ user_id: user.id, item_id: itemId });
-      toast({ title: "Removed", description: "Removed from your favorites" });
+      toast({ title: "Removed from favourites" });
     } else {
-      const { error } = await supabase.from("favorites").insert({ user_id: user.id, item_id: itemId });
-      if (error?.code === "23505") {
-        toast({ title: "Already saved", description: "This item is already in your favorites" });
-      } else if (!error) {
-        toast({ title: "❤️ Saved!", description: "Added to your favorites" });
-      }
+      await supabase.from("favorites").insert({ user_id: user.id, item_id: itemId });
+      toast({ title: "❤️ Saved to favourites" });
     }
   };
 
-  const handleTabChange = (tab: TabType) => {
+  const switchTab = (tab: TabType) => {
     setActiveTab(tab);
     setSearchTerm("");
   };
@@ -378,147 +386,129 @@ const PWADashboard = () => {
     setPgGender("all");
   };
 
-  // ─── Touch pull-to-refresh ────────────────────────────────────────────────────
+  // ─── Render ──────────────────────────────────────────────────────────────────
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const delta = e.changedTouches[0].clientY - touchStartY.current;
-    if (delta > 80 && mainRef.current?.scrollTop === 0) handleRefresh();
-  };
-
-  // ─── Render ───────────────────────────────────────────────────────────────────
-
-  const userInitial = profile?.full_name?.charAt(0)?.toUpperCase() || "U";
-  const firstName = profile?.full_name?.split(" ")[0] || "there";
+  const userInitial = profile?.full_name?.charAt(0)?.toUpperCase() ?? "U";
+  const firstName = profile?.full_name?.split(" ")[0] ?? "there";
 
   return (
     <div
-      className="min-h-screen bg-background pb-24 md:pb-8 selection:bg-primary/20"
+      className="min-h-screen bg-background pb-24"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border/40 safe-area-top">
-        {/* Top bar */}
-        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-3 pb-2">
-          <div className="flex items-center justify-between gap-3">
-            {/* Profile */}
-            <button
-              onClick={() => navigate("/pwa-profile")}
-              className="flex items-center gap-3 group"
-              aria-label="Open profile"
-            >
-              <div className="relative">
-                <Avatar className="h-10 w-10 ring-2 ring-primary/25 group-hover:ring-primary/50 transition-all duration-200 group-active:scale-95">
-                  <AvatarImage src={profile?.avatar_url || ""} alt={profile?.full_name || "User"} />
-                  <AvatarFallback className="bg-gradient-to-br from-primary/30 to-primary/10 text-primary font-bold text-sm">
-                    {userInitial}
-                  </AvatarFallback>
-                </Avatar>
-                {isVerified && (
-                  <span className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-emerald-500 border-2 border-background flex items-center justify-center">
-                    <CheckCircle2 className="h-2.5 w-2.5 text-white" />
-                  </span>
-                )}
-              </div>
-              <div className="text-left">
-                <p className="text-xs text-muted-foreground leading-none mb-0.5">Welcome back 👋</p>
-                <p className="font-semibold text-sm text-foreground leading-tight max-w-[120px] truncate">
-                  {firstName}
-                </p>
-              </div>
-            </button>
 
-            {/* Right actions */}
-            <div className="flex items-center gap-1.5">
-              {/* Notification bell */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-full relative"
-                onClick={() => navigate("/notifications")}
-                aria-label="Notifications"
-              >
-                <Bell className="h-4.5 w-4.5" />
-                {/* Unread dot — wire up to real data if available */}
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500 border border-background" />
-              </Button>
+      {/* Pull-to-refresh indicator */}
+      {pullIndicator && (
+        <div className="flex items-center justify-center py-2 gap-1.5 text-xs font-medium text-primary bg-primary/5 animate-pulse">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary inline-block" />
+          Refreshing…
+        </div>
+      )}
 
-              {/* Refresh */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="h-9 w-9 rounded-full"
-                aria-label="Refresh listings"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 transition-transform ${refreshing ? "animate-spin text-primary" : ""}`}
-                />
-              </Button>
+      {/* ══════════════════════════════════════════════════
+          HEADER
+      ══════════════════════════════════════════════════ */}
+      <header className="sticky top-0 z-40 bg-background/96 backdrop-blur-xl border-b border-border/50">
+
+        {/* Row 1 — Avatar + name | Bell */}
+        <div className="flex items-center justify-between px-4 pt-4 pb-3">
+          <button
+            onClick={() => navigate("/pwa-profile")}
+            className="flex items-center gap-2.5 group active:opacity-70 transition-opacity"
+          >
+            <div className="relative">
+              <Avatar className="h-9 w-9 ring-2 ring-primary/20 ring-offset-1">
+                <AvatarImage src={profile?.avatar_url ?? ""} />
+                <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
+                  {userInitial}
+                </AvatarFallback>
+              </Avatar>
+              {isVerified && (
+                <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-background flex items-center justify-center">
+                  <CheckCircle2 className="h-2 w-2 text-white" />
+                </span>
+              )}
             </div>
-          </div>
-
-          {/* Search row */}
-          <div className="mt-2.5 flex items-center gap-2">
-            <div className={`flex-1 transition-all duration-200 ${searchFocused ? "scale-[1.01]" : ""}`}>
-              <PWASearchBar
-                value={searchTerm}
-                onChange={setSearchTerm}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setSearchFocused(false)}
-                placeholder={
-                  activeTab === "products"
-                    ? "Search products, brands…"
-                    : "Search PG, hostel, rooms…"
-                }
-                showFilter
-                onFilterClick={() => setFilterOpen(true)}
-              />
+            <div className="text-left">
+              <p className="text-[11px] text-muted-foreground leading-none mb-0.5">Good day 👋</p>
+              <p className="text-sm font-semibold text-foreground leading-tight max-w-[130px] truncate">
+                {firstName}
+              </p>
             </div>
+          </button>
 
-            {/* Sort button */}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setSortOpen(true)}
-              className="h-10 w-10 rounded-xl border-border/60 shrink-0 relative"
-              aria-label="Sort listings"
-            >
-              <ArrowUpDown className="h-4 w-4" />
-            </Button>
-
-            {/* Filter button with active badge */}
-            <div className="relative shrink-0">
-              <Button
-                variant={activeFilterCount > 0 ? "default" : "outline"}
-                size="icon"
-                onClick={() => setFilterOpen(true)}
-                className="h-10 w-10 rounded-xl"
-                aria-label={`Filters${activeFilterCount > 0 ? ` (${activeFilterCount} active)` : ""}`}
-              >
-                <SlidersHorizontal className="h-4 w-4" />
-              </Button>
-              <FilterBadge count={activeFilterCount} />
-            </div>
-          </div>
+          <button
+            onClick={() => navigate("/my-chats")}
+            className="relative h-10 w-10 rounded-2xl bg-muted/70 flex items-center justify-center active:scale-90 transition-transform"
+          >
+            <Bell className="h-5 w-5 text-foreground" />
+            {unreadChats > 0 && (
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500 border border-background" />
+            )}
+          </button>
         </div>
 
-        {/* Tab switcher */}
-        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-1 pb-0">
-          <div className="flex gap-1 bg-muted/50 p-1 rounded-xl w-full max-w-sm">
+        {/* Row 2 — Search + Sort + Filter */}
+        <div className="px-4 pb-2.5 flex items-center gap-2">
+          <div className="flex-1">
+            <PWASearchBar
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder={
+                activeTab === "products"
+                  ? "Search products, brands…"
+                  : "Search PG, hostel, rooms…"
+              }
+              showFilter={false}
+            />
+          </div>
+
+          {/* Sort */}
+          <button
+            onClick={() => setSortOpen(true)}
+            className="h-11 w-11 rounded-xl bg-muted/70 flex items-center justify-center active:scale-90 transition-transform shrink-0"
+            aria-label="Sort"
+          >
+            <ArrowUpDown className="h-4 w-4 text-foreground" />
+          </button>
+
+          {/* Filter with count badge */}
+          <button
+            onClick={() => setFilterOpen(true)}
+            aria-label="Filter"
+            className={`relative h-11 w-11 rounded-xl flex items-center justify-center active:scale-90 transition-all shrink-0 ${
+              activeFilterCount > 0
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted/70 text-foreground"
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center border border-background">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Row 3 — Products / PG tab switcher (sliding pill) */}
+        <div className="px-4 pb-3">
+          <div className="relative flex bg-muted/50 rounded-2xl p-1">
+            {/* Animated sliding background */}
+            <span
+              className="absolute top-1 bottom-1 rounded-xl bg-background shadow-sm transition-all duration-300 ease-out"
+              style={{
+                width: "calc(50% - 6px)",
+                left: activeTab === "products" ? "4px" : "calc(50% + 2px)",
+              }}
+            />
             {(["products", "pg"] as TabType[]).map((tab) => (
               <button
                 key={tab}
-                onClick={() => handleTabChange(tab)}
-                className={`flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                  activeTab === tab
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                onClick={() => switchTab(tab)}
+                className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 h-9 text-sm font-semibold transition-colors duration-200 ${
+                  activeTab === tab ? "text-foreground" : "text-muted-foreground"
                 }`}
               >
                 {tab === "products" ? (
@@ -531,9 +521,9 @@ const PWADashboard = () => {
           </div>
         </div>
 
-        {/* Category / PG chips strip */}
-        <div className="overflow-x-auto scrollbar-hide py-2.5">
-          <div className="flex gap-2 px-4 md:px-6 lg:px-8 w-max">
+        {/* Row 4 — Category / property-type chips */}
+        <div className="overflow-x-auto scrollbar-hide pb-3">
+          <div className="flex gap-2 px-4 w-max">
             {activeTab === "products" ? (
               <>
                 <PWACategoryChip
@@ -544,7 +534,7 @@ const PWADashboard = () => {
                 {categories.map((cat) => (
                   <PWACategoryChip
                     key={cat.id}
-                    icon={cat.icon || undefined}
+                    icon={cat.icon ?? undefined}
                     label={cat.name}
                     isActive={selectedCategory === cat.id}
                     onClick={() => setSelectedCategory(cat.id)}
@@ -554,11 +544,11 @@ const PWADashboard = () => {
             ) : (
               <>
                 {[
-                  { value: "all", label: "All Types" },
-                  { value: "pg", label: "PG", icon: "🏠" },
-                  { value: "hostel", label: "Hostel", icon: "🏢" },
-                  { value: "flat", label: "Flat", icon: "🛋️" },
-                  { value: "room", label: "Room", icon: "🚪" },
+                  { value: "all",    label: "All"    },
+                  { value: "pg",     label: "PG",      icon: "🏠" },
+                  { value: "hostel", label: "Hostel",   icon: "🏢" },
+                  { value: "flat",   label: "Flat",     icon: "🛋️" },
+                  { value: "room",   label: "Room",     icon: "🚪" },
                 ].map(({ value, label, icon }) => (
                   <PWACategoryChip
                     key={value}
@@ -574,81 +564,86 @@ const PWADashboard = () => {
         </div>
       </header>
 
-      {/* ── MAIN CONTENT ────────────────────────────────────────────────────── */}
-      <main ref={mainRef} className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-3 space-y-4">
+      {/* ══════════════════════════════════════════════════
+          MAIN CONTENT
+      ══════════════════════════════════════════════════ */}
+      <main className="px-4 pt-4 space-y-4 max-w-7xl mx-auto">
 
-        {/* Image Slider */}
+        {/* Hero banner slider */}
         <PWAImageSlider />
 
         {/* Results meta row */}
         {!loading && (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between min-h-[24px]">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-semibold text-foreground">
                 {activeTab === "products" ? sortedItems.length : pgListings.length}
               </span>
               <span className="text-sm text-muted-foreground">
                 {activeTab === "products" ? "listings" : "rooms"} found
               </span>
-              {activeTab === "products" && searchTerm && (
-                <Badge variant="secondary" className="text-xs gap-1 pr-1">
-                  "{searchTerm}"
-                  <button onClick={() => setSearchTerm("")} className="ml-0.5 hover:text-foreground">
-                    <X className="h-3 w-3" />
-                  </button>
+              {searchTerm && (
+                <Badge
+                  variant="secondary"
+                  className="text-xs flex items-center gap-1 cursor-pointer"
+                  onClick={() => setSearchTerm("")}
+                >
+                  "{searchTerm}"&nbsp;<X className="h-3 w-3" />
                 </Badge>
               )}
             </div>
+
             {activeTab === "products" && sortBy !== "newest" && (
               <button
                 onClick={() => setSortBy("newest")}
-                className="text-xs text-primary font-medium flex items-center gap-1"
+                className="flex items-center gap-1 text-xs font-medium text-primary"
               >
-                <TrendingUp className="h-3 w-3" />
-                {SORT_LABELS[sortBy]}
+                {sortBy === "price_asc" ? "Price ↑" : "Price ↓"}
                 <X className="h-3 w-3" />
               </button>
             )}
           </div>
         )}
 
-        {/* ── LOADING STATE ─────────────────────────────────── */}
+        {/* ── Loading ── */}
         {loading ? (
           <div
-            className={`grid gap-3 md:gap-4 ${
+            className={`grid gap-3 ${
               activeTab === "products"
-                ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+                ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
                 : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
             }`}
           >
-            {Array.from({ length: activeTab === "products" ? 12 : 6 }).map((_, i) => (
+            {Array.from({ length: activeTab === "products" ? 10 : 6 }).map((_, i) => (
               <SkeletonCard key={i} variant={activeTab === "products" ? "product" : "pg"} />
             ))}
           </div>
 
         ) : activeTab === "products" ? (
 
-          /* ── PRODUCTS ─────────────────────────────────────── */
+          /* ── Products ── */
           sortedItems.length === 0 ? (
             <EmptyState
               icon={Search}
-              title="No items found"
-              subtitle="Try a different search term or adjust your filters to discover more listings."
+              title="No listings found"
+              subtitle="Try a different search or clear your filters."
               onClear={clearProductFilters}
             />
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {sortedItems.map((item, idx) => (
                 <div
                   key={item.id}
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${Math.min(idx * 30, 300)}ms`, animationFillMode: "both" }}
+                  style={{
+                    animation: `fadeSlideUp 300ms ease-out both`,
+                    animationDelay: `${Math.min(idx * 25, 250)}ms`,
+                  }}
                 >
                   <PWAListingCard
                     id={item.id}
                     title={item.title}
                     price={item.price}
-                    image={item.images[0] || ""}
+                    image={item.images[0] ?? ""}
                     location={item.location}
                     condition={item.condition}
                     isNegotiable={item.is_negotiable}
@@ -656,7 +651,6 @@ const PWADashboard = () => {
                     imageCount={item.images.length}
                     adType={item.ad_type}
                     rentalMetadata={item.rental_metadata}
-                    isFavorited={favorites.has(item.id)}
                     onClick={() => navigate(`/item/${item.id}`)}
                     onFavorite={(e) => handleFavorite(e, item.id)}
                     showFavorite={!!user && item.seller_id !== user.id}
@@ -668,12 +662,12 @@ const PWADashboard = () => {
 
         ) : (
 
-          /* ── PG LISTINGS ──────────────────────────────────── */
+          /* ── PG listings ── */
           pgListings.length === 0 ? (
             <EmptyState
               icon={Home}
               title="No PG / Rooms found"
-              subtitle="No listings match your filters. Try changing the property type, sharing, or gender preference."
+              subtitle="Adjust the property type, sharing, or gender filter."
               onClear={clearPGFilters}
             />
           ) : (
@@ -681,8 +675,10 @@ const PWADashboard = () => {
               {pgListings.map((pg, idx) => (
                 <div
                   key={pg.id}
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${Math.min(idx * 40, 400)}ms`, animationFillMode: "both" }}
+                  style={{
+                    animation: `fadeSlideUp 300ms ease-out both`,
+                    animationDelay: `${Math.min(idx * 35, 350)}ms`,
+                  }}
                 >
                   <PGListingCard listing={pg} onClick={() => navigate(`/pg/${pg.id}`)} />
                 </div>
@@ -691,61 +687,66 @@ const PWADashboard = () => {
           )
         )}
 
-        {/* Bottom spacer for FAB */}
-        <div className="h-6" />
+        <div className="h-4" />
       </main>
 
-      {/* ── FLOATING ACTION BUTTON ───────────────────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════
+          FLOATING ACTION BUTTON — Sell
+          Sits above the BottomNavBar (h-16 = 64px)
+      ══════════════════════════════════════════════════ */}
       <button
-        onClick={() => navigate(activeTab === "products" ? "/post-item" : "/post-pg")}
-        aria-label="Post a new listing"
-        className={`
-          fixed bottom-24 right-5 md:bottom-8 md:right-8 z-40
-          h-14 w-14 rounded-2xl shadow-xl shadow-primary/30
-          bg-gradient-to-br from-primary to-primary/80
-          text-primary-foreground
+        onClick={() => navigate("/sell")}
+        aria-label="Sell an item"
+        className="
+          fixed bottom-20 right-4 z-50
+          h-14 w-14 rounded-2xl
+          bg-primary text-primary-foreground
           flex items-center justify-center
-          hover:scale-105 active:scale-95
-          transition-all duration-200
-        `}
+          shadow-lg shadow-primary/40
+          active:scale-90 transition-transform duration-150
+        "
       >
-        <span className="text-2xl font-bold leading-none">+</span>
+        <Plus className="h-6 w-6 stroke-[2.5]" />
       </button>
 
-      {/* ── SORT SHEET ──────────────────────────────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════
+          SORT SHEET
+      ══════════════════════════════════════════════════ */}
       <Sheet open={sortOpen} onOpenChange={setSortOpen}>
-        <SheetContent side="bottom" className="rounded-t-3xl pb-safe">
-          <SheetHeader className="pb-2">
-            <SheetTitle className="flex items-center gap-2">
+        <SheetContent side="bottom" className="rounded-t-3xl">
+          <SheetHeader className="pb-1">
+            <SheetTitle className="flex items-center gap-2 text-base">
               <ArrowUpDown className="h-4 w-4 text-primary" />
               Sort by
             </SheetTitle>
           </SheetHeader>
-          <div className="py-4 space-y-2">
+          <div className="py-3 space-y-1">
             {(Object.entries(SORT_LABELS) as [SortOption, string][]).map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => { setSortBy(key); setSortOpen(false); }}
-                className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl text-sm font-medium transition-colors ${
+                className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl text-sm transition-colors ${
                   sortBy === key
-                    ? "bg-primary/10 text-primary"
-                    : "hover:bg-muted text-foreground"
+                    ? "bg-primary/10 text-primary font-semibold"
+                    : "hover:bg-muted text-foreground font-medium"
                 }`}
               >
                 {label}
-                {sortBy === key && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                {sortBy === key && <CheckCheck className="h-4 w-4 text-primary" />}
               </button>
             ))}
           </div>
         </SheetContent>
       </Sheet>
 
-      {/* ── FILTER SHEET ────────────────────────────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════
+          FILTER SHEET
+      ══════════════════════════════════════════════════ */}
       <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
-        <SheetContent side="bottom" className="rounded-t-3xl pb-safe">
+        <SheetContent side="bottom" className="rounded-t-3xl">
           <SheetHeader>
             <div className="flex items-center justify-between">
-              <SheetTitle className="flex items-center gap-2">
+              <SheetTitle className="flex items-center gap-2 text-base">
                 <SlidersHorizontal className="h-4 w-4 text-primary" />
                 Filters
               </SheetTitle>
@@ -760,35 +761,31 @@ const PWADashboard = () => {
             </div>
           </SheetHeader>
 
-          <div className="py-5 space-y-5">
+          <div className="pt-5 pb-6 space-y-5">
             {activeTab === "products" ? (
-              /* Product Filters */
-              <>
-                <div>
-                  <label className="text-sm font-semibold mb-2.5 block">Price Range</label>
-                  <Select value={priceRange} onValueChange={setPriceRange}>
-                    <SelectTrigger className="w-full h-12 rounded-xl">
-                      <SelectValue placeholder="Select price range" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Prices</SelectItem>
-                      <SelectItem value="0-500">Under ₹500</SelectItem>
-                      <SelectItem value="500-2000">₹500 – ₹2,000</SelectItem>
-                      <SelectItem value="2000-5000">₹2,000 – ₹5,000</SelectItem>
-                      <SelectItem value="5000-10000">₹5,000 – ₹10,000</SelectItem>
-                      <SelectItem value="10000-">Above ₹10,000</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </>
+              <div>
+                <p className="text-sm font-semibold mb-3">Price Range</p>
+                <Select value={priceRange} onValueChange={setPriceRange}>
+                  <SelectTrigger className="w-full h-12 rounded-xl">
+                    <SelectValue placeholder="All prices" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Prices</SelectItem>
+                    <SelectItem value="0-500">Under ₹500</SelectItem>
+                    <SelectItem value="500-2000">₹500 – ₹2,000</SelectItem>
+                    <SelectItem value="2000-5000">₹2,000 – ₹5,000</SelectItem>
+                    <SelectItem value="5000-10000">₹5,000 – ₹10,000</SelectItem>
+                    <SelectItem value="10000-">Above ₹10,000</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             ) : (
-              /* PG Filters */
               <>
                 <div>
-                  <label className="text-sm font-semibold mb-2.5 block">Sharing Type</label>
+                  <p className="text-sm font-semibold mb-3">Sharing Type</p>
                   <Select value={pgSharingType} onValueChange={setPgSharingType}>
                     <SelectTrigger className="w-full h-12 rounded-xl">
-                      <SelectValue placeholder="Select sharing type" />
+                      <SelectValue placeholder="Any sharing" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Any Sharing</SelectItem>
@@ -801,20 +798,20 @@ const PWADashboard = () => {
                 </div>
 
                 <div>
-                  <label className="text-sm font-semibold mb-2.5 block">Gender Preference</label>
+                  <p className="text-sm font-semibold mb-3">Gender Preference</p>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { value: "all", label: "Any" },
-                      { value: "male", label: "Male" },
-                      { value: "female", label: "Female" },
+                      { value: "all",   label: "Any"   },
+                      { value: "boys",  label: "Boys"  },
+                      { value: "girls", label: "Girls" },
                     ].map(({ value, label }) => (
                       <button
                         key={value}
                         onClick={() => setPgGender(value)}
-                        className={`h-11 rounded-xl text-sm font-medium border transition-colors ${
+                        className={`h-11 rounded-xl text-sm font-medium border-2 transition-all ${
                           pgGender === value
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "border-border text-foreground hover:bg-muted"
+                            ? "border-primary bg-primary/5 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/40"
                         }`}
                       >
                         {label}
@@ -826,25 +823,22 @@ const PWADashboard = () => {
             )}
 
             <Button
-              className="w-full h-12 rounded-xl font-semibold text-base"
+              className="w-full h-12 rounded-xl font-semibold"
               onClick={() => setFilterOpen(false)}
             >
               {activeFilterCount > 0
-                ? `Apply ${activeFilterCount} Filter${activeFilterCount > 1 ? "s" : ""}`
-                : "Apply Filters"}
+                ? `Show results · ${activeFilterCount} filter${activeFilterCount > 1 ? "s" : ""}`
+                : "Done"}
             </Button>
           </div>
         </SheetContent>
       </Sheet>
 
-      {/* ── Global animation keyframes (injected once) ────────────────────── */}
+      {/* Global keyframes + scrollbar hide */}
       <style>{`
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(12px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.35s ease-out;
+        @keyframes fadeSlideUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0);    }
         }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
