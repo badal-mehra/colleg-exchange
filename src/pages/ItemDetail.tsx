@@ -3,37 +3,33 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
 import logo from '@/assets/mycampuskart-logo.png';
 import {
   ArrowLeft, MessageCircle, Heart, Share2, MapPin, Calendar, Eye,
-  User, AlertCircle, Shield, AlertTriangle, DollarSign,
-  Package, Key, LogIn, ChevronRight, X, Maximize2, Lock, Phone
+  AlertCircle, Shield, AlertTriangle, DollarSign,
+  Package, Key, LogIn, ChevronRight, X, Maximize2, Phone,
+  Star, CheckCircle2, Clock, Tag, ChevronLeft, ZoomIn,
+  Sparkles, TrendingUp, Users
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
 import { ReportModal } from '@/components/ReportModal';
 import { BargainingDialog } from '@/components/BargainingDialog';
 
-// --- Cloudinary Optimization Helpers ---
-const getDetailImage = (url: string) => {
-  if (url && url.includes('cloudinary.com')) {
-    return url.replace('/upload/', '/upload/f_auto,q_auto:best,w_1200/');
-  }
-  return url;
-};
+// ─── Cloudinary helpers ────────────────────────────────────────────────────────
+const getDetailImage = (url: string) =>
+  url?.includes('cloudinary.com')
+    ? url.replace('/upload/', '/upload/f_auto,q_auto:best,w_1200/')
+    : url;
 
-const getThumbImage = (url: string) => {
-  if (url && url.includes('cloudinary.com')) {
-    return url.replace('/upload/', '/upload/f_auto,q_auto:low,w_100,h_100,c_fill/');
-  }
-  return url;
-};
+const getThumbImage = (url: string) =>
+  url?.includes('cloudinary.com')
+    ? url.replace('/upload/', '/upload/f_auto,q_auto:low,w_120,h_120,c_fill/')
+    : url;
 
-// --- Interfaces ---
+// ─── Interfaces ───────────────────────────────────────────────────────────────
 interface Profile {
   id: string;
   user_id: string;
@@ -47,19 +43,16 @@ interface Profile {
   campus_points: number;
   deals_completed: number;
 }
-
 interface Category {
   id: string;
   name: string;
   slug: string;
   icon: string;
 }
-
 interface RentalMetadata {
   rental_duration?: string;
   rental_deposit?: number;
 }
-
 interface Item {
   id: string;
   title: string;
@@ -79,806 +72,879 @@ interface Item {
   whatsapp_number?: string | null;
 }
 
+// ─── Condition config ─────────────────────────────────────────────────────────
+const conditionConfig: Record<string, { label: string; color: string; dot: string }> = {
+  'Brand New':    { label: 'Brand New',    color: 'bg-emerald-100 text-emerald-700 border-emerald-200',   dot: 'bg-emerald-500' },
+  'Like New':     { label: 'Like New',     color: 'bg-teal-100 text-teal-700 border-teal-200',           dot: 'bg-teal-500' },
+  'Good':         { label: 'Good',         color: 'bg-blue-100 text-blue-700 border-blue-200',           dot: 'bg-blue-500' },
+  'Fair':         { label: 'Fair',         color: 'bg-amber-100 text-amber-700 border-amber-200',         dot: 'bg-amber-500' },
+  'For Parts':    { label: 'For Parts',    color: 'bg-red-100 text-red-700 border-red-200',              dot: 'bg-red-500' },
+};
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+const SkeletonBlock = ({ className }: { className?: string }) => (
+  <div className={`animate-pulse bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:400%_100%] rounded-xl ${className}`}
+    style={{ animation: 'shimmer 1.6s ease-in-out infinite', backgroundSize: '400% 100%' }} />
+);
+
+const ItemDetailSkeleton = () => (
+  <div className="min-h-screen bg-[#f8f7f5]">
+    <style>{`@keyframes shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}`}</style>
+    <div className="h-14 bg-white border-b" />
+    <div className="max-w-6xl mx-auto px-4 pt-6 pb-32">
+      <SkeletonBlock className="h-4 w-48 mb-6" />
+      <div className="grid lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-7 space-y-3">
+          <SkeletonBlock className="aspect-[4/3] w-full" />
+          <div className="flex gap-2">
+            {[1,2,3].map(i => <SkeletonBlock key={i} className="w-20 h-20" />)}
+          </div>
+        </div>
+        <div className="lg:col-span-5 space-y-4">
+          <SkeletonBlock className="h-8 w-3/4" />
+          <SkeletonBlock className="h-10 w-1/3" />
+          <SkeletonBlock className="h-24 w-full" />
+          <SkeletonBlock className="h-16 w-full" />
+          <SkeletonBlock className="h-12 w-full" />
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 const ItemDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth(); 
+  const { user } = useAuth();
   const { toast } = useToast();
-  
-  // State
+
   const [item, setItem] = useState<Item | null>(null);
   const [similarItems, setSimilarItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [isFavorited, setIsFavorited] = useState(false);
-  const [checkingFavorite, setCheckingFavorite] = useState(false);
-  
-  // Modals
+  const [isTogglingFav, setIsTogglingFav] = useState(false);
+
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [bargainingDialogOpen, setBargainingDialogOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
-  // Order State
   const [hasPendingOrder, setHasPendingOrder] = useState(false);
   const [isPendingBySomeoneElse, setIsPendingBySomeoneElse] = useState(false);
+  const [isBuying, setIsBuying] = useState(false);
 
-  // --- Effects ---
-
+  // ── Effects ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    window.scrollTo(0, 0); // Scroll to top when ID changes
-    if (id) {
-      fetchItem();
-    }
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    if (id) fetchItem();
   }, [id]);
 
   useEffect(() => {
-    if (user && id) {
-      fetchUserProfile();
-      checkIfFavorited();
-    } else {
-      setUserProfile(null);
-      setIsFavorited(false);
-    }
+    if (user && id) { fetchUserProfile(); checkIfFavorited(); }
+    else { setUserProfile(null); setIsFavorited(false); }
   }, [user, id]);
 
-  // Combined checkPendingOrder function
   const checkPendingOrder = useCallback(async (itemId: string, currentUserId: string) => {
-    const { data: pendingOrder, error } = await supabase
-      .from("orders")
-      .select("buyer_id")
-      .eq("item_id", itemId)
-      .eq("status", "pending")
-      .maybeSingle();
-
-    if (error) {
-        setHasPendingOrder(false);
-        setIsPendingBySomeoneElse(false);
-        return;
-    }
-    
-    if (pendingOrder) {
-        const isCurrentUser = pendingOrder.buyer_id === currentUserId;
-        setHasPendingOrder(isCurrentUser);
-        setIsPendingBySomeoneElse(!isCurrentUser);
+    const { data, error } = await supabase
+      .from('orders').select('buyer_id')
+      .eq('item_id', itemId).eq('status', 'pending').maybeSingle();
+    if (error) { setHasPendingOrder(false); setIsPendingBySomeoneElse(false); return; }
+    if (data) {
+      setHasPendingOrder(data.buyer_id === currentUserId);
+      setIsPendingBySomeoneElse(data.buyer_id !== currentUserId);
     } else {
-        setHasPendingOrder(false);
-        setIsPendingBySomeoneElse(false);
+      setHasPendingOrder(false); setIsPendingBySomeoneElse(false);
     }
   }, []);
 
-  // Use onSnapshot for real-time updates
   useEffect(() => {
-      if (user?.id && item?.id) {
-          // Initial check
-          checkPendingOrder(item.id, user.id); 
-
-          const ordersChannel = supabase
-            .channel(`item_${item.id}_orders`)
-            .on(
-              'postgres_changes',
-              { 
-                event: '*', 
-                schema: 'public', 
-                table: 'orders',
-                filter: `item_id=eq.${item.id}`
-              },
-              (payload) => {
-                checkPendingOrder(item.id, user.id);
-              }
-            )
-            .subscribe();
-
-          return () => {
-            supabase.removeChannel(ordersChannel);
-          };
-      }
+    if (!user?.id || !item?.id) return;
+    checkPendingOrder(item.id, user.id);
+    const ch = supabase.channel(`item_${item.id}_orders`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `item_id=eq.${item.id}` },
+        () => checkPendingOrder(item.id, user.id))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, [user?.id, item?.id, checkPendingOrder]);
 
-  // --- Helper Functions ---
-  
+  // ── Keyboard nav for lightbox ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!lightboxOpen || !item) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') setCurrentImageIndex(i => (i + 1) % item.images.length);
+      if (e.key === 'ArrowLeft')  setCurrentImageIndex(i => (i - 1 + item.images.length) % item.images.length);
+      if (e.key === 'Escape') setLightboxOpen(false);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [lightboxOpen, item]);
+
+  // ── Fetch fns ─────────────────────────────────────────────────────────────
   const fetchItem = async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .from('items')
-      .select(`
-        *,
-        categories (*),
-        profiles (*)
-      `)
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      setItem(null); 
-    } else {
-      const itemData = data as Item;
-      setItem(itemData);
-      
-      // Fetch similar items if category exists
-      if (itemData.categories?.id) {
-        fetchSimilarItems(itemData.categories.id, itemData.id);
+      .from('items').select('*, categories (*), profiles (*)')
+      .eq('id', id).single();
+    if (!error) {
+      setItem(data as Item);
+      if ((data as Item).categories?.id) fetchSimilarItems((data as Item).categories!.id, data.id);
+      const key = `item_viewed_${id}`;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, 'true');
+        supabase.from('items').update({ views: (data.views || 0) + 1 }).eq('id', id).then(() => {});
       }
-
-      // Increment view count
-      const viewedKey = `item_viewed_${id}`;
-      const hasViewed = sessionStorage.getItem(viewedKey);
-      if (!hasViewed) {
-        sessionStorage.setItem(viewedKey, 'true');
-        supabase
-          .from('items')
-          .update({ views: (data.views || 0) + 1 })
-          .eq('id', id)
-          .then(() => {});
-      }
-    }
+    } else { setItem(null); }
     setLoading(false);
   };
 
   const fetchSimilarItems = async (categoryId: string, currentId: string) => {
-    const { data } = await supabase
-      .from('items')
+    const { data } = await supabase.from('items')
       .select('id, title, price, images, condition, created_at')
-      .eq('category_id', categoryId)
-      .neq('id', currentId)
-      .eq('is_sold', false)
-      .limit(4);
-    
-    if (data) {
-        setSimilarItems(data as any);
-    }
+      .eq('category_id', categoryId).neq('id', currentId)
+      .eq('is_sold', false).limit(6);
+    if (data) setSimilarItems(data as any);
   };
 
   const fetchUserProfile = async () => {
     if (!user) return;
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!error) {
-      setUserProfile(data as Profile);
-    }
+    const { data, error } = await supabase.from('profiles').select('*').eq('user_id', user.id).single();
+    if (!error) setUserProfile(data as Profile);
   };
 
   const checkIfFavorited = async () => {
     if (!user || !id) return;
-    setCheckingFavorite(true);
-    const { data, error } = await supabase
-      .from('favorites')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('item_id', id)
-      .maybeSingle();
-
-    if (!error && data) {
-      setIsFavorited(true);
-    } else {
-      setIsFavorited(false);
-    }
-    setCheckingFavorite(false);
+    const { data, error } = await supabase.from('favorites').select('id')
+      .eq('user_id', user.id).eq('item_id', id).maybeSingle();
+    setIsFavorited(!error && !!data);
   };
 
+  // ── Actions ───────────────────────────────────────────────────────────────
   const toggleFavorite = async () => {
-    if (!user) {
-      toast({ title: "Login Required", description: "Please login to add to cart", variant: "destructive" });
-      navigate('/auth');
-      return;
-    }
+    if (!user) { navigate('/auth'); return; }
+    setIsTogglingFav(true);
     try {
       if (isFavorited) {
         await supabase.from('favorites').delete().eq('user_id', user.id).eq('item_id', id);
         setIsFavorited(false);
-        sonnerToast.success('Removed from cart');
+        sonnerToast.success('Removed from wishlist');
       } else {
         await supabase.from('favorites').insert({ user_id: user.id, item_id: id });
         setIsFavorited(true);
-        sonnerToast.success('Added to cart');
+        sonnerToast.success('❤️ Added to wishlist!');
       }
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
-    }
+    } catch { /* noop */ }
+    setIsTogglingFav(false);
   };
 
   const handleBuyNow = async () => {
-    // 1. Check Login
-    if (!user) {
-        toast({ title: "Login Required", description: "Please login to buy items", variant: "default" });
-        return navigate("/auth");
-    }
-    
-    // 2. Check Verification
-    const isVerified = userProfile?.is_verified && userProfile?.verification_status === 'approved';
-    if (!isVerified) {
-      toast({ title: "Verification Required", description: "Complete your Student KYC to buy", variant: "destructive" });
-      return navigate("/kyc");
-    }
-
-    if (!item) return;
-
-    if (user.id === item.seller_id) {
-      toast({ title: "Error", description: "You cannot buy your own item", variant: "destructive" });
-      return;
-    }
-    
-    if (item.is_sold) {
-      toast({ title: "Error", description: "This item is sold.", variant: "destructive" });
-      return;
-    }
-
-    // RPC Call
-    const { data: rpcResponse, error: rpcError } = await supabase.rpc("create_new_order", {
-      item_id_input: item.id,
-      buyer_id_input: user.id,
-      seller_id_input: item.seller_id,
-      agreed_price_input: item.price
+    if (!user) return navigate('/auth');
+    const verified = userProfile?.is_verified && userProfile?.verification_status === 'approved';
+    if (!verified) { toast({ title: 'KYC Required', description: 'Complete student verification first', variant: 'destructive' }); return navigate('/kyc'); }
+    if (!item || user.id === item.seller_id || item.is_sold) return;
+    setIsBuying(true);
+    const { data: rpcResponse, error: rpcError } = await supabase.rpc('create_new_order', {
+      item_id_input: item.id, buyer_id_input: user.id,
+      seller_id_input: item.seller_id, agreed_price_input: item.price
     });
-
+    setIsBuying(false);
     if (rpcError) {
-      const errorText = JSON.stringify(rpcError).toLowerCase();
-      if (errorText.includes("duplicate pending order") || errorText.includes("already reserved")) {
-        sonnerToast.error("Item reserved by another buyer.");
-      } else {
-        sonnerToast.error("System error processing order.");
-      }
+      const t = JSON.stringify(rpcError).toLowerCase();
+      sonnerToast.error(t.includes('duplicate') || t.includes('reserved') ? 'Item reserved by another buyer.' : 'Order failed. Try again.');
       return;
     }
-    
-    const response = rpcResponse as { success?: boolean; message?: string; error?: string } | null;
-
-    if (!response?.success) {
-        sonnerToast.error(response?.error || "Order failed.");
-        navigate("/my-orders"); 
-        return;
-    }
-
-    sonnerToast.success("Item reserved! Go to My Orders.");
-    navigate("/my-orders");
-    
-    setHasPendingOrder(true);
-    setIsPendingBySomeoneElse(false);
+    const res = rpcResponse as { success?: boolean; error?: string } | null;
+    if (!res?.success) { sonnerToast.error(res?.error || 'Order failed.'); return navigate('/my-orders'); }
+    sonnerToast.success('🎉 Item reserved! Check My Orders.');
+    setHasPendingOrder(true); setIsPendingBySomeoneElse(false);
+    navigate('/my-orders');
   };
 
   const handleChatClick = async (offerPrice?: number) => {
-    // 1. Check Login
-    if (!user) {
-      toast({ title: "Login Required", description: "Please login to chat", variant: "default" });
-      navigate('/auth');
-      return;
-    }
-
-    // 2. Check Verification
+    if (!user) { navigate('/auth'); return; }
     if (!userProfile?.is_verified || userProfile?.verification_status !== 'approved') {
-      toast({ title: "Verification Required", description: "Please complete KYC", variant: "destructive" });
-      navigate('/kyc');
-      return;
+      toast({ title: 'Verification Required', description: 'Please complete KYC', variant: 'destructive' });
+      return navigate('/kyc');
     }
-
+    if (!item) return;
     try {
-      if (!item) return; 
-
-      const { data: existingConversation } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('item_id', item.id)
-        .eq('buyer_id', user.id)
-        .eq('seller_id', item.seller_id)
-        .maybeSingle();
-
-      if (existingConversation) {
-        if (offerPrice) await sendOfferMessage(existingConversation.id, offerPrice);
-        navigate(`/chat/${existingConversation.id}`);
-        return;
+      const { data: existing } = await supabase.from('conversations').select('id')
+        .eq('item_id', item.id).eq('buyer_id', user.id).eq('seller_id', item.seller_id).maybeSingle();
+      if (existing) {
+        if (offerPrice) await sendOfferMessage(existing.id, offerPrice);
+        return navigate(`/chat/${existing.id}`);
       }
-
-      const { data: newConversation, error } = await supabase
-        .from('conversations')
-        .insert({ item_id: item.id, buyer_id: user.id, seller_id: item.seller_id })
-        .select()
-        .single();
-
+      const { data: newConv, error } = await supabase.from('conversations')
+        .insert({ item_id: item.id, buyer_id: user.id, seller_id: item.seller_id }).select().single();
       if (error) throw error;
-
-      if (offerPrice) await sendOfferMessage(newConversation.id, offerPrice);
-      navigate(`/chat/${newConversation.id}`);
-    } catch (error) {
-      console.error('Error creating conversation:', error);
-      toast({ title: "Error", description: "Failed to start conversation", variant: "destructive" });
+      if (offerPrice) await sendOfferMessage(newConv.id, offerPrice);
+      navigate(`/chat/${newConv.id}`);
+    } catch {
+      toast({ title: 'Error', description: 'Failed to start conversation', variant: 'destructive' });
     }
   };
 
   const sendOfferMessage = async (conversationId: string, price: number) => {
     await supabase.from('messages').insert({
-      conversation_id: conversationId,
-      sender_id: user!.id,
-      content: `Hi! I'm interested in "${item?.title}". I'd like to offer ₹${price.toLocaleString()}. Can we negotiate?`
+      conversation_id: conversationId, sender_id: user!.id,
+      content: `Hi! I'm interested in "${item?.title}". I'd like to offer ₹${price.toLocaleString()}. Can we discuss?`
     });
   };
 
   const handleWhatsAppClick = () => {
     if (!item?.whatsapp_number) return;
-
-    // 1. Sanitize: Remove non-numeric chars
     let phone = item.whatsapp_number.replace(/\D/g, '');
-
-    // 2. Add Country Code if missing (assuming India +91)
-    if (phone.length === 10) {
-      phone = `91${phone}`;
-    }
-
-    // 3. Construct text
+    if (phone.length === 10) phone = `91${phone}`;
     const text = `Hi! I'm interested in "${item.title}" listed on MyCampusKart. Is it still available?`;
-    
-    // 4. Open API
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const handleShare = async () => {
     if (navigator.share) {
-      try {
-        await navigator.share({
-          title: item?.title,
-          text: item?.description,
-          url: window.location.href,
-        });
-      } catch (error) { console.log('Error sharing:', error); }
+      try { await navigator.share({ title: item?.title, text: item?.description, url: window.location.href }); }
+      catch { /* cancelled */ }
     } else {
       navigator.clipboard.writeText(window.location.href);
-      sonnerToast.success("Link copied");
+      sonnerToast.success('🔗 Link copied!');
     }
   };
 
-  // --- Rendering ---
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background container mx-auto px-4 py-8 animate-pulse">
-        <div className="h-8 bg-muted rounded w-32 mb-4"></div>
-        <div className="grid lg:grid-cols-2 gap-8">
-          <div className="h-96 bg-muted rounded-xl"></div>
-          <div className="space-y-4">
-            <div className="h-10 bg-muted rounded w-3/4"></div>
-            <div className="h-6 bg-muted rounded w-1/4"></div>
-            <div className="h-40 bg-muted rounded"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // ── Render states ─────────────────────────────────────────────────────────
+  if (loading) return <ItemDetailSkeleton />;
 
-  if (!item) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-        <Package className="h-16 w-16 text-muted-foreground mb-4 opacity-50" />
-        <h1 className="text-2xl font-bold mb-2">Item Not Found</h1>
-        <Button onClick={() => navigate('/')}>Go Back Home</Button>
+  if (!item) return (
+    <div className="min-h-screen bg-[#f8f7f5] flex flex-col items-center justify-center p-6 text-center">
+      <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+        <Package className="h-10 w-10 text-gray-400" />
       </div>
-    );
-  }
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">Item Not Found</h1>
+      <p className="text-gray-500 mb-6">This listing may have been removed or doesn't exist.</p>
+      <Button onClick={() => navigate('/')} className="rounded-full px-8">Back to Home</Button>
+    </div>
+  );
 
-  const isOwner = user?.id === item.seller_id;
-  const isVerified = user && userProfile?.is_verified && userProfile?.verification_status === 'approved'; 
-  
-  // Logic for disabled states
+  // ── Derived state ────────────────────────────────────────────────────────
+  const isOwner   = user?.id === item.seller_id;
+  const isVerified = user && userProfile?.is_verified && userProfile?.verification_status === 'approved';
   const isDisabled = !user || (!isVerified && !isOwner) || item.is_sold || hasPendingOrder || isPendingBySomeoneElse;
-  
-  // Button text logic
-  const buttonText = item.is_sold
-    ? 'Sold Out'
-    : isPendingBySomeoneElse
-    ? 'Reserved'
-    : hasPendingOrder
-    ? 'Already Reserved'
-    : 'Buy Now';
+  const cond       = conditionConfig[item.condition] ?? { label: item.condition, color: 'bg-gray-100 text-gray-700 border-gray-200', dot: 'bg-gray-400' };
+  const isRental   = !!item.rental_metadata?.rental_duration;
+  const daysAgo    = Math.floor((Date.now() - new Date(item.created_at).getTime()) / 86400000);
+  const listedText = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo}d ago`;
+
+  const buttonLabel = item.is_sold ? '🚫 Sold Out'
+    : isPendingBySomeoneElse ? '⏳ Reserved by Another'
+    : hasPendingOrder ? '✅ Already Reserved'
+    : isBuying ? 'Reserving…'
+    : isRental ? '📦 Reserve Rental'
+    : '⚡ Buy Now';
 
   return (
-    <div className="min-h-screen bg-gray-50/50 dark:bg-background pb-24 lg:pb-8">
-      {/* --- Header --- */}
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2 pl-0 hover:bg-transparent">
-            <ArrowLeft className="h-5 w-5" /> Back
-          </Button>
-          <img src={logo} alt="MyCampusKart" className="h-8" />
-          <div className="flex gap-2">
-            <Button variant="ghost" size="icon" onClick={handleShare}>
-              <Share2 className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setReportModalOpen(true)}>
-              <AlertTriangle className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-      </header>
+    <>
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up { animation: fadeUp 0.35s ease both; }
+        @keyframes heartPop {
+          0%   { transform: scale(1); }
+          40%  { transform: scale(1.35); }
+          70%  { transform: scale(0.9); }
+          100% { transform: scale(1); }
+        }
+        .heart-pop { animation: heartPop 0.4s ease; }
+      `}</style>
 
-      <div className="container mx-auto px-4 py-6 max-w-6xl">
-        
-        {/* --- Breadcrumbs --- */}
-        <nav className="flex items-center text-sm text-muted-foreground mb-6 overflow-hidden whitespace-nowrap">
-           <Link to="/" className="hover:text-primary transition-colors">Home</Link>
-           {item.categories && (
-             <>
-               <ChevronRight className="h-4 w-4 mx-2 flex-shrink-0" />
-               <span className="font-medium text-foreground">{item.categories.name}</span>
-             </>
-           )}
-           <ChevronRight className="h-4 w-4 mx-2 flex-shrink-0" />
-           <span className="truncate">{item.title}</span>
-        </nav>
+      <div className="min-h-screen bg-[#f8f7f5] font-sans">
 
-        <div className="grid lg:grid-cols-12 gap-8">
-          
-          {/* --- LEFT: Images (Span 7) --- */}
-          <div className="lg:col-span-7 space-y-4">
-            <div 
-              className="relative aspect-[4/3] rounded-xl overflow-hidden bg-white dark:bg-muted border shadow-sm group cursor-pointer"
-              onClick={() => setLightboxOpen(true)}
+        {/* ── Header ──────────────────────────────────────────────────────── */}
+        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-200/60 shadow-sm">
+          <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-1.5 text-gray-700 hover:text-gray-900 transition-colors font-medium text-sm"
             >
-              {item.images && item.images.length > 0 ? (
-                <>
-                  <img
-                    src={getDetailImage(item.images[currentImageIndex])}
-                    alt={item.title}
-                    className="w-full h-full object-contain"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity">
-                     <Maximize2 className="text-white drop-shadow-md h-10 w-10" />
+              <ArrowLeft className="h-4 w-4" /> Back
+            </button>
+
+            <img src={logo} alt="MyCampusKart" className="h-7 absolute left-1/2 -translate-x-1/2" />
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleShare}
+                className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-600"
+                title="Share"
+              >
+                <Share2 className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setReportModalOpen(true)}
+                className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-red-50 transition-colors text-red-400"
+                title="Report"
+              >
+                <AlertTriangle className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div className="max-w-6xl mx-auto px-4 pt-5 pb-32 lg:pb-12">
+
+          {/* ── Breadcrumbs ─────────────────────────────────────────────── */}
+          <nav className="flex items-center gap-1.5 text-xs text-gray-400 mb-5 overflow-hidden whitespace-nowrap">
+            <Link to="/" className="hover:text-gray-600 transition-colors">Home</Link>
+            {item.categories && (
+              <>
+                <ChevronRight className="h-3 w-3 flex-shrink-0" />
+                <Link to={`/category/${item.categories.slug}`} className="hover:text-gray-600 transition-colors">
+                  {item.categories.name}
+                </Link>
+              </>
+            )}
+            <ChevronRight className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate text-gray-600 font-medium">{item.title}</span>
+          </nav>
+
+          {/* ── Sold banner ─────────────────────────────────────────────── */}
+          {item.is_sold && (
+            <div className="mb-5 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+              <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Package className="h-4 w-4 text-red-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-red-800 text-sm">This item has been sold</p>
+                <p className="text-xs text-red-600">Check out similar items below</p>
+              </div>
+            </div>
+          )}
+
+          <div className="grid lg:grid-cols-12 gap-6 lg:gap-10">
+
+            {/* ── LEFT col: Images ────────────────────────────────────── */}
+            <div className="lg:col-span-7 space-y-3 fade-up">
+
+              {/* Main image */}
+              <div
+                className="relative rounded-2xl overflow-hidden bg-white border border-gray-200/80 shadow-sm cursor-zoom-in group"
+                style={{ aspectRatio: '4/3' }}
+                onClick={() => setLightboxOpen(true)}
+              >
+                {item.images?.length > 0 ? (
+                  <>
+                    <img
+                      src={getDetailImage(item.images[currentImageIndex])}
+                      alt={item.title}
+                      className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.02]"
+                    />
+                    {/* Hover overlay */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center">
+                      <div className="bg-black/60 text-white rounded-full px-4 py-2 text-xs font-medium flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg">
+                        <ZoomIn className="h-3.5 w-3.5" /> View Full Size
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-gray-300 gap-3">
+                    <Eye className="h-12 w-12" />
+                    <p className="text-sm">No images available</p>
                   </div>
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                  <Eye className="h-16 w-16 mb-2 opacity-20" />
-                  <p>No images available</p>
+                )}
+
+                {/* Condition badge */}
+                <div className={`absolute top-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border backdrop-blur-sm ${cond.color}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${cond.dot}`} />
+                  {cond.label}
+                </div>
+
+                {/* Negotiable badge */}
+                {item.is_negotiable && !item.is_sold && (
+                  <div className="absolute top-3 right-3 bg-violet-600/90 text-white px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-sm flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" /> Negotiable
+                  </div>
+                )}
+
+                {/* Image counter */}
+                {item.images?.length > 1 && (
+                  <div className="absolute bottom-3 right-3 bg-black/50 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-sm">
+                    {currentImageIndex + 1} / {item.images.length}
+                  </div>
+                )}
+              </div>
+
+              {/* Thumbnail strip */}
+              {item.images?.length > 1 && (
+                <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
+                  {item.images.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentImageIndex(idx)}
+                      className={`relative w-[72px] h-[72px] flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all duration-200 ${
+                        idx === currentImageIndex
+                          ? 'border-violet-500 ring-2 ring-violet-200 shadow-md'
+                          : 'border-gray-200 opacity-60 hover:opacity-90 hover:border-gray-300'
+                      }`}
+                    >
+                      <img src={getThumbImage(img)} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
                 </div>
               )}
-              <Badge className="absolute top-4 left-4 bg-black/70 text-white border-0 hover:bg-black/80">
-                {item.condition}
-              </Badge>
-            </div>
-            
-            {/* Thumbnails */}
-            {item.images && item.images.length > 1 && (
-              <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-                {item.images.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
-                      index === currentImageIndex ? 'border-primary ring-2 ring-primary/20' : 'border-transparent opacity-70 hover:opacity-100'
-                    }`}
-                  >
-                    <img
-                      src={getThumbImage(image)} 
-                      alt={`thumb ${index}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
 
-            {/* Safety Tips Card */}
-            <Card className="bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800">
-               <CardHeader className="pb-2">
-                 <CardTitle className="text-base flex items-center gap-2 text-blue-700 dark:text-blue-400">
-                    <Shield className="h-5 w-5" /> Safety First
-                 </CardTitle>
-               </CardHeader>
-               <CardContent className="text-sm text-muted-foreground">
-                 <ul className="list-disc ml-4 space-y-1">
-                   <li>Meet in safe, public places on campus.</li>
-                   <li>Check the item thoroughly before paying.</li>
-                   <li>Keep all chats inside MyCampusKart.</li>
-                 </ul>
-               </CardContent>
-            </Card>
-          </div>
-
-          {/* --- RIGHT: Details & Actions (Span 5) --- */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="bg-card rounded-xl border p-6 shadow-sm space-y-6">
-              
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold leading-tight mb-3">{item.title}</h1>
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1"><Eye className="h-4 w-4" /> {item.views} views</span>
-                  <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> {new Date(item.created_at).toLocaleDateString()}</span>
-                  {item.location && (
-                    <div className="flex items-center gap-1 text-primary">
-                      <MapPin className="h-4 w-4" /> {item.location}
+              {/* ── Safety Card ──────────────────────────────────────── */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50/60 border border-blue-100 rounded-2xl p-4 mt-2">
+                <div className="flex items-center gap-2 text-blue-700 font-semibold text-sm mb-3">
+                  <Shield className="h-4 w-4" /> Safety Reminder
+                </div>
+                <div className="space-y-2">
+                  {[
+                    'Meet in public, well-lit campus areas only',
+                    'Inspect the item carefully before paying',
+                    'Use MyCampusKart chat — avoid outside contact',
+                  ].map((tip, i) => (
+                    <div key={i} className="flex items-start gap-2 text-xs text-blue-700/80">
+                      <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-blue-500" />
+                      <span>{tip}</span>
                     </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ── RIGHT col: Details & Actions ────────────────────── */}
+            <div className="lg:col-span-5 space-y-4 fade-up" style={{ animationDelay: '0.1s' }}>
+
+              {/* ── Main info card ──────────────────────────────────── */}
+              <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-5 space-y-4">
+
+                {/* Category chip */}
+                {item.categories && (
+                  <div className="inline-flex items-center gap-1.5 bg-violet-50 text-violet-700 border border-violet-100 px-3 py-1 rounded-full text-xs font-medium">
+                    <Tag className="h-3 w-3" /> {item.categories.name}
+                  </div>
+                )}
+
+                {/* Title */}
+                <h1 className="text-2xl md:text-[1.75rem] font-bold text-gray-900 leading-tight tracking-tight">
+                  {item.title}
+                </h1>
+
+                {/* Meta row */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <Eye className="h-3.5 w-3.5" /> {item.views.toLocaleString()} views
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" /> {listedText}
+                  </span>
+                  {item.location && (
+                    <span className="flex items-center gap-1 text-violet-600 font-medium">
+                      <MapPin className="h-3.5 w-3.5" /> {item.location}
+                    </span>
                   )}
                 </div>
-              </div>
 
-              <div className="flex items-end gap-2">
-                <span className="text-4xl font-bold text-primary">₹{item.price.toLocaleString()}</span>
-                {item.rental_metadata?.rental_duration && (
-                  <span className="text-lg text-muted-foreground font-medium mb-1.5">
-                    /{item.rental_metadata.rental_duration.replace('per_', '')}
+                {/* Price */}
+                <div className="flex items-baseline gap-2 py-1">
+                  <span className="text-4xl font-extrabold text-gray-900 tracking-tight">
+                    ₹{item.price.toLocaleString()}
                   </span>
+                  {isRental && item.rental_metadata?.rental_duration && (
+                    <span className="text-base text-gray-400 font-medium">
+                      /{item.rental_metadata.rental_duration.replace('per_', '')}
+                    </span>
+                  )}
+                  {item.is_negotiable && (
+                    <span className="ml-1 text-xs bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full font-medium">
+                      Negotiable
+                    </span>
+                  )}
+                </div>
+
+                {/* Rental box */}
+                {isRental && (
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3.5 flex items-start gap-3">
+                    <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Key className="h-4 w-4 text-emerald-700" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-emerald-800 mb-1">Rental Item</p>
+                      <div className="flex justify-between text-xs text-emerald-700">
+                        <span>Security deposit</span>
+                        <span className="font-bold">
+                          {item.rental_metadata?.rental_deposit ? `₹${item.rental_metadata.rental_deposit.toLocaleString()}` : 'None'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 )}
-              </div>
 
-              {/* Rental Specifics */}
-              {item.rental_metadata?.rental_duration && (
-                <div className="bg-emerald-50 dark:bg-emerald-950/20 p-4 rounded-lg border border-emerald-100 dark:border-emerald-900">
-                  <div className="flex items-center gap-2 text-emerald-700 font-semibold mb-2">
-                      <Key className="h-4 w-4" /> Rental Details
-                  </div>
-                  <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Security Deposit:</span>
-                      <span className="font-bold">
-                        {item.rental_metadata.rental_deposit ? `₹${item.rental_metadata.rental_deposit}` : 'None'}
-                      </span>
-                  </div>
+                <div className="h-px bg-gray-100" />
+
+                {/* Description */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-800 mb-2">About this item</h3>
+                  <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                    {item.description}
+                  </p>
                 </div>
-              )}
 
-              <Separator />
+                <div className="h-px bg-gray-100" />
 
-              {/* Description */}
-              <div>
-                <h3 className="font-semibold mb-2">Description</h3>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                  {item.description}
-                </p>
-              </div>
-
-              <Separator />
-
-              {/* Seller Info */}
-              <div 
-                className="flex items-center gap-4 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors"
-                onClick={() => item.profiles?.mck_id && navigate(`/profile/${item.profiles.mck_id}`)}
-              >
-                <Avatar className="h-12 w-12 border">
-                  <AvatarImage src={item.profiles?.avatar_url || undefined} />
-                  <AvatarFallback>{item.profiles?.full_name?.charAt(0) || 'U'}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold">{item.profiles?.full_name || 'User'}</h3>
-                    {item.profiles?.verification_status === 'approved' && (
-                      <Badge variant="secondary" className="h-5 text-[10px] px-1 bg-blue-100 text-blue-700">Verified</Badge>
-                    )}
+                {/* Seller info */}
+                <button
+                  className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors text-left group"
+                  onClick={() => item.profiles?.mck_id && navigate(`/profile/${item.profiles.mck_id}`)}
+                >
+                  <Avatar className="h-11 w-11 border-2 border-gray-100 shadow-sm flex-shrink-0">
+                    <AvatarImage src={item.profiles?.avatar_url || undefined} />
+                    <AvatarFallback className="bg-violet-100 text-violet-700 font-bold text-base">
+                      {item.profiles?.full_name?.charAt(0) || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-semibold text-gray-900 text-sm">{item.profiles?.full_name || 'Campus User'}</span>
+                      {item.profiles?.verification_status === 'approved' && (
+                        <span className="inline-flex items-center gap-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-blue-200">
+                          <CheckCircle2 className="h-2.5 w-2.5" /> Verified
+                        </span>
+                      )}
+                      {item.profiles?.trust_seller_badge && (
+                        <span className="inline-flex items-center gap-0.5 bg-amber-100 text-amber-700 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-amber-200">
+                          <Star className="h-2.5 w-2.5" /> Trusted
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5 truncate">
+                      {item.profiles?.mck_id} 
+                      {item.profiles?.deals_completed ? ` · ${item.profiles.deals_completed} deals` : ''}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">{item.profiles?.mck_id}</p>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors flex-shrink-0" />
+                </button>
               </div>
 
-              {/* --- DESKTOP ACTION AREA --- */}
-              <div className="hidden lg:flex flex-col gap-3 pt-2">
-                
-                {/* CASE 1: NOT LOGGED IN */}
+              {/* ── DESKTOP Action Area ──────────────────────────────── */}
+              <div className="hidden lg:block bg-white rounded-2xl border border-gray-200/80 shadow-sm p-5">
+
+                {/* NOT LOGGED IN */}
                 {!user && (
-                    <Card className="bg-primary/5 border-primary/20">
-                        <CardContent className="p-4 space-y-3 text-center">
-                            <div className="mx-auto w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                                <LogIn className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                                <h3 className="font-semibold">Login to Buy & Chat</h3>
-                                <p className="text-xs text-muted-foreground">Create a free account to contact the seller.</p>
-                            </div>
-                            <Button className="w-full font-semibold" onClick={() => navigate('/auth')}>
-                                Login / Signup
-                            </Button>
-                        </CardContent>
-                    </Card>
+                  <div className="text-center space-y-3">
+                    <div className="w-12 h-12 bg-violet-100 rounded-full flex items-center justify-center mx-auto">
+                      <LogIn className="h-6 w-6 text-violet-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900">Login to Continue</h3>
+                      <p className="text-xs text-gray-500 mt-0.5">Create a free account to buy or chat with the seller.</p>
+                    </div>
+                    <Button
+                      className="w-full h-11 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow-sm"
+                      onClick={() => navigate('/auth')}
+                    >
+                      <LogIn className="h-4 w-4 mr-2" /> Login / Sign Up
+                    </Button>
+                  </div>
                 )}
 
-                {/* CASE 2: LOGGED IN BUT UNVERIFIED (And not owner) */}
+                {/* UNVERIFIED */}
                 {user && !isVerified && !isOwner && (
-                    <Card className="bg-amber-50 border-amber-200">
-                        <CardContent className="p-4 space-y-3">
-                            <div className="flex items-center gap-2 text-amber-800 font-semibold">
-                                <AlertCircle className="h-5 w-5" />
-                                <span>Verification Required</span>
-                            </div>
-                            <p className="text-xs text-amber-700">
-                                You must complete your student KYC verification to buy items or chat with sellers.
-                            </p>
-                            <Button variant="outline" className="w-full border-amber-300 text-amber-900 hover:bg-amber-100" onClick={() => navigate('/kyc')}>
-                                Verify My ID
-                            </Button>
-                        </CardContent>
-                    </Card>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3.5">
+                      <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-amber-900 text-sm">KYC Required</p>
+                        <p className="text-xs text-amber-700 mt-0.5">Complete student verification to buy items or chat with sellers.</p>
+                      </div>
+                    </div>
+                    <Button
+                      className="w-full h-11 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold"
+                      onClick={() => navigate('/kyc')}
+                    >
+                      <Shield className="h-4 w-4 mr-2" /> Verify My Student ID
+                    </Button>
+                  </div>
                 )}
 
-                {/* CASE 3: LOGGED IN & VERIFIED (Normal Flow) */}
-                {user && (isVerified || isOwner) && (
-                  <>
-                    {!isOwner ? (
-                      <>
-                        <div className="flex gap-3">
-                          <Button 
-                            className="flex-1 h-12 text-base shadow-sm" 
-                            size="lg"
-                            onClick={handleBuyNow}
-                            disabled={isDisabled}
-                          >
-                            <Package className="h-5 w-5 mr-2" />
-                            {buttonText}
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="icon"
-                            className={`h-12 w-12 border-2 ${isFavorited ? 'border-red-500 text-red-500 bg-red-50' : ''}`}
-                            onClick={toggleFavorite}
-                          >
-                             <Heart className={`h-6 w-6 ${isFavorited ? 'fill-current' : ''}`} />
-                          </Button>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                           <Button variant="outline" onClick={() => setBargainingDialogOpen(true)} disabled={isDisabled}>
-                             <DollarSign className="h-4 w-4 mr-2" /> Make Offer
-                           </Button>
-                           <Button variant="secondary" onClick={() => handleChatClick()} disabled={isDisabled}>
-                             <MessageCircle className="h-4 w-4 mr-2" /> Chat
-                           </Button>
-                           {item.whatsapp_number && (
-                             <Button 
-                               variant="outline" 
-                               className="col-span-2 border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20"
-                               onClick={handleWhatsAppClick}
-                             >
-                               <Phone className="h-4 w-4 mr-2" /> WhatsApp Seller
-                             </Button>
-                           )}
-                        </div>
-                      </>
-                    ) : (
-                      <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard')}>
-                        Manage Your Listing
+                {/* VERIFIED - not owner */}
+                {user && (isVerified || isOwner) && !isOwner && (
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <Button
+                        className="flex-1 h-12 rounded-xl font-bold text-base shadow-sm bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-60"
+                        onClick={handleBuyNow}
+                        disabled={isDisabled || isBuying}
+                      >
+                        <Package className="h-5 w-5 mr-2" /> {buttonLabel}
                       </Button>
+                      <button
+                        onClick={toggleFavorite}
+                        disabled={isTogglingFav}
+                        className={`h-12 w-12 rounded-xl border-2 flex items-center justify-center transition-all duration-200 flex-shrink-0 ${
+                          isFavorited
+                            ? 'border-red-400 bg-red-50 text-red-500'
+                            : 'border-gray-200 bg-white text-gray-400 hover:border-red-300 hover:text-red-400'
+                        }`}
+                      >
+                        <Heart className={`h-5 w-5 transition-all ${isFavorited ? 'fill-current heart-pop' : ''}`} />
+                      </button>
+                    </div>
+
+                    <div className={`grid gap-2 ${item.whatsapp_number ? 'grid-cols-2' : 'grid-cols-2'}`}>
+                      <Button
+                        variant="outline"
+                        className="h-11 rounded-xl border-gray-200 text-gray-700 hover:bg-gray-50 font-medium"
+                        onClick={() => setBargainingDialogOpen(true)}
+                        disabled={isDisabled}
+                      >
+                        <DollarSign className="h-4 w-4 mr-1.5" /> Make Offer
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-11 rounded-xl border-gray-200 text-gray-700 hover:bg-gray-50 font-medium"
+                        onClick={() => handleChatClick()}
+                        disabled={isDisabled}
+                      >
+                        <MessageCircle className="h-4 w-4 mr-1.5" /> Chat
+                      </Button>
+                      {item.whatsapp_number && (
+                        <Button
+                          className="col-span-2 h-11 rounded-xl bg-green-500 hover:bg-green-600 text-white font-medium"
+                          onClick={handleWhatsAppClick}
+                          disabled={isDisabled}
+                        >
+                          <Phone className="h-4 w-4 mr-2" /> WhatsApp Seller
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* OWNER */}
+                {isOwner && (
+                  <Button
+                    variant="outline"
+                    className="w-full h-11 rounded-xl font-semibold border-gray-200"
+                    onClick={() => navigate('/dashboard')}
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" /> Manage Your Listing
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Similar Items ──────────────────────────────────────────────── */}
+          {user && similarItems.length > 0 && (
+            <div className="mt-10 fade-up" style={{ animationDelay: '0.2s' }}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Users className="h-5 w-5 text-violet-500" /> You might also like
+                </h2>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {similarItems.map((s) => (
+                  <Link
+                    to={`/item/${s.id}`}
+                    key={s.id}
+                    className="group block bg-white rounded-xl border border-gray-200/80 overflow-hidden hover:shadow-md hover:border-violet-200 transition-all duration-200"
+                  >
+                    <div className="aspect-square bg-gray-50 overflow-hidden">
+                      <img
+                        src={getThumbImage(s.images[0])}
+                        alt={s.title}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    </div>
+                    <div className="p-2.5">
+                      <h3 className="font-medium text-gray-900 text-xs truncate leading-snug">{s.title}</h3>
+                      <p className="font-bold text-violet-600 text-sm mt-0.5">₹{s.price.toLocaleString()}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── MOBILE Sticky Action Bar ───────────────────────────────────── */}
+        {!isOwner && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white/95 backdrop-blur-md border-t border-gray-200/80 shadow-[0_-8px_30px_rgba(0,0,0,0.08)]">
+            <div className="px-4 py-3 flex items-center gap-3">
+              {/* Price */}
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Price</span>
+                <span className="font-extrabold text-lg text-gray-900 leading-tight tracking-tight">
+                  ₹{item.price.toLocaleString()}
+                </span>
+              </div>
+
+              <div className="flex-1 flex items-center gap-2 justify-end">
+
+                {/* NOT LOGGED IN */}
+                {!user && (
+                  <Button
+                    className="flex-1 h-11 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-sm"
+                    onClick={() => navigate('/auth')}
+                  >
+                    <LogIn className="h-4 w-4 mr-2" /> Login to Buy
+                  </Button>
+                )}
+
+                {/* UNVERIFIED */}
+                {user && !isVerified && (
+                  <Button
+                    className="flex-1 h-11 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold"
+                    onClick={() => navigate('/kyc')}
+                  >
+                    <Shield className="h-4 w-4 mr-2" /> Verify to Buy
+                  </Button>
+                )}
+
+                {/* VERIFIED */}
+                {user && isVerified && (
+                  <>
+                    {/* Wishlist */}
+                    <button
+                      onClick={toggleFavorite}
+                      disabled={isTogglingFav}
+                      className={`h-11 w-11 rounded-xl border-2 flex-shrink-0 flex items-center justify-center transition-all ${
+                        isFavorited ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200 text-gray-400'
+                      }`}
+                    >
+                      <Heart className={`h-5 w-5 ${isFavorited ? 'fill-current' : ''}`} />
+                    </button>
+
+                    {/* Make Offer */}
+                    <button
+                      onClick={() => setBargainingDialogOpen(true)}
+                      disabled={isDisabled}
+                      className="h-11 w-11 rounded-xl border-2 border-gray-200 flex-shrink-0 flex items-center justify-center text-gray-600 disabled:opacity-40"
+                    >
+                      <DollarSign className="h-5 w-5" />
+                    </button>
+
+                    {/* Chat */}
+                    <button
+                      onClick={() => handleChatClick()}
+                      disabled={isDisabled}
+                      className="h-11 w-11 rounded-xl border-2 border-gray-200 flex-shrink-0 flex items-center justify-center text-gray-600 disabled:opacity-40"
+                    >
+                      <MessageCircle className="h-5 w-5" />
+                    </button>
+
+                    {/* WhatsApp */}
+                    {item.whatsapp_number && (
+                      <button
+                        onClick={handleWhatsAppClick}
+                        disabled={isDisabled}
+                        className="h-11 w-11 rounded-xl border-2 border-green-300 bg-green-50 flex-shrink-0 flex items-center justify-center text-green-600 disabled:opacity-40"
+                      >
+                        <Phone className="h-5 w-5" />
+                      </button>
                     )}
+
+                    {/* Buy Now */}
+                    <Button
+                      className="h-11 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold px-5 shadow-sm flex-shrink-0 disabled:opacity-60"
+                      onClick={handleBuyNow}
+                      disabled={isDisabled || isBuying}
+                    >
+                      {item.is_sold ? 'Sold' : isPendingBySomeoneElse ? 'Reserved' : hasPendingOrder ? 'Reserved ✓' : isBuying ? '...' : 'Buy Now'}
+                    </Button>
                   </>
                 )}
               </div>
             </div>
+            {/* Safe area spacing for iOS */}
+            <div className="h-[env(safe-area-inset-bottom)]" />
           </div>
-        </div>
+        )}
 
-        {/* --- Similar Items Section (HIDDEN IF LOGGED OUT) --- */}
-        {user && similarItems.length > 0 && (
-          <div className="mt-12">
-            <h2 className="text-xl font-bold mb-6">You might also like</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {similarItems.map((similar) => (
-                <Link to={`/item/${similar.id}`} key={similar.id} className="group block bg-card rounded-lg border overflow-hidden hover:shadow-md transition-all">
-                  <div className="aspect-square bg-muted relative overflow-hidden">
-                    <img 
-                      src={getThumbImage(similar.images[0])} 
-                      alt={similar.title} 
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                    />
-                  </div>
-                  <div className="p-3">
-                    <h3 className="font-medium truncate text-sm">{similar.title}</h3>
-                    <p className="font-bold text-primary text-sm mt-1">₹{similar.price.toLocaleString()}</p>
-                  </div>
-                </Link>
-              ))}
+        {/* ── Lightbox ────────────────────────────────────────────────────── */}
+        {lightboxOpen && item.images?.length > 0 && (
+          <div
+            className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-4"
+            style={{ animation: 'fadeUp 0.2s ease' }}
+            onClick={(e) => e.target === e.currentTarget && setLightboxOpen(false)}
+          >
+            {/* Close */}
+            <button
+              onClick={() => setLightboxOpen(false)}
+              className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-10"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Prev */}
+            {item.images.length > 1 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(i => (i - 1 + item.images.length) % item.images.length); }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-10"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+            )}
+
+            {/* Image */}
+            <img
+              key={currentImageIndex}
+              src={getDetailImage(item.images[currentImageIndex])}
+              alt={`Image ${currentImageIndex + 1}`}
+              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+              style={{ animation: 'fadeUp 0.2s ease' }}
+            />
+
+            {/* Next */}
+            {item.images.length > 1 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(i => (i + 1) % item.images.length); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-10"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            )}
+
+            {/* Dots */}
+            {item.images.length > 1 && (
+              <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2">
+                {item.images.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(idx); }}
+                    className={`h-2 rounded-full transition-all duration-200 ${idx === currentImageIndex ? 'w-6 bg-white' : 'w-2 bg-white/40 hover:bg-white/70'}`}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Counter */}
+            <div className="absolute top-4 left-4 text-white/70 text-sm font-medium">
+              {currentImageIndex + 1} / {item.images.length}
             </div>
           </div>
         )}
+
+        {/* ── Modals ──────────────────────────────────────────────────────── */}
+        <ReportModal
+          isOpen={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          reportType="listing"
+          targetId={item?.id}
+          targetName={item?.title}
+        />
+        <BargainingDialog
+          isOpen={bargainingDialogOpen}
+          onClose={() => setBargainingDialogOpen(false)}
+          originalPrice={item?.price || 0}
+          onSubmit={(offerPrice) => handleChatClick(offerPrice)}
+          itemTitle={item?.title || ''}
+        />
       </div>
-
-      {/* --- Sticky Mobile Action Bar --- */}
-      {!isOwner && (
-        <div className="fixed bottom-0 left-0 right-0 p-3 bg-background border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] lg:hidden z-50 flex gap-3 items-center safe-area-pb">
-          <div className="flex flex-col px-1">
-            <span className="text-xs text-muted-foreground">Price</span>
-            <span className="font-bold text-lg text-primary">₹{item.price.toLocaleString()}</span>
-          </div>
-          <div className="flex-1 flex gap-2 justify-end">
-             {/* If NOT LOGGED IN */}
-             {!user ? (
-                 <Button className="w-full" onClick={() => navigate('/auth')}>
-                    <LogIn className="h-4 w-4 mr-2" /> Login to Chat
-                 </Button>
-             ) : !isVerified ? (
-                 /* If UNVERIFIED */
-                 <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white" onClick={() => navigate('/kyc')}>
-                    <Shield className="h-4 w-4 mr-2" /> Verify to Buy/Chat
-                 </Button>
-             ) : (
-                 /* NORMAL FLOW - Mobile */
-                 <>
-                    {/* Make Offer Button */}
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setBargainingDialogOpen(true)} 
-                      disabled={isDisabled}
-                      className="px-2"
-                    >
-                      <DollarSign className="h-4 w-4" />
-                    </Button>
-
-                     {/* Chat Button */}
-                     <Button 
-                       variant="outline" 
-                       size="sm" 
-                       onClick={() => handleChatClick()} 
-                       disabled={isDisabled}
-                       className="px-3"
-                     >
-                       <MessageCircle className="h-4 w-4" />
-                     </Button>
-
-                     {/* WhatsApp Button */}
-                     {item.whatsapp_number && (
-                       <Button 
-                         variant="outline" 
-                         size="sm"
-                         className="border-green-500 text-green-600 hover:bg-green-50 px-2"
-                         onClick={handleWhatsAppClick}
-                         disabled={isDisabled}
-                       >
-                         <Phone className="h-4 w-4" />
-                       </Button>
-                     )}
-
-                     {/* Buy Now Button */}
-                     <Button className="flex-1" size="sm" onClick={handleBuyNow} disabled={isDisabled}>
-                         {hasPendingOrder ? 'Reserved' : 'Buy Now'}
-                     </Button>
-                 </>
-             )}
-          </div>
-        </div>
-      )}
-
-      {/* --- Custom Lightbox --- */}
-      {lightboxOpen && (
-        <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <button 
-            onClick={() => setLightboxOpen(false)}
-            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
-          >
-            <X className="h-6 w-6" />
-          </button>
-          
-          <img 
-            src={getDetailImage(item.images[currentImageIndex])} 
-            className="max-w-full max-h-[85vh] object-contain rounded-md"
-            alt="Fullscreen view"
-          />
-          
-          {item.images.length > 1 && (
-             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-                {item.images.map((_, idx) => (
-                   <div 
-                     key={idx} 
-                     className={`h-2 w-2 rounded-full ${idx === currentImageIndex ? 'bg-white' : 'bg-white/40'}`} 
-                   />
-                ))}
-             </div>
-          )}
-        </div>
-      )}
-
-      {/* --- Other Modals --- */}
-      <ReportModal 
-        isOpen={reportModalOpen}
-        onClose={() => setReportModalOpen(false)}
-        reportType="listing"
-        targetId={item?.id}
-        targetName={item?.title}
-      />
-
-      <BargainingDialog
-        isOpen={bargainingDialogOpen}
-        onClose={() => setBargainingDialogOpen(false)}
-        originalPrice={item?.price || 0}
-        onSubmit={(offerPrice) => handleChatClick(offerPrice)}
-        itemTitle={item?.title || ''}
-      />
-    </div>
+    </>
   );
 };
 
