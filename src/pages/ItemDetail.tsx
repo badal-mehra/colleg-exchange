@@ -335,10 +335,10 @@ const ItemDetail = () => {
 
   const buttonLabel = item.is_sold ? '🚫 Sold Out'
     : isPendingBySomeoneElse ? '⏳ Reserved by Another'
-    : hasPendingOrder ? '✅ Already Reserved'
+    : hasPendingOrder ? ' Already Reserved'
     : isBuying ? 'Reserving…'
     : isRental ? '📦 Reserve Rental'
-    : '⚡ Buy Now';
+    : ' Buy Now';
 
   return (
     <>
