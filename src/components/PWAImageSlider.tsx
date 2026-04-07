@@ -1,8 +1,16 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+} from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pause, Play, ExternalLink, ArrowUpRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+/* ─────────────────────────────────────────────
+   Types
+───────────────────────────────────────────── */
 interface SliderImage {
   id: string;
   image_url: string;
@@ -11,202 +19,482 @@ interface SliderImage {
   link_url: string | null;
 }
 
+/* ─────────────────────────────────────────────
+   Constants
+───────────────────────────────────────────── */
+const SLIDE_DURATION = 6000; // ms per slide
+const TRANSITION_MS  = 650;  // crossfade duration
+
+/* ─────────────────────────────────────────────
+   Loading skeleton
+───────────────────────────────────────────── */
+const SliderSkeleton = () => (
+  <div className="w-full aspect-[16/9] md:aspect-[21/9] rounded-3xl overflow-hidden relative bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900">
+    <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 translate-x-[-200%] animate-[shimmer_1.8s_infinite]" />
+    <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-10 gap-3">
+      <div className="h-7 w-2/5 rounded-lg bg-slate-300/60 dark:bg-slate-700/60" />
+      <div className="h-4 w-3/5 rounded-md bg-slate-300/40 dark:bg-slate-700/40" />
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   Error state
+───────────────────────────────────────────── */
+const SliderError = () => (
+  <div className="w-full aspect-[16/9] md:aspect-[21/9] rounded-3xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-rose-50 to-pink-50 dark:from-rose-950/40 dark:to-pink-950/40 border border-rose-100 dark:border-rose-900/50">
+    <div className="flex flex-col items-center gap-3 p-6 text-center">
+      <div className="w-14 h-14 rounded-full bg-rose-100 dark:bg-rose-900/60 flex items-center justify-center text-2xl">
+        ⚠️
+      </div>
+      <p className="font-semibold text-rose-700 dark:text-rose-300 text-base">
+        Could not load slides
+      </p>
+      <p className="text-xs text-rose-400 dark:text-rose-500">
+        Check your connection and try refreshing
+      </p>
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   Main Component
+───────────────────────────────────────────── */
 const PWAImageSlider = () => {
   const navigate = useNavigate();
-  const [images, setImages] = useState<SliderImage[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [touchStart, setTouchStart] = useState(0);
-  const [touchEnd, setTouchEnd] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  
-  // Use a ref for the interval so we can clear it easily
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. Fetch Data
+  /* State */
+  const [images, setImages]               = useState<SliderImage[]>([]);
+  const [currentIndex, setCurrentIndex]   = useState(0);
+  const [loading, setLoading]             = useState(true);
+  const [fetchError, setFetchError]       = useState(false);
+  const [isPaused, setIsPaused]           = useState(false);
+  const [isAutoPlay, setIsAutoPlay]       = useState(true);
+  const [progress, setProgress]           = useState(0);          // 0–100
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  /* Refs — never stale inside intervals/timeouts */
+  const containerRef   = useRef<HTMLDivElement>(null);
+  const announcerRef   = useRef<HTMLDivElement>(null);
+  const intervalRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const rafRef         = useRef<number | null>(null);
+  const startTimeRef   = useRef<number>(0);
+  const lengthRef      = useRef(0);
+  const pausedRef      = useRef(false);
+  const autoPlayRef    = useRef(true);
+  const touchStartX    = useRef(0);
+  const touchStartY    = useRef(0);
+
+  /* Keep refs in sync */
+  useEffect(() => { lengthRef.current = images.length; }, [images.length]);
+  useEffect(() => { pausedRef.current = isPaused; },     [isPaused]);
+  useEffect(() => { autoPlayRef.current = isAutoPlay; }, [isAutoPlay]);
+
+  /* ── Fetch ─────────────────────────────── */
   useEffect(() => {
     const fetchSliderImages = async () => {
-      const { data } = await supabase
-        .from('image_slidebar')
-        .select('id, image_url, title, description, link_url')
-        .eq('is_active', true)
-        .order('sort_order');
-      
-      if (data && data.length > 0) {
-        setImages(data);
+      try {
+        const { data, error } = await supabase
+          .from('image_slidebar')
+          .select('id, image_url, title, description, link_url')
+          .eq('is_active', true)
+          .order('sort_order');
+
+        if (error) throw error;
+        if (data?.length) setImages(data);
+      } catch {
+        setFetchError(true);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchSliderImages();
   }, []);
 
-  // 2. Navigation Helper Functions
-  const goToPrevious = () => {
-    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
-  };
+  /* ── Go-to-slide ───────────────────────── */
+  const goToSlide = useCallback((index: number) => {
+    if (isTransitioning) return;
 
-  const goToNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % images.length);
-  };
-
-  const goToSlide = (index: number) => {
+    setIsTransitioning(true);
     setCurrentIndex(index);
-  };
+    setProgress(0);
+    startTimeRef.current = performance.now();
 
-  // 3. Auto-play Logic (Pauses on interaction)
-  useEffect(() => {
-    if (images.length <= 1 || isPaused) return;
+    if (announcerRef.current) {
+      announcerRef.current.textContent =
+        `Slide ${index + 1} of ${lengthRef.current}` +
+        (images[index]?.title ? `: ${images[index].title}` : '');
+    }
+
+    setTimeout(() => setIsTransitioning(false), TRANSITION_MS);
+  }, [isTransitioning, images]);
+
+  const goToNext     = useCallback(() =>
+    goToSlide((currentIndex + 1) % lengthRef.current),
+    [currentIndex, goToSlide]);
+
+  const goToPrevious = useCallback(() =>
+    goToSlide(currentIndex === 0 ? lengthRef.current - 1 : currentIndex - 1),
+    [currentIndex, goToSlide]);
+
+  /* ── Smooth RAF progress bar ───────────── */
+  const stopProgress = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, []);
+
+  const startProgress = useCallback(() => {
+    stopProgress();
+    startTimeRef.current = performance.now();
+
+    const tick = (now: number) => {
+      if (pausedRef.current || !autoPlayRef.current) return;
+      const elapsed = now - startTimeRef.current;
+      const pct = Math.min((elapsed / SLIDE_DURATION) * 100, 100);
+      setProgress(pct);
+      if (pct < 100) {
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+  }, [stopProgress]);
+
+  /* ── Auto-play ─────────────────────────── */
+  const startAutoPlay = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
 
     intervalRef.current = setInterval(() => {
-      goToNext();
-    }, 5000); // 5 seconds per slide
+      if (!pausedRef.current && autoPlayRef.current && lengthRef.current > 1) {
+        setCurrentIndex(prev => {
+          const next = (prev + 1) % lengthRef.current;
+          setProgress(0);
+          startTimeRef.current = performance.now();
+          return next;
+        });
+      }
+    }, SLIDE_DURATION);
+  }, []);
+
+  useEffect(() => {
+    if (images.length <= 1) return;
+
+    if (isAutoPlay && !isPaused) {
+      startAutoPlay();
+      startProgress();
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      stopProgress();
+      if (!isAutoPlay) setProgress(0);
+    }
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      stopProgress();
     };
-  }, [currentIndex, isPaused, images.length]);
+  }, [isAutoPlay, isPaused, images.length, startAutoPlay, startProgress, stopProgress]);
 
-  // 4. Touch Swipe Handlers (No external library)
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setIsPaused(true);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchEnd = () => {
-    setIsPaused(false);
-    if (!touchStart || !touchEnd) return;
-    
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-
-    if (isLeftSwipe) {
-      goToNext();
-    } else if (isRightSwipe) {
-      goToPrevious();
+  /* Restart progress when slide changes */
+  useEffect(() => {
+    if (images.length > 1 && isAutoPlay && !isPaused) {
+      stopProgress();
+      startProgress();
     }
-    
-    // Reset
-    setTouchEnd(0);
-    setTouchStart(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex]);
+
+  /* ── Keyboard navigation ───────────────── */
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const focused = document.activeElement;
+      const inside  = containerRef.current?.contains(focused) || focused === document.body;
+      if (!inside) return;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          goToPrevious();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          goToNext();
+          break;
+        case ' ':
+          e.preventDefault();
+          setIsAutoPlay(p => !p);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [goToNext, goToPrevious]);
+
+  /* ── Touch handlers ────────────────────── */
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+    touchStartY.current = e.targetTouches[0].clientY;
+    setIsPaused(true);
   };
 
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    setIsPaused(false);
+    const dx = touchStartX.current - e.changedTouches[0].clientX;
+    const dy = touchStartY.current - e.changedTouches[0].clientY;
+
+    /* Only swipe if horizontal gesture dominates */
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      dx > 0 ? goToNext() : goToPrevious();
+    }
+  };
+
+  /* ── Link click ────────────────────────── */
   const handleSlideClick = (linkUrl: string | null) => {
     if (!linkUrl) return;
-    if (linkUrl.startsWith('/')) {
-      navigate(linkUrl);
-    } else {
-      window.open(linkUrl, '_blank');
-    }
+    linkUrl.startsWith('/') ? navigate(linkUrl) : window.open(linkUrl, '_blank');
   };
 
-  if (loading) {
-    return (
-      <div className="w-full aspect-video md:aspect-[21/9] bg-muted/50 rounded-2xl animate-pulse" />
-    );
-  }
+  /* ─────────────────────────────────────────
+     Render guards
+  ───────────────────────────────────────── */
+  if (loading)    return <SliderSkeleton />;
+  if (fetchError) return <SliderError />;
+  if (!images.length) return null;
 
-  if (images.length === 0) return null;
+  const slide = images[currentIndex];
+  const hasNav = images.length > 1;
 
+  /* ─────────────────────────────────────────
+     Render
+  ───────────────────────────────────────── */
   return (
-    <div 
-      className="relative w-full overflow-hidden rounded-2xl group select-none"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
-      {/* Slider Track */}
-      <div 
-        className="flex transition-transform duration-500 ease-out will-change-transform"
-        style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+    <div className="w-full space-y-2.5">
+      {/* ── Screen-reader live region ─────── */}
+      <div
+        ref={announcerRef}
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      />
+
+      {/* ── Main slider ───────────────────── */}
+      <div
+        ref={containerRef}
+        role="region"
+        aria-label="Image carousel"
+        tabIndex={0}
+        className="relative w-full overflow-hidden rounded-3xl select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 group"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
-        {images.map((image, index) => (
-          <div
-            key={image.id}
-            className="w-full flex-shrink-0 relative"
-          >
-            {/* Image with improved aspect ratio handling */}
-            <div 
-              className="relative w-full aspect-[16/9] md:aspect-[21/9] cursor-pointer"
-              onClick={() => handleSlideClick(image.link_url)}
-            >
-              <img
-                src={image.image_url}
-                alt={image.title || 'Slide'}
-                className="w-full h-full object-cover"
-                loading={index === 0 ? 'eager' : 'lazy'}
-                draggable="false"
-              />
-              
-              {/* Text Overlay - Improved gradient for readability */}
-              {(image.title || image.description) && (
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4 md:p-8 pointer-events-none">
-                  <div className="transform transition-all duration-500 translate-y-0 opacity-100">
-                    {image.title && (
-                      <h3 className="text-white font-bold text-lg md:text-2xl mb-1 line-clamp-1 drop-shadow-md">
-                        {image.title}
-                      </h3>
-                    )}
-                    {image.description && (
-                      <p className="text-gray-200 text-xs md:text-sm line-clamp-2 max-w-2xl drop-shadow-sm">
-                        {image.description}
-                      </p>
-                    )}
-                  </div>
+        {/* Slide stack */}
+        <div className="relative w-full aspect-[16/9] md:aspect-[21/9]">
+          {images.map((image, index) => {
+            const isActive = index === currentIndex;
+            return (
+              <div
+                key={image.id}
+                aria-hidden={!isActive}
+                className={[
+                  'absolute inset-0 transition-all ease-in-out',
+                  `duration-[${TRANSITION_MS}ms]`,
+                  isActive
+                    ? 'opacity-100 z-10 scale-100'
+                    : 'opacity-0 z-0 scale-[1.04]',
+                ].join(' ')}
+                style={{ transitionDuration: `${TRANSITION_MS}ms` }}
+              >
+                <img
+                  src={image.image_url}
+                  alt={image.title || `Slide ${index + 1}`}
+                  className="w-full h-full object-cover"
+                  loading={index === 0 ? 'eager' : 'lazy'}
+                  draggable="false"
+                />
+
+                {/* Cinematic gradient layers */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent" />
+              </div>
+            );
+          })}
+
+          {/* ── Overlay UI ────────────────── */}
+          <div className="absolute inset-0 z-20 flex flex-col justify-between p-4 md:p-8 pointer-events-none">
+
+            {/* Top row: counter + autoplay */}
+            <div className="flex items-start justify-between">
+              {hasNav ? (
+                <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 flex items-center gap-2">
+                  <span className="text-white font-bold text-sm tabular-nums tracking-wide">
+                    {String(currentIndex + 1).padStart(2, '0')}
+                  </span>
+                  <span className="text-white/30 text-xs">／</span>
+                  <span className="text-white/50 text-xs tabular-nums">
+                    {String(images.length).padStart(2, '0')}
+                  </span>
+                </div>
+              ) : <div />}
+
+              {hasNav && (
+                <button
+                  className="bg-black/30 backdrop-blur-md border border-white/10 rounded-full w-9 h-9 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/50 active:scale-90 transition-all duration-200 pointer-events-auto"
+                  onClick={() => setIsAutoPlay(p => !p)}
+                  aria-label={isAutoPlay ? 'Pause autoplay' : 'Resume autoplay'}
+                >
+                  {isAutoPlay
+                    ? <Pause className="w-3.5 h-3.5 fill-current" />
+                    : <Play  className="w-3.5 h-3.5 fill-current" />}
+                </button>
+              )}
+            </div>
+
+            {/* Bottom row: text + arrows */}
+            <div className="flex items-end justify-between gap-4">
+              {/* Text content — re-mounts on slide change for entrance animation */}
+              <div
+                key={`content-${currentIndex}`}
+                className="flex-1 min-w-0 animate-in slide-in-from-bottom-3 fade-in duration-500 fill-mode-both"
+                style={{ pointerEvents: slide.link_url ? 'auto' : 'none' }}
+              >
+                {slide.link_url ? (
+                  <button
+                    className="text-left group/link w-full"
+                    onClick={() => handleSlideClick(slide.link_url)}
+                    aria-label={slide.title ? `${slide.title} — open link` : 'Open slide link'}
+                  >
+                    <SlideContent slide={slide} />
+                  </button>
+                ) : (
+                  <SlideContent slide={slide} />
+                )}
+              </div>
+
+              {/* Desktop arrow buttons */}
+              {hasNav && (
+                <div className="hidden md:flex items-center gap-2 pointer-events-auto flex-shrink-0">
+                  <button
+                    onClick={goToPrevious}
+                    disabled={isTransitioning}
+                    className="w-11 h-11 rounded-full bg-black/30 backdrop-blur-md border border-white/10 hover:bg-white hover:text-black text-white flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-40"
+                    aria-label="Previous slide"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={goToNext}
+                    disabled={isTransitioning}
+                    className="w-11 h-11 rounded-full bg-black/30 backdrop-blur-md border border-white/10 hover:bg-white hover:text-black text-white flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-40"
+                    aria-label="Next slide"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
                 </div>
               )}
             </div>
           </div>
-        ))}
+
+          {/* ── Segmented progress bars ──── */}
+          {hasNav && (
+            <div className="absolute bottom-0 left-0 right-0 z-30 flex gap-1.5 px-4 md:px-8 pb-2.5">
+              {images.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => goToSlide(index)}
+                  aria-label={`Go to slide ${index + 1}`}
+                  aria-current={index === currentIndex ? 'true' : undefined}
+                  className="h-[3px] flex-1 rounded-full overflow-hidden bg-white/25 relative focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white"
+                >
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full bg-white"
+                    style={{
+                      width:
+                        index < currentIndex
+                          ? '100%'
+                          : index === currentIndex
+                          ? `${isAutoPlay && !isPaused ? progress : 0}%`
+                          : '0%',
+                      transition: index === currentIndex ? 'none' : 'width 0.25s ease',
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Navigation Arrows - Only visible on Desktop Hover */}
-      {images.length > 1 && (
-        <>
-          <button
-            onClick={(e) => { e.stopPropagation(); goToPrevious(); }}
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm hover:bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 hidden md:flex border border-white/10"
-            aria-label="Previous Slide"
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </button>
-          
-          <button
-            onClick={(e) => { e.stopPropagation(); goToNext(); }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm hover:bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 hidden md:flex border border-white/10"
-            aria-label="Next Slide"
-          >
-            <ChevronRight className="h-6 w-6" />
-          </button>
-        </>
-      )}
-
-      {/* Dot Indicators */}
-      {images.length > 1 && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-          {images.map((_, index) => (
-            <button
-              key={index}
-              onClick={(e) => { e.stopPropagation(); goToSlide(index); }}
-              className={`h-1.5 rounded-full transition-all duration-300 shadow-sm ${
-                index === currentIndex
-                  ? 'bg-white w-6'
-                  : 'bg-white/50 w-2 hover:bg-white/80'
-              }`}
-              aria-label={`Go to slide ${index + 1}`}
-            />
-          ))}
+      {/* ── Thumbnail strip ───────────────── */}
+      {hasNav && (
+        <div
+          className="flex gap-2 overflow-x-auto pb-1"
+          role="tablist"
+          aria-label="Slide thumbnails"
+          style={{ scrollbarWidth: 'none' }}
+        >
+          {images.map((image, index) => {
+            const isActive = index === currentIndex;
+            return (
+              <button
+                key={image.id}
+                role="tab"
+                aria-selected={isActive}
+                aria-label={`Slide ${index + 1}${image.title ? `: ${image.title}` : ''}`}
+                onClick={() => goToSlide(index)}
+                className={[
+                  'relative flex-shrink-0 w-16 h-10 md:w-24 md:h-14 rounded-xl overflow-hidden',
+                  'transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1',
+                  isActive
+                    ? 'ring-2 ring-primary ring-offset-2 opacity-100 scale-105'
+                    : 'opacity-50 hover:opacity-80 hover:scale-[1.04]',
+                ].join(' ')}
+              >
+                <img
+                  src={image.image_url}
+                  alt={image.title || `Slide ${index + 1}`}
+                  className="w-full h-full object-cover"
+                  draggable="false"
+                />
+                {/* Active shimmer ring */}
+                {isActive && (
+                  <div className="absolute inset-0 border-2 border-white/20 rounded-xl" />
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
   );
 };
+
+/* ─────────────────────────────────────────────
+   Slide text content (extracted to keep JSX clean)
+───────────────────────────────────────────── */
+const SlideContent = ({ slide }: { slide: { title: string | null; description: string | null; link_url: string | null } }) => (
+  <div className="space-y-1.5">
+    {slide.title && (
+      <h3 className="text-white font-bold text-xl md:text-3xl leading-tight drop-shadow-lg line-clamp-2 group-hover/link:underline underline-offset-4">
+        {slide.title}
+      </h3>
+    )}
+    {slide.description && (
+      <p className="text-white/70 text-sm md:text-base line-clamp-2 max-w-xl leading-relaxed">
+        {slide.description}
+      </p>
+    )}
+    {slide.link_url && (
+      <div className="flex items-center gap-1.5 text-white/50 text-xs font-medium mt-2.5 group-hover/link:text-white/80 transition-colors">
+        <ArrowUpRight className="w-3.5 h-3.5" />
+        <span>Learn more</span>
+      </div>
+    )}
+  </div>
+);
 
 export default PWAImageSlider;
