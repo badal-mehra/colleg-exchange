@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
   ArrowLeft, 
@@ -30,7 +30,7 @@ interface Favorite {
   id: string;
   item_id: string;
   created_at: string;
-  items: Item; // Joined from Supabase
+  items: Item; 
 }
 
 const MyCart = () => {
@@ -50,36 +50,65 @@ const MyCart = () => {
     if (!user) return;
     setLoading(true);
 
-    // MASSIVE PERFORMANCE FIX: Single query with a join instead of mapping N+1 requests
-    const { data, error } = await supabase
+    // 1. Fetch just the favorites first
+    const { data: favoritesData, error: favError } = await supabase
       .from('favorites')
-      .select(`
-        id,
-        item_id,
-        created_at,
-        items (
-          id,
-          title,
-          price,
-          images,
-          condition,
-          location,
-          created_at
-        )
-      `)
+      .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching favorites:', error);
+    if (favError) {
+      console.error('Error fetching favorites:', favError);
       toast({
         title: "Whoops!",
         description: "Failed to load your favorites. Try again.",
         variant: "destructive",
       });
+      setLoading(false);
+      return;
+    }
+
+    // If no favorites, stop here and clear loading
+    if (!favoritesData || favoritesData.length === 0) {
+      setFavorites([]);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Extract all item_ids and fetch the items in ONE single query
+    const itemIds = favoritesData.map(fav => fav.item_id);
+    
+    const { data: itemsData, error: itemsError } = await supabase
+      .from('items')
+      .select('id, title, price, images, condition, location, created_at')
+      .in('id', itemIds); 
+
+    if (itemsError) {
+      console.error('Error fetching item details:', itemsError);
+      toast({
+        title: "Whoops!",
+        description: "Failed to load item details.",
+        variant: "destructive",
+      });
     } else {
-      // Supabase returns joined data inside the 'items' key
-      setFavorites(data as unknown as Favorite[]);
+      // 3. Stitch them together using a Map for instant lookups
+      const itemsMap = new Map(itemsData.map(item => [item.id, item]));
+      
+      const favoritesWithItems = favoritesData.map(fav => ({
+        ...fav,
+        // Fallback to empty item if the original item was deleted from the DB
+        items: itemsMap.get(fav.item_id) || {
+          id: fav.item_id,
+          title: 'Item no longer available',
+          price: 0,
+          images: [],
+          condition: 'N/A',
+          location: 'N/A',
+          created_at: ''
+        }
+      }));
+
+      setFavorites(favoritesWithItems as Favorite[]);
     }
     
     setLoading(false);
@@ -152,7 +181,6 @@ const MyCart = () => {
             <Badge variant="secondary" className="px-3 py-1 text-sm font-medium rounded-full">
               {favorites.length}
             </Badge>
-            {/* Tucked away the push button neatly */}
             <Button 
               variant="outline" 
               size="icon" 
@@ -191,7 +219,12 @@ const MyCart = () => {
             {favorites.map((favorite) => (
               <Card 
                 key={favorite.id}
-                onClick={() => navigate(`/item/${favorite.items.id}`)}
+                onClick={() => {
+                  // Only navigate if the item wasn't deleted
+                  if(favorite.items.title !== 'Item no longer available') {
+                    navigate(`/item/${favorite.items.id}`);
+                  }
+                }}
                 className="overflow-hidden cursor-pointer group active:scale-[0.98] transition-all duration-200 border-border/40 hover:border-primary/30"
               >
                 <div className="flex flex-row sm:flex-col h-full">
@@ -209,7 +242,7 @@ const MyCart = () => {
                       </div>
                     )}
                     
-                    {favorite.items?.condition && (
+                    {favorite.items?.condition && favorite.items.condition !== 'N/A' && (
                       <Badge 
                         className="absolute top-2 left-2 bg-background/90 text-foreground backdrop-blur-sm border-none shadow-sm"
                       >
@@ -230,7 +263,7 @@ const MyCart = () => {
                         ₹{favorite.items?.price?.toLocaleString() || '0'}
                       </p>
                       
-                      {favorite.items?.location && (
+                      {favorite.items?.location && favorite.items.location !== 'N/A' && (
                         <div className="flex items-center text-xs text-muted-foreground mt-2">
                           <MapPin className="h-3 w-3 mr-1" />
                           <span className="truncate">{favorite.items.location}</span>
@@ -243,9 +276,12 @@ const MyCart = () => {
                       <Button 
                         variant="secondary"
                         className="w-full rounded-xl active:scale-95"
+                        disabled={favorite.items.title === 'Item no longer available'}
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/item/${favorite.items.id}`);
+                          if(favorite.items.title !== 'Item no longer available') {
+                            navigate(`/item/${favorite.items.id}`);
+                          }
                         }}
                       >
                         View
