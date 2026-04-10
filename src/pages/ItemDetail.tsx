@@ -545,12 +545,11 @@ const ItemDetail = () => {
               {/* ── Thumbnail scroll strip ── */}
 {/* ── Thumbnail Slider Strip ── */}
 {images.length > 1 && (
-  {/* 1. STRICT PARENT BOUNDARY: This completely stops the "page shift" bug */}
-  <div className="relative mt-3 w-full max-w-full overflow-hidden">
+  {/* The fix: min-w-0 stops CSS grid from expanding, max-w sets a strict physical limit on mobile */}
+  <div className="relative mt-3 w-full min-w-0 max-w-[calc(100vw-32px)] lg:max-w-full mx-auto">
     
-    {/* 2. SWIPEABLE TRACK: Only this part moves when swiped with fingers */}
     <div 
-      className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory touch-pan-x no-scrollbar pb-2 px-1"
+      className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory touch-pan-x no-scrollbar pb-2"
       style={{ WebkitOverflowScrolling: 'touch' }}
     >
       {images.map((img, idx) => (
@@ -558,7 +557,6 @@ const ItemDetail = () => {
           key={idx}
           onClick={(e) => {
             setCurrentImageIndex(idx);
-            // Auto-centers the image you tap on
             e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
           }}
           className={`relative flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all duration-200 snap-center active:scale-95 ${
@@ -577,15 +575,9 @@ const ItemDetail = () => {
       ))}
     </div>
 
-    {/* Subtle edge fades so the user knows they can swipe left/right */}
-    <div className="absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-white to-transparent pointer-events-none" />
-    <div className="absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white to-transparent pointer-events-none" />
-  </div>
-)}
-
-    {/* Subtle edge gradients to hint at scrollability */}
-    <div className="absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-white to-transparent pointer-events-none" />
-    <div className="absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-white to-transparent pointer-events-none" />
+    {/* Edge fades */}
+    <div className="absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[#F3F4F6] lg:from-white to-transparent pointer-events-none" />
+    <div className="absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[#F3F4F6] lg:from-white to-transparent pointer-events-none" />
   </div>
 )}
           
