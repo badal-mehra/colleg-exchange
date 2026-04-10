@@ -543,23 +543,54 @@ const ItemDetail = () => {
               </div>
 
               {/* ── Thumbnail scroll strip ── */}
-              {images.length > 1 && (
-                <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
-                  {images.map((img, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setCurrentImageIndex(idx)}
-                      className={`relative flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all duration-200 active:scale-95 ${
-                        idx === currentImageIndex
-                          ? 'border-gray-900 ring-2 ring-gray-200 shadow-md w-[72px] h-[72px]'
-                          : 'border-transparent opacity-50 hover:opacity-80 w-[68px] h-[68px]'
-                      }`}
-                    >
-                      <img src={getThumbImage(img)} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                    </button>
-                  ))}
-                </div>
-              )}
+              {/* ── Thumbnail Slider Strip ── */}
+{images.length > 1 && (
+  <div className="relative mt-2">
+    {/* Scrollable Container */}
+    <div 
+      className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory px-2 py-1"
+      style={{ 
+        scrollBehavior: 'smooth', 
+        WebkitOverflowScrolling: 'touch' 
+      }}
+    >
+      {images.map((img, idx) => (
+        <button
+          key={idx}
+          onClick={(e) => {
+            setCurrentImageIndex(idx);
+            // Optionally snap the clicked thumbnail to the center
+            e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+          }}
+          className={`relative flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all duration-300 snap-center active:scale-95 ${
+            idx === currentImageIndex
+              ? 'border-gray-900 ring-2 ring-gray-200 shadow-md w-[76px] h-[76px]'
+              : 'border-transparent opacity-50 hover:opacity-100 w-[68px] h-[68px]'
+          }`}
+        >
+          <img 
+            src={getThumbImage(img)} 
+            alt={`Thumbnail ${idx + 1}`} 
+            className="w-full h-full object-cover" 
+            loading="lazy"
+          />
+          
+          {/* Active indicator dot for extra visual feedback */}
+          {idx === currentImageIndex && (
+            <div className="absolute inset-0 bg-black/5 flex items-center justify-center pointer-events-none">
+              <div className="w-1.5 h-1.5 bg-white rounded-full shadow-sm mt-auto mb-1" />
+            </div>
+          )}
+        </button>
+      ))}
+    </div>
+
+    {/* Subtle edge gradients to hint at scrollability */}
+    <div className="absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-white to-transparent pointer-events-none" />
+    <div className="absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-white to-transparent pointer-events-none" />
+  </div>
+)}
+          
 
               {/* ── Safety Card ── */}
               <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
