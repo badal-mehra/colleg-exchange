@@ -542,15 +542,27 @@ const ItemDetail = () => {
                 )}
               </div>
 
-              {/* ── Thumbnail scroll strip ── */}
 {/* ── Thumbnail Slider Strip ── */}
 {images.length > 1 && (
-  {/* The fix: min-w-0 stops CSS grid from expanding, max-w sets a strict physical limit on mobile */}
-  <div className="relative mt-3 w-full min-w-0 max-w-[calc(100vw-32px)] lg:max-w-full mx-auto">
+  /* 1. STRICT PARENT BOUNDARY: 
+    flex-none: Prevents nested flex layouts from squishing/expanding this container.
+    min-w-0: Stops CSS grid/flex blowouts.
+    max-w-[calc(100vw-32px)]: Hard physical limits for mobile viewports.
+  */
+  <div className="relative mt-3 w-full min-w-0 flex-none max-w-[calc(100vw-32px)] lg:max-w-full mx-auto">
     
+    {/* 2. SWIPEABLE TRACK:
+      overscroll-y-none: Kills Android vertical bounce on diagonal/aggressive horizontal swipes.
+      hide-scroll: Uses the global CSS utility.
+    */}
     <div 
-      className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory touch-pan-x no-scrollbar pb-2"
-      style={{ WebkitOverflowScrolling: 'touch' }}
+      className="flex gap-2.5 overflow-x-auto overflow-y-hidden snap-x snap-mandatory touch-pan-x overscroll-x-contain overscroll-y-none hide-scroll pb-2 px-1 items-center"
+      style={{ 
+        scrollBehavior: 'smooth',
+        WebkitOverflowScrolling: 'touch',
+        transform: 'translateZ(0)',   /* Forces GPU layer for 60fps scrolling */
+        willChange: 'scroll-position' /* Optimizes scroll repaints on low-end devices */
+      }}
     >
       {images.map((img, idx) => (
         <button
@@ -570,18 +582,20 @@ const ItemDetail = () => {
             alt={`Thumbnail ${idx + 1}`} 
             className="w-full h-full object-cover" 
             loading="lazy"
+            decoding="async"
           />
         </button>
       ))}
     </div>
 
-    {/* Edge fades */}
-    <div className="absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[#F3F4F6] lg:from-white to-transparent pointer-events-none" />
-    <div className="absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[#F3F4F6] lg:from-white to-transparent pointer-events-none" />
+    {/* 3. EDGE FADES:
+      Added transform-gpu (Tailwind's equivalent of translateZ(0)) to hardware-accelerate 
+      the gradients so they don't cause layout thrashing while the track scrolls beneath them.
+    */}
+    <div className="absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[#F3F4F6] lg:from-white to-transparent pointer-events-none z-10 transform-gpu" />
+    <div className="absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[#F3F4F6] lg:from-white to-transparent pointer-events-none z-10 transform-gpu" />
   </div>
 )}
-          
-
               {/* ── Safety Card ── */}
               <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
                 <div className="flex items-center gap-2 text-gray-800 font-semibold text-sm mb-3">
