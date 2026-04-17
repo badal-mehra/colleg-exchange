@@ -1,4 +1,4 @@
-// Leaderboard.tsx - PWA & MOBILE OPTIMIZED
+// Leaderboard.tsx - PWA Optimized & Premium Badges
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,10 +47,32 @@ const SCROLL_THRESHOLD = 300;
 // --- Custom Components ---
 
 const RankBadge: React.FC<{ rank: number }> = React.memo(({ rank }) => {
+  // Ultra-premium metallic styles
   const styles = {
-    1: { bg: 'bg-gradient-to-br from-yellow-400 to-amber-600', icon: Crown, ring: 'ring-yellow-400/50' },
-    2: { bg: 'bg-gradient-to-br from-slate-300 to-slate-500', icon: ShieldCheck, ring: 'ring-slate-400/50' },
-    3: { bg: 'bg-gradient-to-br from-orange-400 to-red-500', icon: Award, ring: 'ring-orange-400/50' },
+    1: { 
+      gradient: 'from-[#FFDF00] via-[#D4AF37] to-[#996515]', // True Gold
+      icon: Crown, 
+      glow: 'shadow-[0_0_25px_rgba(255,223,0,0.6)]',
+      border: 'border-[#FFF080]',
+      text: 'text-[#5A3A00]', // Dark gold/brown for contrast
+      pulse: 'bg-yellow-400/40'
+    },
+    2: { 
+      gradient: 'from-[#F5F7FA] via-[#C3CFE2] to-[#9BA4B5]', // Icy Silver
+      icon: ShieldCheck, 
+      glow: 'shadow-[0_0_20px_rgba(195,207,226,0.6)]',
+      border: 'border-white',
+      text: 'text-slate-700',
+      pulse: 'bg-slate-300/40'
+    },
+    3: { 
+      gradient: 'from-[#E3A857] via-[#C9843B] to-[#8C521A]', // Deep Bronze
+      icon: Award, 
+      glow: 'shadow-[0_0_20px_rgba(201,132,59,0.6)]',
+      border: 'border-[#FAD6A5]',
+      text: 'text-orange-950',
+      pulse: 'bg-orange-600/30'
+    },
   };
 
   const currentStyle = styles[rank as keyof typeof styles];
@@ -58,10 +80,40 @@ const RankBadge: React.FC<{ rank: number }> = React.memo(({ rank }) => {
   const Icon = currentStyle.icon;
 
   return (
-    <div className={`absolute -top-4 md:-top-5 left-1/2 transform -translate-x-1/2 
-      z-10 w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center 
-      shadow-xl ${currentStyle.bg} border-2 border-white/20 ring-4 ${currentStyle.ring}`}>
-      <Icon className="h-5 w-5 md:h-6 md:w-6 text-white drop-shadow-md" strokeWidth={2.5} />
+    <div className="absolute -top-6 md:-top-8 left-1/2 transform -translate-x-1/2 z-20">
+      
+      {/* 1. Breathing Animated Aura */}
+      <div className={`absolute inset-0 rounded-full animate-pulse blur-md scale-125 md:scale-150 ${currentStyle.pulse}`} />
+      
+      {/* 2. Physical Medal Body (Reacts to Card Hover) */}
+      <div className={`
+        relative flex items-center justify-center 
+        w-14 h-14 md:w-16 md:h-16 
+        rounded-full 
+        bg-gradient-to-br ${currentStyle.gradient}
+        border-[3px] ${currentStyle.border}
+        ${currentStyle.glow}
+        transition-all duration-500 ease-out
+        group-hover:scale-110 group-hover:-translate-y-1 group-hover:rotate-3
+      `}>
+        {/* Subtle inner premium texture */}
+        <div className="absolute inset-1 rounded-full border border-white/40 border-dashed opacity-70" />
+        
+        {/* Shimmer overlay effect */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/30 to-white/0 rounded-full" />
+        
+        {/* Main Icon */}
+        <Icon className={`relative z-10 w-7 h-7 md:w-8 md:h-8 ${currentStyle.text} drop-shadow-md`} strokeWidth={2.5} />
+      </div>
+      
+      {/* 3. Floating Rank Pill */}
+      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 
+                      bg-background/95 backdrop-blur-md border border-border/50 shadow-md 
+                      rounded-full px-3 py-0.5 
+                      text-[10px] md:text-xs font-black uppercase tracking-widest text-foreground
+                      transition-transform duration-500 group-hover:scale-105">
+         #{rank}
+      </div>
     </div>
   );
 });
@@ -95,15 +147,15 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number; onClick: ()
   return (
     <Card 
       onClick={onClick} 
-      // Touch-native interactions: active:scale instead of just hover
-      className={`relative flex flex-col items-center text-center p-4 md:p-6 cursor-pointer
+      // The "group" class here is CRITICAL for the medal hover physics to work
+      className={`group relative flex flex-col items-center text-center p-4 md:p-6 cursor-pointer
         transition-transform duration-200 active:scale-[0.97] md:hover:-translate-y-2 md:hover:shadow-2xl 
         border-2 ${style.border} ${style.bg} ${style.wrapper}
-        w-full min-h-[220px] md:min-h-[320px] shadow-lg`}
+        w-full min-h-[220px] md:min-h-[320px] shadow-lg mt-6 md:mt-0`}
     >
       <RankBadge rank={rank} />
       
-      <div className={`mt-6 md:mt-8 mb-3 ${isChampion ? 'w-20 h-20 md:w-28 md:h-28' : 'w-16 h-16 md:w-24 md:h-24'} flex-shrink-0 relative`}>
+      <div className={`mt-6 md:mt-8 mb-3 ${isChampion ? 'w-20 h-20 md:w-28 md:h-28' : 'w-16 h-16 md:w-24 md:h-24'} flex-shrink-0 relative transition-transform duration-500 group-hover:scale-105`}>
         <Avatar className={`h-full w-full border-[3px] md:border-4 ${style.border} shadow-md`}>
           <AvatarImage src={entry.avatar_url || undefined} alt={entry.full_name} className="object-cover" />
           <AvatarFallback className="bg-primary/10 text-primary text-xl md:text-2xl font-bold">
@@ -139,7 +191,6 @@ const ListItemCard: React.FC<{ entry: LeaderboardEntry; index: number; onClick: 
     <div 
       id={`rank-${index}`} 
       onClick={onClick} 
-      // Optimized for mobile tapping
       className="flex items-center justify-between p-3 md:p-4 mb-2 md:mb-3 rounded-xl md:rounded-2xl bg-card border border-border/50 
                  active:bg-primary/10 active:scale-[0.98] md:hover:border-primary/50 md:hover:shadow-md transition-all cursor-pointer"
     >
@@ -197,7 +248,6 @@ const Leaderboard = () => {
     if (isManualRefresh) setIsRefreshing(true);
     else setLoading(true);
     
-    // Replace with your actual Supabase calls
     const [{ data: boardData, error: boardError }, { data: userData }] = await Promise.all([
       supabase.rpc('get_monthly_leaderboard'),
       supabase.auth.getUser(),
@@ -244,7 +294,6 @@ const Leaderboard = () => {
         setTimeout(() => {
             const el = document.getElementById(`rank-${globalRank}`);
             if (el) {
-                // Adjust scroll position to account for sticky header on mobile
                 const y = el.getBoundingClientRect().top + window.scrollY - 100;
                 window.scrollTo({ top: y, behavior: 'smooth' });
             }
@@ -281,12 +330,12 @@ const Leaderboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-32 font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-background pb-32 font-sans overflow-x-hidden pt-safe">
       
       {/* --- Sticky PWA Header --- */}
-      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50 px-4 py-3 shadow-sm">
+      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50 px-4 py-3 shadow-sm pt-safe-top">
          <div className="container mx-auto max-w-5xl flex items-center justify-between gap-3">
-             <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="h-10 w-10 flex-shrink-0 active:bg-primary/10">
+             <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="h-10 w-10 flex-shrink-0 active:bg-primary/10 rounded-full">
                 <ArrowLeft className="h-5 w-5" />
              </Button>
              
@@ -294,7 +343,7 @@ const Leaderboard = () => {
                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                  <Input 
                      placeholder="Search ranks..." 
-                     className="pl-9 h-10 w-full rounded-full border-primary/20 bg-muted/30 text-sm focus:text-base" // text-base prevents iOS zoom
+                     className="pl-9 h-10 w-full rounded-full border-primary/20 bg-muted/30 text-sm focus:text-base focus-visible:ring-1"
                      value={searchQuery}
                      onChange={(e) => setSearchQuery(e.target.value)}
                  />
@@ -305,7 +354,7 @@ const Leaderboard = () => {
                 size="icon" 
                 onClick={() => fetchLeaderboard(true)} 
                 disabled={isRefreshing}
-                className="h-10 w-10 flex-shrink-0 active:bg-primary/10"
+                className="h-10 w-10 flex-shrink-0 active:bg-primary/10 rounded-full"
              >
                 <RefreshCw className={`h-5 w-5 text-primary ${isRefreshing ? 'animate-spin' : ''}`} />
              </Button>
@@ -327,8 +376,7 @@ const Leaderboard = () => {
         
         {/* --- PWA Optimized Podium --- */}
         {!loading && topThree.length > 0 && (
-          // Grid magic: On mobile, 1st place takes full row, 2nd & 3rd sit side-by-side below.
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 items-end mb-8 md:mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 items-end mb-8 md:mb-12 pt-4">
             
             {/* Rank 1 (Top Center on Desktop, Full Width Top on Mobile) */}
             {topThree[0] && (
@@ -374,7 +422,7 @@ const Leaderboard = () => {
               <Button 
                  onClick={() => setVisibleCount(prev => prev + LOAD_INCREMENT)} 
                  variant="outline" 
-                 className="w-full mt-4 md:mt-6 py-6 md:py-8 border-dashed border-2 active:bg-muted"
+                 className="w-full mt-4 md:mt-6 py-6 md:py-8 border-dashed border-2 active:bg-muted rounded-2xl"
               >
                 Load More
               </Button>
@@ -382,9 +430,18 @@ const Leaderboard = () => {
           </div>
         )}
 
+        {/* --- Empty State --- */}
+        {!loading && filteredLeaderboard.length === 0 && (
+            <div className="text-center py-20 bg-card rounded-3xl border border-dashed shadow-sm">
+                <Search className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-muted-foreground mb-1">No rankers found</h3>
+                <p className="text-sm text-muted-foreground/70">Try adjusting your search query.</p>
+            </div>
+        )}
+
         {/* --- Mobile-Friendly Info Cards --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-            <Card className="bg-muted/30 border-none shadow-sm">
+            <Card className="bg-muted/30 border-none shadow-sm rounded-2xl">
                 <CardHeader className="p-4 md:p-6 pb-2">
                     <CardTitle className="text-base md:text-lg flex items-center gap-2">
                         <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-yellow-500" /> Earning Guide
@@ -409,8 +466,8 @@ const Leaderboard = () => {
 
       {/* --- PWA Sticky Footer (Accounts for iOS Safe Area) --- */}
       {globalRank !== null && globalRank > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-4 bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
-          <div className="max-w-md mx-auto bg-foreground text-background p-3 md:p-4 rounded-2xl shadow-2xl flex items-center justify-between pointer-events-auto border border-white/10 safe-area-bottom">
+        <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-safe-bottom pt-4 bg-gradient-to-t from-background via-background/95 to-transparent pointer-events-none mb-4 md:mb-6">
+          <div className="max-w-md mx-auto bg-foreground text-background p-3 md:p-4 rounded-2xl shadow-2xl flex items-center justify-between pointer-events-auto border border-white/10">
             
             <div className="flex items-center gap-3">
                 <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
@@ -430,13 +487,13 @@ const Leaderboard = () => {
             
             <div className="flex gap-2">
                  {/* Share Button (Native Mobile Feel) */}
-                 <Button size="icon" variant="secondary" onClick={handleShare} className="rounded-full h-10 w-10 md:h-12 md:w-12 active:scale-95">
+                 <Button size="icon" variant="secondary" onClick={handleShare} className="rounded-full h-10 w-10 md:h-12 md:w-12 active:scale-95 text-foreground bg-background/20 hover:bg-background/30 border-0">
                     <Share2 className="h-4 w-4 md:h-5 md:w-5" />
                  </Button>
 
                  {/* Jump to Rank Button */}
                  {globalRank <= MAX_VISIBLE_RANKS && globalRank > 3 && (
-                     <Button size="icon" onClick={handleJumpToRank} className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg h-10 w-10 md:h-12 md:w-12 active:scale-95">
+                     <Button size="icon" onClick={handleJumpToRank} className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg h-10 w-10 md:h-12 md:w-12 active:scale-95 border-0">
                         <Locate className="h-4 w-4 md:h-5 md:w-5" />
                      </Button>
                  )}
