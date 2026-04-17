@@ -1,4 +1,4 @@
-// Leaderboard.tsx - REDESIGNED: Enhanced Gamification & UI/UX
+// Leaderboard.tsx - PWA & MOBILE OPTIMIZED
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,13 +20,13 @@ import {
   Locate,
   Users,
   Search,
-  TrendingUp
+  TrendingUp,
+  Share2,
+  RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
-import { Skeleton } from '@/components/ui/skeleton'; 
 
 // --- Interfaces & Types ---
 interface LeaderboardEntry {
@@ -42,7 +42,7 @@ interface LeaderboardEntry {
 // --- Constants ---
 const LOAD_INCREMENT = 10;
 const MAX_VISIBLE_RANKS = 99;
-const SCROLL_THRESHOLD = 200;
+const SCROLL_THRESHOLD = 300;
 
 // --- Custom Components ---
 
@@ -58,10 +58,10 @@ const RankBadge: React.FC<{ rank: number }> = React.memo(({ rank }) => {
   const Icon = currentStyle.icon;
 
   return (
-    <div className={`absolute -top-5 left-1/2 transform -translate-x-1/2 
-      z-10 w-12 h-12 rounded-full flex items-center justify-center 
-      shadow-xl ${currentStyle.bg} border-2 border-white/20 ring-4 ${currentStyle.ring} animate-in zoom-in duration-500`}>
-      <Icon className="h-6 w-6 text-white drop-shadow-md" strokeWidth={2.5} />
+    <div className={`absolute -top-4 md:-top-5 left-1/2 transform -translate-x-1/2 
+      z-10 w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center 
+      shadow-xl ${currentStyle.bg} border-2 border-white/20 ring-4 ${currentStyle.ring}`}>
+      <Icon className="h-5 w-5 md:h-6 md:w-6 text-white drop-shadow-md" strokeWidth={2.5} />
     </div>
   );
 });
@@ -71,20 +71,20 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number; onClick: ()
 
   const rankStyles = {
     1: { 
-      wrapper: 'scale-105 z-10',
-      bg: 'bg-gradient-to-b from-yellow-500/10 via-background to-background', 
+      wrapper: 'md:scale-105 z-10',
+      bg: 'bg-gradient-to-b from-yellow-500/15 via-card to-card', 
       border: 'border-yellow-500/50',
       text: 'from-yellow-400 to-yellow-600'
     },
     2: { 
-      wrapper: 'mt-4 sm:mt-8',
-      bg: 'bg-gradient-to-b from-slate-400/10 via-background to-background', 
+      wrapper: 'md:mt-8',
+      bg: 'bg-gradient-to-b from-slate-400/15 via-card to-card', 
       border: 'border-slate-400/30',
       text: 'from-slate-400 to-slate-600'
     },
     3: { 
-      wrapper: 'mt-4 sm:mt-8',
-      bg: 'bg-gradient-to-b from-orange-500/10 via-background to-background', 
+      wrapper: 'md:mt-8',
+      bg: 'bg-gradient-to-b from-orange-500/15 via-card to-card', 
       border: 'border-orange-500/30',
       text: 'from-orange-400 to-orange-600'
     },
@@ -95,37 +95,38 @@ const TopRankCard: React.FC<{ entry: LeaderboardEntry; rank: number; onClick: ()
   return (
     <Card 
       onClick={onClick} 
-      className={`group cursor-pointer p-6 flex flex-col items-center text-center
-        transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl 
+      // Touch-native interactions: active:scale instead of just hover
+      className={`relative flex flex-col items-center text-center p-4 md:p-6 cursor-pointer
+        transition-transform duration-200 active:scale-[0.97] md:hover:-translate-y-2 md:hover:shadow-2xl 
         border-2 ${style.border} ${style.bg} ${style.wrapper}
-        w-full relative min-h-[320px] overflow-visible`}
+        w-full min-h-[220px] md:min-h-[320px] shadow-lg`}
     >
       <RankBadge rank={rank} />
       
-      <div className={`mt-8 mb-4 transition-transform duration-300 group-hover:scale-110 ${isChampion ? 'w-28 h-28' : 'w-24 h-24'} flex-shrink-0 relative`}>
-        <Avatar className={`h-full w-full border-4 ${style.border} shadow-lg`}>
+      <div className={`mt-6 md:mt-8 mb-3 ${isChampion ? 'w-20 h-20 md:w-28 md:h-28' : 'w-16 h-16 md:w-24 md:h-24'} flex-shrink-0 relative`}>
+        <Avatar className={`h-full w-full border-[3px] md:border-4 ${style.border} shadow-md`}>
           <AvatarImage src={entry.avatar_url || undefined} alt={entry.full_name} className="object-cover" />
-          <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
-            {entry.full_name?.charAt(0) || <UserIcon className="h-8 w-8" />}
+          <AvatarFallback className="bg-primary/10 text-primary text-xl md:text-2xl font-bold">
+            {entry.full_name?.charAt(0) || <UserIcon className="h-6 w-6 md:h-8 md:w-8" />}
           </AvatarFallback>
         </Avatar>
         {entry.trust_seller_badge && (
-           <div className="absolute -bottom-2 -right-2 bg-background rounded-full p-1 shadow-md">
-              <Badge variant="default" className="bg-blue-500 hover:bg-blue-600 p-1 h-8 w-8 rounded-full flex items-center justify-center">
-                <Zap className="h-4 w-4 fill-white text-white" />
-              </Badge>
+           <div className="absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 bg-background rounded-full p-0.5 shadow-md">
+              <div className="bg-blue-500 p-1 md:p-1.5 h-6 w-6 md:h-8 md:w-8 rounded-full flex items-center justify-center">
+                <Zap className="h-3 w-3 md:h-4 md:w-4 fill-white text-white" />
+              </div>
            </div>
         )}
       </div>
       
-      <div className="min-w-0 mb-4 w-full">
-        <h3 className={`font-bold truncate ${isChampion ? 'text-2xl' : 'text-xl'}`}>{entry.full_name}</h3>
-        <p className="text-sm text-muted-foreground truncate">{entry.university || 'Campus Member'}</p>
+      <div className="min-w-0 mb-3 w-full">
+        <h3 className={`font-bold truncate ${isChampion ? 'text-lg md:text-2xl' : 'text-base md:text-xl'}`}>{entry.full_name}</h3>
+        <p className="text-xs md:text-sm text-muted-foreground truncate">{entry.university || 'Campus Member'}</p>
       </div>
 
-      <div className="mt-auto flex flex-col items-center w-full bg-background/50 rounded-xl p-3 border border-border/50">
-        <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-1">Campus Points</div>
-        <div className={`font-black bg-clip-text text-transparent bg-gradient-to-r ${style.text} text-4xl`}>
+      <div className="mt-auto flex flex-col items-center w-full bg-background/50 rounded-lg md:rounded-xl p-2 md:p-3 border border-border/50">
+        <div className="text-[10px] md:text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-0.5">Points</div>
+        <div className={`font-black bg-clip-text text-transparent bg-gradient-to-r ${style.text} text-2xl md:text-4xl leading-none`}>
             {entry.campus_points.toLocaleString()}
         </div>
       </div>
@@ -138,34 +139,34 @@ const ListItemCard: React.FC<{ entry: LeaderboardEntry; index: number; onClick: 
     <div 
       id={`rank-${index}`} 
       onClick={onClick} 
-      className="group flex items-center justify-between p-4 mb-3 rounded-2xl bg-card border border-border/50 hover:border-primary/50 hover:shadow-md transition-all cursor-pointer hover:bg-primary/5"
+      // Optimized for mobile tapping
+      className="flex items-center justify-between p-3 md:p-4 mb-2 md:mb-3 rounded-xl md:rounded-2xl bg-card border border-border/50 
+                 active:bg-primary/10 active:scale-[0.98] md:hover:border-primary/50 md:hover:shadow-md transition-all cursor-pointer"
     >
-      <div className="flex items-center gap-4 min-w-0">
-        <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/10 transition-colors">
-          <span className="text-lg font-bold text-muted-foreground group-hover:text-primary">#{index}</span>
+      <div className="flex items-center gap-3 md:gap-4 min-w-0">
+        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-muted/50 flex items-center justify-center flex-shrink-0">
+          <span className="text-sm md:text-lg font-bold text-muted-foreground">#{index}</span>
         </div>
 
-        <Avatar className="h-12 w-12 flex-shrink-0 border-2 border-transparent group-hover:border-primary/20 transition-all">
+        <Avatar className="h-10 w-10 md:h-12 md:w-12 flex-shrink-0 border border-border/50">
           <AvatarImage src={entry.avatar_url || undefined} alt={entry.full_name} className="object-cover" />
-          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-            {entry.full_name?.charAt(0) || <UserIcon className="h-5 w-5" />}
+          <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+            {entry.full_name?.charAt(0) || <UserIcon className="h-4 w-4" />}
           </AvatarFallback>
         </Avatar>
 
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="text-base font-bold truncate group-hover:text-primary transition-colors">{entry.full_name}</h3>
-            {entry.trust_seller_badge && (
-                <Zap className="h-4 w-4 text-blue-500 fill-blue-500/20" />
-            )}
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-sm md:text-base font-bold truncate">{entry.full_name}</h3>
+            {entry.trust_seller_badge && <Zap className="h-3 w-3 md:h-4 md:w-4 text-blue-500 fill-blue-500/20 flex-shrink-0" />}
           </div>
-          <p className="text-sm text-muted-foreground truncate">{entry.university || 'Campus Member'}</p>
+          <p className="text-xs text-muted-foreground truncate">{entry.university || 'Campus Member'}</p>
         </div>
       </div>
 
-      <div className="flex flex-col items-end text-right pl-4">
-        <div className="text-xl font-black text-foreground">{entry.campus_points.toLocaleString()}</div>
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pts</div>
+      <div className="flex flex-col items-end text-right pl-2 flex-shrink-0">
+        <div className="text-lg md:text-xl font-black text-foreground">{entry.campus_points.toLocaleString()}</div>
+        <div className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase tracking-wide">Pts</div>
       </div>
     </div>
   );
@@ -177,6 +178,7 @@ const Leaderboard = () => {
   const navigate = useNavigate();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]); 
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [globalRank, setGlobalRank] = useState<number | null>(null); 
   const [visibleCount, setVisibleCount] = useState(LOAD_INCREMENT); 
   const [searchQuery, setSearchQuery] = useState("");
@@ -185,26 +187,24 @@ const Leaderboard = () => {
   
   const handleCardClick = useCallback((entry: LeaderboardEntry) => {
     if (!entry.mck_id) {
-        toast({ 
-            title: "Profile Unavailable", 
-            description: "User profile link is missing. Please try again later.", 
-            variant: "destructive" 
-        });
+        toast({ title: "Unavailable", description: "Profile link missing.", variant: "destructive" });
         return;
     }
     navigate(`/profile/${entry.mck_id}`);
   }, [navigate, toast]);
 
-  const fetchLeaderboard = async () => {
-    setLoading(true);
-    // Simulated fetch for structure - replace with your actual Supabase calls
+  const fetchLeaderboard = async (isManualRefresh = false) => {
+    if (isManualRefresh) setIsRefreshing(true);
+    else setLoading(true);
+    
+    // Replace with your actual Supabase calls
     const [{ data: boardData, error: boardError }, { data: userData }] = await Promise.all([
       supabase.rpc('get_monthly_leaderboard'),
       supabase.auth.getUser(),
     ]);
 
     if (boardError) {
-      toast({ title: 'Error', description: 'Failed to load leaderboard', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Failed to load standings', variant: 'destructive' });
       setLeaderboard([]);
     } else {
       const fullList = boardData || [];
@@ -215,7 +215,9 @@ const Leaderboard = () => {
       }
       setLeaderboard(fullList.slice(0, MAX_VISIBLE_RANKS));
     }
+    
     setLoading(false);
+    setIsRefreshing(false);
   };
 
   useEffect(() => {
@@ -237,18 +239,31 @@ const Leaderboard = () => {
   }, []);
 
   const handleJumpToRank = () => {
-    if (globalRank) {
-      const targetRank = globalRank;
-      if (targetRank <= MAX_VISIBLE_RANKS) {
-        setVisibleCount(Math.min(targetRank - 3 + 5, leaderboard.length - 3));
+    if (globalRank && globalRank <= MAX_VISIBLE_RANKS) {
+        setVisibleCount(Math.min(globalRank - 3 + 5, leaderboard.length - 3));
         setTimeout(() => {
-            document.getElementById(`rank-${targetRank}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+            const el = document.getElementById(`rank-${globalRank}`);
+            if (el) {
+                // Adjust scroll position to account for sticky header on mobile
+                const y = el.getBoundingClientRect().top + window.scrollY - 100;
+                window.scrollTo({ top: y, behavior: 'smooth' });
+            }
         }, 100);
-      }
     }
   };
 
-  // Filter logic
+  const handleShare = () => {
+      if (navigator.share) {
+          navigator.share({
+              title: 'Campus Leaderboard',
+              text: `I'm currently rank #${globalRank} on the Campus Leaderboard! Can you beat me?`,
+              url: window.location.href,
+          }).catch(console.error);
+      } else {
+          toast({ description: "Sharing not supported on this browser." });
+      }
+  };
+
   const filteredLeaderboard = leaderboard.filter(entry => 
     entry.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     (entry.university && entry.university.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -258,7 +273,6 @@ const Leaderboard = () => {
   const remainingRanks = filteredLeaderboard.slice(3, 3 + visibleCount);
   const hasMoreToLoad = filteredLeaderboard.length > 3 + visibleCount && searchQuery === "";
 
-  // Gamification: Points needed to overtake next rank
   let pointsToNext = 0;
   if (globalRank && globalRank > 1 && leaderboard.length >= globalRank) {
       const myPoints = leaderboard[globalRank - 1].campus_points;
@@ -267,54 +281,84 @@ const Leaderboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24 font-sans">
+    <div className="min-h-screen bg-background pb-32 font-sans overflow-x-hidden">
       
-      {/* Hero Header */}
-      <div className="bg-primary/5 border-b border-border/50 pt-8 pb-16 px-4">
-          <div className="container mx-auto max-w-5xl">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="mb-6 hover:bg-primary/10">
-                <ArrowLeft className="h-4 w-4 mr-2" /> Back
-            </Button>
-            
-            <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                <div>
-                    <h1 className="text-4xl md:text-5xl font-black tracking-tight text-foreground mb-2 flex items-center gap-3">
-                        <Trophy className="h-10 w-10 text-yellow-500" />
-                        Campus Leaderboard
-                    </h1>
-                    <p className="text-lg text-muted-foreground">Compete, trade, and climb the monthly ranks.</p>
-                </div>
+      {/* --- Sticky PWA Header --- */}
+      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50 px-4 py-3 shadow-sm">
+         <div className="container mx-auto max-w-5xl flex items-center justify-between gap-3">
+             <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="h-10 w-10 flex-shrink-0 active:bg-primary/10">
+                <ArrowLeft className="h-5 w-5" />
+             </Button>
+             
+             <div className="relative w-full max-w-md flex-grow">
+                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                 <Input 
+                     placeholder="Search ranks..." 
+                     className="pl-9 h-10 w-full rounded-full border-primary/20 bg-muted/30 text-sm focus:text-base" // text-base prevents iOS zoom
+                     value={searchQuery}
+                     onChange={(e) => setSearchQuery(e.target.value)}
+                 />
+             </div>
 
-                <div className="relative w-full md:w-72">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input 
-                        placeholder="Search students or campus..." 
-                        className="pl-10 h-12 rounded-full border-primary/20 bg-background shadow-sm focus-visible:ring-primary/50"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-            </div>
+             <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => fetchLeaderboard(true)} 
+                disabled={isRefreshing}
+                className="h-10 w-10 flex-shrink-0 active:bg-primary/10"
+             >
+                <RefreshCw className={`h-5 w-5 text-primary ${isRefreshing ? 'animate-spin' : ''}`} />
+             </Button>
+         </div>
+      </div>
+
+      {/* --- Hero Section --- */}
+      <div className="bg-primary/5 pt-6 pb-12 px-4 mb-6 md:mb-12 rounded-b-3xl">
+          <div className="container mx-auto max-w-5xl text-center md:text-left flex flex-col md:flex-row items-center gap-4">
+              <Trophy className="h-12 w-12 md:h-16 md:w-16 text-yellow-500 drop-shadow-sm" />
+              <div>
+                  <h1 className="text-3xl md:text-5xl font-black tracking-tight text-foreground mb-1">Elite Rankings</h1>
+                  <p className="text-sm md:text-lg text-muted-foreground">Trade, earn points, and climb to the top.</p>
+              </div>
           </div>
       </div>
 
-      <div className="container mx-auto px-4 -mt-8 max-w-5xl">
+      <div className="container mx-auto px-4 max-w-5xl">
         
-        {/* --- The Podium --- */}
+        {/* --- PWA Optimized Podium --- */}
         {!loading && topThree.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end mb-12">
-            {topThree[1] && <div className="order-2 md:order-1"><TopRankCard entry={topThree[1]} rank={2} onClick={() => handleCardClick(topThree[1])} /></div>}
-            {topThree[0] && <div className="order-1 md:order-2 z-10"><TopRankCard entry={topThree[0]} rank={1} onClick={() => handleCardClick(topThree[0])} /></div>}
-            {topThree[2] && <div className="order-3 md:order-3"><TopRankCard entry={topThree[2]} rank={3} onClick={() => handleCardClick(topThree[2])} /></div>}
+          // Grid magic: On mobile, 1st place takes full row, 2nd & 3rd sit side-by-side below.
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 items-end mb-8 md:mb-12">
+            
+            {/* Rank 1 (Top Center on Desktop, Full Width Top on Mobile) */}
+            {topThree[0] && (
+               <div className="order-1 md:order-2 col-span-2 md:col-span-1 z-10">
+                  <TopRankCard entry={topThree[0]} rank={1} onClick={() => handleCardClick(topThree[0])} />
+               </div>
+            )}
+            
+            {/* Rank 2 (Left on Desktop, Left Half on Mobile) */}
+            {topThree[1] && (
+               <div className="order-2 md:order-1 col-span-1">
+                  <TopRankCard entry={topThree[1]} rank={2} onClick={() => handleCardClick(topThree[1])} />
+               </div>
+            )}
+            
+            {/* Rank 3 (Right on Desktop, Right Half on Mobile) */}
+            {topThree[2] && (
+               <div className="order-3 md:order-3 col-span-1">
+                  <TopRankCard entry={topThree[2]} rank={3} onClick={() => handleCardClick(topThree[2])} />
+               </div>
+            )}
           </div>
         )}
 
         {/* --- The List --- */}
         {!loading && remainingRanks.length > 0 && (
-          <div className="space-y-2 mb-12">
-             <div className="flex items-center justify-between px-2 mb-4">
-                <h3 className="text-xl font-bold flex items-center gap-2">
-                    <Users className="h-5 w-5 text-primary" /> Top Competitors
+          <div className="space-y-0.5 md:space-y-2 mb-10">
+             <div className="flex items-center justify-between px-1 mb-3 md:mb-4">
+                <h3 className="text-lg md:text-xl font-bold flex items-center gap-2">
+                    <Users className="h-5 w-5 text-primary" /> Global Standings
                 </h3>
              </div>
             {remainingRanks.map((entry, idx) => (
@@ -327,62 +371,34 @@ const Leaderboard = () => {
             ))}
             
             {hasMoreToLoad && (
-              <Button onClick={() => setVisibleCount(prev => prev + LOAD_INCREMENT)} variant="outline" className="w-full mt-6 py-6 border-dashed border-2">
-                Load More Standings
+              <Button 
+                 onClick={() => setVisibleCount(prev => prev + LOAD_INCREMENT)} 
+                 variant="outline" 
+                 className="w-full mt-4 md:mt-6 py-6 md:py-8 border-dashed border-2 active:bg-muted"
+              >
+                Load More
               </Button>
             )}
           </div>
         )}
 
-        {/* --- Empty State --- */}
-        {!loading && filteredLeaderboard.length === 0 && (
-            <div className="text-center py-20 bg-card rounded-3xl border border-dashed shadow-sm">
-                <Trophy className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-muted-foreground mb-1">No rankers found</h3>
-                <p className="text-sm text-muted-foreground/70">Try adjusting your search query.</p>
-            </div>
-        )}
-
-        {/* --- Gamified Info Cards --- */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
-            <Card className="bg-primary/5 border-none shadow-md">
-                <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        <Sparkles className="h-5 w-5 text-yellow-500" /> How to Earn Points
+        {/* --- Mobile-Friendly Info Cards --- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+            <Card className="bg-muted/30 border-none shadow-sm">
+                <CardHeader className="p-4 md:p-6 pb-2">
+                    <CardTitle className="text-base md:text-lg flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-yellow-500" /> Earning Guide
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="p-4 md:p-6 pt-0 space-y-2">
                     {[
-                        { label: 'Complete a Sale', pts: '+10', color: 'text-green-500', bg: 'bg-green-500/10' },
-                        { label: 'Make a Purchase', pts: '+5', color: 'text-blue-500', bg: 'bg-blue-500/10' },
-                        { label: 'Get ID Verified', pts: '+20', color: 'text-purple-500', bg: 'bg-purple-500/10' },
+                        { label: 'Sale', pts: '+10', color: 'text-green-500 bg-green-500/10' },
+                        { label: 'Purchase', pts: '+5', color: 'text-blue-500 bg-blue-500/10' },
+                        { label: 'ID Verification', pts: '+20', color: 'text-purple-500 bg-purple-500/10' },
                     ].map((item, i) => (
-                        <div key={i} className="flex justify-between items-center p-3 rounded-xl bg-background border">
-                            <span className="font-medium text-sm">{item.label}</span>
-                            <Badge variant="secondary" className={`${item.bg} ${item.color} font-bold`}>{item.pts}</Badge>
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-
-            <Card className="bg-primary/5 border-none shadow-md">
-                <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        <Award className="h-5 w-5 text-primary" /> Monthly Rewards
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                     {[
-                        { label: '1st Place', reward: 'Campus Ambassador Status', icon: '🥇' },
-                        { label: '2nd Place', reward: 'Elite Member Badge', icon: '🥈' },
-                        { label: '3rd Place', reward: 'Top Contributor Perks', icon: '🥉' },
-                    ].map((item, i) => (
-                        <div key={i} className="flex gap-3 items-center p-3 rounded-xl bg-background border">
-                            <span className="text-2xl">{item.icon}</span>
-                            <div>
-                                <div className="font-bold text-sm">{item.label}</div>
-                                <div className="text-xs text-muted-foreground">{item.reward}</div>
-                            </div>
+                        <div key={i} className="flex justify-between items-center py-2 border-b border-border/50 last:border-0">
+                            <span className="font-medium text-sm md:text-base">{item.label}</span>
+                            <Badge variant="secondary" className={`${item.color} font-bold text-xs`}>{item.pts}</Badge>
                         </div>
                     ))}
                 </CardContent>
@@ -391,31 +407,40 @@ const Leaderboard = () => {
 
       </div>
 
-      {/* --- Gamified Sticky Footer --- */}
-      {globalRank !== null && globalRank > 3 && (
-        <div className="fixed bottom-6 left-0 right-0 px-4 z-50 animate-in slide-in-from-bottom-10 pointer-events-none">
-          <div className="max-w-md mx-auto bg-foreground text-background p-4 rounded-2xl shadow-2xl flex items-center justify-between pointer-events-auto border border-white/10">
-            <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
-                    <span className="text-xl font-black text-primary">#{globalRank}</span>
+      {/* --- PWA Sticky Footer (Accounts for iOS Safe Area) --- */}
+      {globalRank !== null && globalRank > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-4 bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
+          <div className="max-w-md mx-auto bg-foreground text-background p-3 md:p-4 rounded-2xl shadow-2xl flex items-center justify-between pointer-events-auto border border-white/10 safe-area-bottom">
+            
+            <div className="flex items-center gap-3">
+                <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
+                    <span className="text-lg md:text-xl font-black text-primary">#{globalRank}</span>
                 </div>
-                <div>
-                    <div className="text-sm font-semibold opacity-90">Your Rank</div>
+                <div className="flex flex-col">
+                    <span className="text-xs md:text-sm font-semibold opacity-90">Your Rank</span>
                     {pointsToNext > 0 ? (
-                        <div className="text-xs text-emerald-400 font-medium flex items-center gap-1">
-                            <TrendingUp className="h-3 w-3" /> {pointsToNext} pts to rank up!
-                        </div>
+                        <span className="text-[10px] md:text-xs text-emerald-400 font-medium flex items-center gap-1">
+                            <TrendingUp className="h-3 w-3" /> {pointsToNext} to rank up
+                        </span>
                     ) : (
-                        <div className="text-xs opacity-70">Keep going!</div>
+                        <span className="text-[10px] md:text-xs opacity-70">You're at the top!</span>
                     )}
                 </div>
             </div>
             
-            {globalRank <= MAX_VISIBLE_RANKS && (
-                 <Button size="icon" onClick={handleJumpToRank} className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg h-10 w-10">
-                    <Locate className="h-4 w-4" />
+            <div className="flex gap-2">
+                 {/* Share Button (Native Mobile Feel) */}
+                 <Button size="icon" variant="secondary" onClick={handleShare} className="rounded-full h-10 w-10 md:h-12 md:w-12 active:scale-95">
+                    <Share2 className="h-4 w-4 md:h-5 md:w-5" />
                  </Button>
-            )}
+
+                 {/* Jump to Rank Button */}
+                 {globalRank <= MAX_VISIBLE_RANKS && globalRank > 3 && (
+                     <Button size="icon" onClick={handleJumpToRank} className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg h-10 w-10 md:h-12 md:w-12 active:scale-95">
+                        <Locate className="h-4 w-4 md:h-5 md:w-5" />
+                     </Button>
+                 )}
+            </div>
           </div>
         </div>
       )}
