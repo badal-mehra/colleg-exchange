@@ -113,7 +113,7 @@ const PWAChat = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const previousScrollHeightRef = useRef(0); 
   const channelsRef = useRef<any[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
