@@ -312,7 +312,7 @@ const PWADashboard = () => {
     const { data, error } = await query;
     if (error)
       toast({ title: "Error", description: "Failed to load PG listings", variant: "destructive" });
-    else setPgListings(data ?? []);
+    else setPgListings((data ?? []) as unknown as PGListing[]);
   }, [pgPropertyType, pgSharingType, pgGender, toast]);
 
   useEffect(() => {
