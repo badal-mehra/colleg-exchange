@@ -7,6 +7,7 @@ import React, {
 import { supabase } from '@/integrations/supabase/client';
 import { ChevronLeft, ChevronRight, Pause, Play, ArrowUpRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getSliderImageUrl } from '@/utils/cloudinaryUpload';
 
 /* ─────────────────────────────────────────────
    Types
@@ -260,7 +261,7 @@ const PWAImageSlider = () => {
               style={{ transitionDuration: `${TRANSITION_MS}ms` }}
             >
               <img
-                src={image.image_url}
+                src={getSliderImageUrl(image.image_url)}
                 alt={image.title || `Slide ${index + 1}`}
                 className="w-full h-full object-cover"
                 loading={index === 0 ? 'eager' : 'lazy'}
