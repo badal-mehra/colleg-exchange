@@ -93,3 +93,8 @@ export async function uploadToCloudinary(
 
   return data.secure_url;
 }
+
+export function getSliderImageUrl(url: string): string {
+  if (!url || !url.includes('cloudinary.com')) return url;
+  return url.replace('/image/upload/', '/image/upload/c_fill,ar_16:9,g_auto,q_auto,f_auto/');
+}
