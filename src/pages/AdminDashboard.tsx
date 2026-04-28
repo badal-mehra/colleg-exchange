@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Footer } from '@/components/Footer'; // Import Footer for consistent styling (optional)
-import { uploadToCloudinary } from "@/utils/cloudinaryUpload"; // 1️⃣ ADDED CLOUDINARY IMPORT
+import { getSliderImageUrl, uploadToCloudinary } from "@/utils/cloudinaryUpload"; // 1️⃣ ADDED CLOUDINARY IMPORT
 
 // ------------------- Interfaces (Unchanged) -------------------
 interface Profile {
@@ -34,6 +34,40 @@ interface Item {
   seller_id: string;
   is_sold: boolean;
   created_at: string;
+}
+
+function validateSliderImageRatio(file: File): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const ratio = img.width / img.height;
+      resolve(ratio >= 1.6 && ratio <= 2.0);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(false);
+    };
+
+    img.src = url;
+  });
+}
+
+function validateSliderImageUrl(url: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image();
+
+    img.onload = () => {
+      const ratio = img.naturalWidth / img.naturalHeight;
+      resolve(ratio >= 1.6 && ratio <= 2.0);
+    };
+
+    img.onerror = () => resolve(false);
+    img.src = url;
+  });
 }
 
 // NEW INTERFACE for consolidated static pages
@@ -867,6 +901,17 @@ const AdminDashboard = () => {
                                 return;
                               }
 
+                              const isValidRatio = await validateSliderImageRatio(file);
+                              if (!isValidRatio) {
+                                toast({
+                                  title: "Wrong image ratio",
+                                  description: "Slider images must be 16:9 landscape (e.g. 1280×720, 1920×1080). Please crop and re-upload.",
+                                  variant: "destructive",
+                                });
+                                e.target.value = '';
+                                return;
+                              }
+
                               setImageFile(file);
                             }}
                             className="flex-1"
@@ -880,6 +925,9 @@ const AdminDashboard = () => {
                             </Button>
                           )}
                         </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          ⚠️ Only 16:9 landscape images accepted (e.g. 1280×720, 1920×1080)
+                        </p>
                         {imageFile && (
                           <p className="text-sm text-muted-foreground">
                             Selected: {imageFile.name}
@@ -945,6 +993,16 @@ const AdminDashboard = () => {
                             // 🔥 Upload file to Cloudinary (REPLACED SUPABASE LOGIC)
                             if (imageFile) {
                               imageUrl = await uploadToCloudinary(imageFile, "slider");
+                            } else {
+                              const isValidRatio = await validateSliderImageUrl(imageUrl);
+                              if (!isValidRatio) {
+                                toast({
+                                  title: "Wrong image ratio",
+                                  description: "Slider images must be 16:9 landscape (e.g. 1280×720, 1920×1080). Please crop and re-upload.",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
                             }
 
                             console.log('Inserting into database with URL:', imageUrl);
@@ -996,12 +1054,14 @@ const AdminDashboard = () => {
                   <div className="space-y-4">
                     <h3 className="font-medium">Existing Slider Images</h3>
                     {sliderImages.map((image) => (
-                      <div key={image.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                        <img
-                          src={image.image_url}
-                          alt={image.title}
-                          className="w-24 h-16 object-cover rounded"
-                        />
+                      <div key={image.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 border rounded-lg">
+                        <div className="aspect-video w-full sm:w-48 overflow-hidden rounded-xl bg-muted flex-shrink-0">
+                          <img
+                            src={getSliderImageUrl(image.image_url)}
+                            alt={image.title || 'Slider image'}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
                         <div className="flex-1">
                           <h4 className="font-medium">{image.title || 'No title'}</h4>
                           <p className="text-sm text-muted-foreground">{image.description || 'No description'}</p>
