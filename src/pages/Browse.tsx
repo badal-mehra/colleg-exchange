@@ -153,7 +153,7 @@ const ImageSliderSectionComponent = () => {
   return (
     <section className="py-8 bg-card/50">
       <div className="container mx-auto px-4">
-        <div className="relative carousel-container rounded-2xl overflow-hidden shadow-xl aspect-[4/3] sm:aspect-[16/9] group">
+        <div className="relative w-full rounded-2xl overflow-hidden shadow-xl aspect-[4/3] sm:aspect-[16/9] group">
           <div
             className={`absolute inset-0 transition-opacity duration-500 opacity-100 z-10 ${currentImage.link_url ? 'cursor-pointer' : ''}`}
             onClick={handleSlideClick}
