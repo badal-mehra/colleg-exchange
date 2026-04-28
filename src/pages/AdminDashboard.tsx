@@ -887,6 +887,17 @@ const AdminDashboard = () => {
                                 return;
                               }
 
+                              const isValidRatio = await validateSliderImageRatio(file);
+                              if (!isValidRatio) {
+                                toast({
+                                  title: "Wrong image ratio",
+                                  description: "Slider images must be 16:9 landscape (e.g. 1280×720, 1920×1080). Please crop and re-upload.",
+                                  variant: "destructive",
+                                });
+                                e.target.value = '';
+                                return;
+                              }
+
                               setImageFile(file);
                             }}
                             className="flex-1"
@@ -900,6 +911,9 @@ const AdminDashboard = () => {
                             </Button>
                           )}
                         </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          ⚠️ Only 16:9 landscape images accepted (e.g. 1280×720, 1920×1080)
+                        </p>
                         {imageFile && (
                           <p className="text-sm text-muted-foreground">
                             Selected: {imageFile.name}
