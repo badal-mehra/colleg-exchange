@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Footer } from '@/components/Footer'; // Import Footer for consistent styling (optional)
-import { uploadToCloudinary } from "@/utils/cloudinaryUpload"; // 1️⃣ ADDED CLOUDINARY IMPORT
+import { getSliderImageUrl, uploadToCloudinary } from "@/utils/cloudinaryUpload"; // 1️⃣ ADDED CLOUDINARY IMPORT
 
 // ------------------- Interfaces (Unchanged) -------------------
 interface Profile {
@@ -34,6 +34,26 @@ interface Item {
   seller_id: string;
   is_sold: boolean;
   created_at: string;
+}
+
+function validateSliderImageRatio(file: File): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const ratio = img.width / img.height;
+      resolve(ratio >= 1.6 && ratio <= 2.0);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(false);
+    };
+
+    img.src = url;
+  });
 }
 
 // NEW INTERFACE for consolidated static pages
