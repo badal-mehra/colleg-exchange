@@ -993,6 +993,16 @@ const AdminDashboard = () => {
                             // 🔥 Upload file to Cloudinary (REPLACED SUPABASE LOGIC)
                             if (imageFile) {
                               imageUrl = await uploadToCloudinary(imageFile, "slider");
+                            } else {
+                              const isValidRatio = await validateSliderImageUrl(imageUrl);
+                              if (!isValidRatio) {
+                                toast({
+                                  title: "Wrong image ratio",
+                                  description: "Slider images must be 16:9 landscape (e.g. 1280×720, 1920×1080). Please crop and re-upload.",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
                             }
 
                             console.log('Inserting into database with URL:', imageUrl);
