@@ -166,7 +166,7 @@ const ImageSliderSectionComponent = () => {
     return (
       <section className="py-12 bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="aspect-video rounded-2xl overflow-hidden shadow-lg animate-pulse bg-muted"></div>
+          <div className="mx-auto w-full max-w-3xl lg:max-w-4xl aspect-video rounded-2xl overflow-hidden shadow-lg animate-pulse bg-muted"></div>
         </div>
       </section>
     );
@@ -184,7 +184,7 @@ const ImageSliderSectionComponent = () => {
   return (
     <section className="py-12 bg-card/50">
       <div className="container mx-auto px-4">
-        <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-xl group">
+        <div className="relative mx-auto w-full max-w-3xl lg:max-w-4xl aspect-video rounded-2xl overflow-hidden shadow-xl group">
           <div
             className={`absolute inset-0 transition-opacity duration-500 opacity-100 z-10 ${currentImage.link_url ? 'cursor-pointer' : ''}`}
             onClick={handleSlideClick}

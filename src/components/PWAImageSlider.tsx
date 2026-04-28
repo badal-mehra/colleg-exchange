@@ -229,7 +229,7 @@ const PWAImageSlider = () => {
      Render
   ───────────────────────────────────────── */
   return (
-    <div className="w-full">
+    <div className="w-full mx-auto max-w-3xl lg:max-w-4xl">
 
       {/* Screen-reader live region */}
       <div ref={announcerRef} aria-live="polite" aria-atomic="true" className="sr-only" />
