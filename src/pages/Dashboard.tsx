@@ -17,6 +17,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PGListingCard from '@/components/PGListingCard';
+import { getSliderImageUrl } from '@/utils/cloudinaryUpload';
 
 
 // --- INTERFACES (Unchanged) ---
@@ -163,9 +164,9 @@ const ImageSliderSectionComponent = () => {
 
   if (sliderImages === null) {
     return (
-      <section className="py-12 bg-gray-100/50">
+      <section className="py-12 bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="h-60 sm:h-80 md:h-96 rounded-2xl overflow-hidden shadow-lg animate-pulse bg-gray-200"></div>
+          <div className="aspect-video rounded-2xl overflow-hidden shadow-lg animate-pulse bg-muted"></div>
         </div>
       </section>
     );
@@ -183,13 +184,13 @@ const ImageSliderSectionComponent = () => {
   return (
     <section className="py-12 bg-card/50">
       <div className="container mx-auto px-4">
-        <div className="relative carousel-container rounded-2xl overflow-hidden shadow-xl h-60 sm:h-80 md:h-96 group">
+        <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-xl group">
           <div
             className={`absolute inset-0 transition-opacity duration-500 opacity-100 z-10 ${currentImage.link_url ? 'cursor-pointer' : ''}`}
             onClick={handleSlideClick}
           >
             <img
-              src={currentImage.image_url}
+              src={getSliderImageUrl(currentImage.image_url)}
               alt={currentImage.title || `Slide ${currentSlide + 1}`}
               className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-[1.02]"
               loading="lazy"
