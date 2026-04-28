@@ -96,5 +96,9 @@ export async function uploadToCloudinary(
 
 export function getSliderImageUrl(url: string): string {
   if (!url || !url.includes('cloudinary.com')) return url;
-  return url.replace('/image/upload/', '/image/upload/c_fill,ar_16:9,g_auto,q_auto,f_auto/');
+
+  // Strip any existing transform already baked into the URL, then apply one
+  // consistent 16:9 fill transform at render time.
+  const clean = url.replace(/\/upload\/[^/]+\//, '/upload/');
+  return clean.replace('/upload/', '/upload/c_fill,ar_16:9,g_auto,q_auto,f_auto,w_1280/');
 }
