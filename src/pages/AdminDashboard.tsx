@@ -1030,12 +1030,14 @@ const AdminDashboard = () => {
                   <div className="space-y-4">
                     <h3 className="font-medium">Existing Slider Images</h3>
                     {sliderImages.map((image) => (
-                      <div key={image.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                        <img
-                          src={image.image_url}
-                          alt={image.title}
-                          className="w-24 h-16 object-cover rounded"
-                        />
+                      <div key={image.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 border rounded-lg">
+                        <div className="aspect-video w-full sm:w-48 overflow-hidden rounded-xl bg-muted flex-shrink-0">
+                          <img
+                            src={getSliderImageUrl(image.image_url)}
+                            alt={image.title || 'Slider image'}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
                         <div className="flex-1">
                           <h4 className="font-medium">{image.title || 'No title'}</h4>
                           <p className="text-sm text-muted-foreground">{image.description || 'No description'}</p>
