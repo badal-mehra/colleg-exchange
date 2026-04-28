@@ -1,11 +1,14 @@
 // src/utils/cloudinaryUpload.ts
 
 import { supabase } from "@/integrations/supabase/client";
+import { compressImage } from "@/utils/imageCompression";
 
 const CLOUDINARY_SIGN_URL =
   "https://mtaeqtmcixlrudjsxcew.supabase.co/functions/v1/cloudinary-sign";
 
 type CloudinaryFolder = "avatars" | "slider";
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function getFreshAccessToken(): Promise<string> {
   const { data: sessionData } = await supabase.auth.getSession();
