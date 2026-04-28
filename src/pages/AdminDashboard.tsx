@@ -56,6 +56,20 @@ function validateSliderImageRatio(file: File): Promise<boolean> {
   });
 }
 
+function validateSliderImageUrl(url: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image();
+
+    img.onload = () => {
+      const ratio = img.naturalWidth / img.naturalHeight;
+      resolve(ratio >= 1.6 && ratio <= 2.0);
+    };
+
+    img.onerror = () => resolve(false);
+    img.src = url;
+  });
+}
+
 // NEW INTERFACE for consolidated static pages
 interface StaticPage {
   id: string;
