@@ -30,14 +30,14 @@ const TRANSITION_MS  = 600;
    Loading skeleton
 ───────────────────────────────────────────── */
 const SliderSkeleton = () => (
-  <div className="w-full aspect-[4/3] sm:aspect-[16/9] rounded-2xl overflow-hidden relative bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 animate-pulse" />
+  <div className="w-full aspect-video rounded-2xl overflow-hidden relative bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 animate-pulse" />
 );
 
 /* ─────────────────────────────────────────────
    Error state
 ───────────────────────────────────────────── */
 const SliderError = () => (
-  <div className="w-full aspect-[4/3] sm:aspect-[16/9] rounded-2xl overflow-hidden flex items-center justify-center bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50">
+  <div className="w-full aspect-video rounded-2xl overflow-hidden flex items-center justify-center bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50">
     <div className="flex flex-col items-center gap-2 p-6 text-center">
       <span className="text-3xl">⚠️</span>
       <p className="font-semibold text-rose-700 dark:text-rose-300 text-sm">Could not load slides</p>
@@ -240,7 +240,7 @@ const PWAImageSlider = () => {
         role="region"
         aria-label="Image carousel"
         tabIndex={0}
-        className="relative w-full aspect-[4/3] sm:aspect-[16/9] overflow-hidden rounded-2xl select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        className="relative w-full aspect-video overflow-hidden rounded-2xl select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
         onTouchStart={handleTouchStart}
