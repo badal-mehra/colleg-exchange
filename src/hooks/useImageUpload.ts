@@ -98,9 +98,7 @@ export function useImageUpload(maxImages: number = 5) {
     try {
       for (const localImage of localImages) {
         const url = await uploadToCloudinary(localImage.file, 'slider');
-        // Optimize the URL
-        const optimizedUrl = url.replace('/upload/', '/upload/f_auto,q_auto,w_800/');
-        uploadedUrls.push(optimizedUrl);
+        uploadedUrls.push(url); // Store raw URL; display transforms are applied at render time.
       }
 
       // Clean up local previews after successful upload
