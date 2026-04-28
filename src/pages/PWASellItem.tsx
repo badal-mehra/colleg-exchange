@@ -509,28 +509,52 @@ const PWASellItem = () => {
             ))}
 
             {canAddMore && (
-              <label className="aspect-square rounded-2xl border-2 border-dashed border-muted-foreground/25 flex flex-col items-center justify-center cursor-pointer hover:bg-muted/30 hover:border-primary/40 transition-all active:scale-95 group">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  className="hidden"
-                  disabled={uploading}
-                />
-                {uploading ? (
-                  <Loader2 className="h-7 w-7 text-muted-foreground animate-spin" />
-                ) : (
-                  <>
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-1.5 group-hover:bg-primary/10 transition-colors">
-                      <Camera className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                    </div>
-                    <span className="text-xs text-muted-foreground group-hover:text-primary transition-colors">
-                      Add
-                    </span>
-                  </>
-                )}
-              </label>
+              <>
+                <label className="aspect-square rounded-2xl border-2 border-dashed border-muted-foreground/25 flex flex-col items-center justify-center cursor-pointer hover:bg-muted/30 hover:border-primary/40 transition-all active:scale-95 group">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                  {uploading ? (
+                    <Loader2 className="h-7 w-7 text-muted-foreground animate-spin" />
+                  ) : (
+                    <>
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-1.5 group-hover:bg-primary/10 transition-colors">
+                        <Camera className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <span className="text-xs text-muted-foreground group-hover:text-primary transition-colors">
+                        Camera
+                      </span>
+                    </>
+                  )}
+                </label>
+                <label className="aspect-square rounded-2xl border-2 border-dashed border-muted-foreground/25 flex flex-col items-center justify-center cursor-pointer hover:bg-muted/30 hover:border-primary/40 transition-all active:scale-95 group">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                  {uploading ? (
+                    <Loader2 className="h-7 w-7 text-muted-foreground animate-spin" />
+                  ) : (
+                    <>
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-1.5 group-hover:bg-primary/10 transition-colors">
+                        <ImageIcon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <span className="text-xs text-muted-foreground group-hover:text-primary transition-colors">
+                        Gallery
+                      </span>
+                    </>
+                  )}
+                </label>
+              </>
             )}
 
             {/* Empty state placeholder slots */}

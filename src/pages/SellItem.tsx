@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Upload, X, Image as ImageIcon, Star, Zap, Clock, Tag, Crown, Coins, DollarSign, Loader2 } from 'lucide-react';
+import { ArrowLeft, Upload, X, Image as ImageIcon, Star, Zap, Clock, Tag, Crown, Coins, DollarSign, Loader2, Camera } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ListingTypeSelector, { ListingType } from '@/components/ListingTypeSelector';
@@ -586,20 +586,34 @@ const SellItem = () => {
                               id="image-upload"
                               disabled={!canAddMore || uploading}
                             />
-                            <label htmlFor="image-upload" className="cursor-pointer block">
-                              {uploading ? (
-                                  <Loader2 className="h-8 w-8 text-primary mx-auto mb-2 animate-spin" />
-                              ) : (
-                                  <ImageIcon className="h-8 w-8 text-primary mx-auto mb-2" />
-                              )}
-                              
-                              <p className="text-sm font-medium text-primary">
-                                {uploading ? 'Processing...' : 'Click to upload high-quality images'}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                ({5 - imageCount} remaining, max 5MB/image)
-                              </p>
-                            </label>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              onChange={handleImageUpload}
+                              className="hidden"
+                              id="image-camera"
+                              disabled={!canAddMore || uploading}
+                            />
+                            {uploading ? (
+                                <Loader2 className="h-8 w-8 text-primary mx-auto mb-2 animate-spin" />
+                            ) : (
+                                <ImageIcon className="h-8 w-8 text-primary mx-auto mb-2" />
+                            )}
+                            <p className="text-sm font-medium text-primary">
+                              {uploading ? 'Processing...' : 'Add high-quality images'}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1 mb-3">
+                              ({5 - imageCount} remaining, max 5MB/image)
+                            </p>
+                            <div className="flex gap-2 justify-center">
+                              <label htmlFor="image-upload" className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition">
+                                <ImageIcon className="h-3.5 w-3.5" /> Gallery
+                              </label>
+                              <label htmlFor="image-camera" className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-primary text-primary hover:bg-primary/10 transition">
+                                <Camera className="h-3.5 w-3.5" /> Camera
+                              </label>
+                            </div>
                           </div>
                         )}
                         {imageCount === 0 && <p className="text-red-500 text-xs mt-2">At least one image is required.</p>}

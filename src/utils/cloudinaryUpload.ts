@@ -1,11 +1,14 @@
 // src/utils/cloudinaryUpload.ts
 
 import { supabase } from "@/integrations/supabase/client";
+import { compressImage } from "@/utils/imageCompression";
 
 const CLOUDINARY_SIGN_URL =
   "https://mtaeqtmcixlrudjsxcew.supabase.co/functions/v1/cloudinary-sign";
 
 type CloudinaryFolder = "avatars" | "slider";
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function getFreshAccessToken(): Promise<string> {
   const { data: sessionData } = await supabase.auth.getSession();
@@ -48,18 +51,24 @@ export async function uploadToCloudinary(
   file: File,
   folder: CloudinaryFolder = "avatars"
 ): Promise<string> {
+  // 1) Compress before upload to reduce timeouts on flaky mobile networks.
+  const prepared = await compressImage(file, {
+    maxWidth: 1600,
+    maxHeight: 1600,
+    quality: 0.82,
+  });
+
   const accessToken = await getFreshAccessToken();
 
-  // Get signature from Supabase Edge Function with user's auth token
-  const sigRes = await fetch(`${CLOUDINARY_SIGN_URL}?folder=${encodeURIComponent(folder)}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  // 2) Get signature with light retry (Edge Function cold-starts can flake).
+  const sigRes = await fetchWithRetry(
+    `${CLOUDINARY_SIGN_URL}?folder=${encodeURIComponent(folder)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+    2
+  );
 
   if (!sigRes.ok) {
     const message = await readEdgeError(sigRes);
-    // If our JWT is invalid/expired, force re-login rather than cascading failures.
     if (sigRes.status === 401) {
       await supabase.auth.signOut();
       throw new Error("Session expired. Please sign in again and retry.");
@@ -69,29 +78,59 @@ export async function uploadToCloudinary(
 
   const { signature, timestamp, apiKey, cloudName } = await sigRes.json();
 
-  // Upload to Cloudinary
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("api_key", apiKey);
-  formData.append("timestamp", String(timestamp));
-  formData.append("signature", signature);
-  formData.append("folder", folder);
-
   const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
 
-  const res = await fetch(uploadUrl, {
-    method: "POST",
-    body: formData,
-  });
+  // 3) Upload to Cloudinary with retry on network errors / 5xx.
+  let lastError: any = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const formData = new FormData();
+      formData.append("file", prepared);
+      formData.append("api_key", apiKey);
+      formData.append("timestamp", String(timestamp));
+      formData.append("signature", signature);
+      formData.append("folder", folder);
 
-  const data = await res.json();
+      const res = await fetch(uploadUrl, { method: "POST", body: formData });
+      const data = await res.json().catch(() => ({}));
 
-  if (!res.ok || !data.secure_url) {
-    console.error("Cloudinary Error:", data);
-    throw new Error(data.error?.message || "Cloudinary upload failed");
+      if (res.ok && data?.secure_url) return data.secure_url;
+
+      // Don't retry on auth/validation errors
+      if (res.status >= 400 && res.status < 500) {
+        console.error("Cloudinary Error:", data);
+        throw new Error(data?.error?.message || "Cloudinary upload failed");
+      }
+      lastError = new Error(data?.error?.message || `Upload failed (${res.status})`);
+    } catch (err: any) {
+      lastError = err;
+    }
+    await sleep(600 * (attempt + 1));
   }
+  throw new Error(
+    lastError?.message
+      ? `Upload failed after retries: ${lastError.message}`
+      : "Upload failed. Please check your internet connection and try again."
+  );
+}
 
-  return data.secure_url;
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  retries: number
+): Promise<Response> {
+  let lastErr: any;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const res = await fetch(url, init);
+      if (res.ok || (res.status >= 400 && res.status < 500)) return res;
+      lastErr = new Error(`HTTP ${res.status}`);
+    } catch (e) {
+      lastErr = e;
+    }
+    if (i < retries) await sleep(500 * (i + 1));
+  }
+  throw lastErr ?? new Error("Network error");
 }
 
 export function getSliderImageUrl(url: string): string {
