@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Upload, X, Image as ImageIcon, Star, Zap, Clock, Tag, Crown, Coins, DollarSign, Loader2 } from 'lucide-react';
+import { ArrowLeft, Upload, X, Image as ImageIcon, Star, Zap, Clock, Tag, Crown, Coins, DollarSign, Loader2, Camera } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import ListingTypeSelector, { ListingType } from '@/components/ListingTypeSelector';
