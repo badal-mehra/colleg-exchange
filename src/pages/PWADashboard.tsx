@@ -308,12 +308,18 @@ const PWADashboard = () => {
     if (pgPropertyType !== "all") query = query.eq("property_type", pgPropertyType);
     if (pgSharingType !== "all") query = query.eq("sharing_type", pgSharingType);
     if (pgGender !== "all") query = query.eq("for_gender", pgGender);
+    if (searchTerm) {
+      const escaped = searchTerm.replace(/[%,()]/g, '');
+      query = query.or(
+        `area_locality.ilike.%${escaped}%,landmark.ilike.%${escaped}%,property_type.ilike.%${escaped}%`
+      );
+    }
 
     const { data, error } = await query;
     if (error)
       toast({ title: "Error", description: "Failed to load PG listings", variant: "destructive" });
     else setPgListings((data ?? []) as unknown as PGListing[]);
-  }, [pgPropertyType, pgSharingType, pgGender, toast]);
+  }, [pgPropertyType, pgSharingType, pgGender, searchTerm, toast]);
 
   useEffect(() => {
     (async () => {
