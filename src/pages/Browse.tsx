@@ -195,6 +195,7 @@ const ImageSliderSectionComponent = () => {
             ))}
           </div>
         </div>
+        </SliderSidePanels.Layout>
       </div>
     </section>
   );
