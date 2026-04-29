@@ -220,8 +220,7 @@ function xhrUpload(url: string, params: XhrUploadParams): Promise<any> {
     xhr.send(formData);
   });
 }
-  );
-}
+
 
 async function fetchWithRetry(
   url: string,
