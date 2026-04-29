@@ -695,6 +695,17 @@ const Browse = () => {
                 Find PG & Rooms
               </h2>
 
+              {/* PG Search bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                <Input
+                  placeholder="Search by area, landmark, or property type..."
+                  value={searchTerm}
+                  onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
+                  className="pl-10 h-11"
+                />
+              </div>
+
               <div className="flex flex-wrap gap-3">
                 <Select value={pgFilters.propertyType} onValueChange={(v) => setPgFilters(prev => ({ ...prev, propertyType: v }))}>
                   <SelectTrigger className="w-32 sm:w-40">
