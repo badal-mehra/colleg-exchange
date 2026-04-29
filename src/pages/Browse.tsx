@@ -474,7 +474,7 @@ const Browse = () => {
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [activeTab, pgFilters, fetchPGListings]);
+  }, [activeTab, pgFilters, searchTerm, fetchPGListings]);
 
   const handleFilterChange = useCallback((key: keyof FilterState, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
