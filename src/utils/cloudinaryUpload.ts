@@ -10,6 +10,23 @@ type CloudinaryFolder = "avatars" | "slider";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+export type UploadErrorCode =
+  | "file_too_large"
+  | "signature_failed"
+  | "network_timeout"
+  | "auth_expired"
+  | "unknown";
+
+export class UploadError extends Error {
+  code: UploadErrorCode;
+  constructor(code: UploadErrorCode, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+const FILE_SIZE_LIMIT = 5 * 1024 * 1024; // 5MB
+
 async function getFreshAccessToken(): Promise<string> {
   const { data: sessionData } = await supabase.auth.getSession();
   const session = sessionData?.session;
