@@ -141,6 +141,7 @@ const SellItem = () => {
     uploading,
     addImages,
     removeLocalImage,
+    retryImage,
     uploadAllImages,
     clearAllImages,
     imageCount,
