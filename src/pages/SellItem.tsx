@@ -555,25 +555,66 @@ const SellItem = () => {
                       <div className="space-y-4">
                         {localImages.length > 0 && (
                           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-                            {localImages.map((image, index) => (
-                              <div key={image.id} className="relative group aspect-square">
-                                <img
-                                  src={image.previewUrl}
-                                  alt={`Preview ${index + 1}`}
-                                  className="w-full h-full object-cover rounded-lg border shadow-sm"
-                                  loading="lazy"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  size="icon"
-                                  className="absolute top-1 right-1 h-6 w-6 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => removeLocalImage(image.id)}
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            ))}
+                            {localImages.map((image, index) => {
+                              const statusColor =
+                                image.status === 'success' ? 'bg-green-500' :
+                                image.status === 'failed' ? 'bg-red-500' :
+                                image.status === 'uploading' ? 'bg-blue-500' :
+                                'bg-gray-400';
+                              const statusLabel =
+                                image.status === 'success' ? 'Uploaded' :
+                                image.status === 'failed' ? 'Failed' :
+                                image.status === 'uploading' ? `${Math.round(image.progress)}%` :
+                                'Queued';
+                              return (
+                                <div key={image.id} className="space-y-1">
+                                  <div className="relative group aspect-square">
+                                    <img
+                                      src={image.previewUrl}
+                                      alt={`Preview ${index + 1}`}
+                                      className={`w-full h-full object-cover rounded-lg border shadow-sm ${image.status === 'failed' ? 'opacity-60' : ''}`}
+                                      loading="lazy"
+                                    />
+                                    {/* Status badge */}
+                                    <span className={`absolute top-1 left-1 ${statusColor} text-white text-[10px] font-semibold px-1.5 py-0.5 rounded`}>
+                                      {statusLabel}
+                                    </span>
+                                    {/* Progress bar */}
+                                    {image.status === 'uploading' && (
+                                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30 rounded-b-lg overflow-hidden">
+                                        <div
+                                          className="h-full bg-blue-500 transition-all"
+                                          style={{ width: `${image.progress}%` }}
+                                        />
+                                      </div>
+                                    )}
+                                    <Button
+                                      type="button"
+                                      variant="destructive"
+                                      size="icon"
+                                      className="absolute top-1 right-1 h-6 w-6 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={() => removeLocalImage(image.id)}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                  {image.status === 'failed' && (
+                                    <div className="space-y-1">
+                                      <p className="text-[10px] text-red-600 leading-tight">{image.errorMessage}</p>
+                                      {image.errorCode !== 'file_too_large' && (
+                                        <button
+                                          type="button"
+                                          onClick={() => retryImage(image.id)}
+                                          className="text-[10px] font-semibold text-primary underline"
+                                        >
+                                          Retry
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                         {canAddMore && (
