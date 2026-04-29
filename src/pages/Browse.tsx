@@ -434,13 +434,19 @@ const Browse = () => {
     if (pgFilters.sharingType !== 'all') {
       query = query.eq('sharing_type', pgFilters.sharingType);
     }
+    if (searchTerm) {
+      const escaped = searchTerm.replace(/[%,()]/g, '');
+      query = query.or(
+        `area_locality.ilike.%${escaped}%,landmark.ilike.%${escaped}%,property_type.ilike.%${escaped}%`
+      );
+    }
 
     const { data, error } = await query;
     if (!error) {
       setPgListings(data || []);
     }
     setLoading(false);
-  }, [pgFilters]);
+  }, [pgFilters, searchTerm]);
 
   // Initial Load
   useEffect(() => {
