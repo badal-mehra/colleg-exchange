@@ -21,6 +21,7 @@ import PGListingCard from '@/components/PGListingCard';
 import { Footer } from '@/components/Footer';
 import logo from '@/assets/mycampuskart-logo.png';
 import { getSliderImageUrl } from '@/utils/cloudinaryUpload';
+import SliderSidePanels from '@/components/SliderSidePanels';
 
 // --- INTERFACES ---
 interface MinimalCategory {
@@ -153,7 +154,8 @@ const ImageSliderSectionComponent = () => {
   return (
     <section className="py-8 bg-card/50">
       <div className="container mx-auto px-4">
-        <div className="relative mx-auto w-full max-w-3xl lg:max-w-4xl rounded-2xl overflow-hidden shadow-xl aspect-video group">
+        <SliderSidePanels.Layout>
+        <div className="relative mx-auto w-full max-w-3xl lg:max-w-none rounded-2xl overflow-hidden shadow-xl aspect-video group">
           <div
             className={`absolute inset-0 transition-opacity duration-500 opacity-100 z-10 ${currentImage.link_url ? 'cursor-pointer' : ''}`}
             onClick={handleSlideClick}
@@ -194,6 +196,7 @@ const ImageSliderSectionComponent = () => {
             ))}
           </div>
         </div>
+        </SliderSidePanels.Layout>
       </div>
     </section>
   );

@@ -18,6 +18,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PGListingCard from '@/components/PGListingCard';
 import { getSliderImageUrl } from '@/utils/cloudinaryUpload';
+import SliderSidePanels from '@/components/SliderSidePanels';
 
 
 // --- INTERFACES (Unchanged) ---
@@ -184,7 +185,8 @@ const ImageSliderSectionComponent = () => {
   return (
     <section className="py-12 bg-card/50">
       <div className="container mx-auto px-4">
-        <div className="relative mx-auto w-full max-w-3xl lg:max-w-4xl aspect-video rounded-2xl overflow-hidden shadow-xl group">
+        <SliderSidePanels.Layout>
+        <div className="relative mx-auto w-full max-w-3xl lg:max-w-none aspect-video rounded-2xl overflow-hidden shadow-xl group">
           <div
             className={`absolute inset-0 transition-opacity duration-500 opacity-100 z-10 ${currentImage.link_url ? 'cursor-pointer' : ''}`}
             onClick={handleSlideClick}
@@ -231,6 +233,7 @@ const ImageSliderSectionComponent = () => {
             ))}
           </div>
         </div>
+        </SliderSidePanels.Layout>
       </div>
     </section>
   );
