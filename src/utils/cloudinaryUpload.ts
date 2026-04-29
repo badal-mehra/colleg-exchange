@@ -10,6 +10,23 @@ type CloudinaryFolder = "avatars" | "slider";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+export type UploadErrorCode =
+  | "file_too_large"
+  | "signature_failed"
+  | "network_timeout"
+  | "auth_expired"
+  | "unknown";
+
+export class UploadError extends Error {
+  code: UploadErrorCode;
+  constructor(code: UploadErrorCode, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+const FILE_SIZE_LIMIT = 5 * 1024 * 1024; // 5MB
+
 async function getFreshAccessToken(): Promise<string> {
   const { data: sessionData } = await supabase.auth.getSession();
   const session = sessionData?.session;
@@ -47,72 +64,163 @@ async function readEdgeError(res: Response): Promise<string> {
   }
 }
 
+export interface UploadOptions {
+  onProgress?: (pct: number) => void;
+}
+
 export async function uploadToCloudinary(
   file: File,
-  folder: CloudinaryFolder = "avatars"
+  folder: CloudinaryFolder = "avatars",
+  options: UploadOptions = {}
 ): Promise<string> {
+  const { onProgress } = options;
+
+  // 0) Pre-flight size check (catch obvious "file too large" before any work).
+  if (file.size > FILE_SIZE_LIMIT) {
+    throw new UploadError(
+      "file_too_large",
+      `Image is ${(file.size / 1024 / 1024).toFixed(1)}MB. Maximum allowed is 5MB.`
+    );
+  }
+
   // 1) Compress before upload to reduce timeouts on flaky mobile networks.
-  const prepared = await compressImage(file, {
-    maxWidth: 1600,
-    maxHeight: 1600,
-    quality: 0.82,
-  });
+  let prepared: File | Blob;
+  try {
+    prepared = await compressImage(file, {
+      maxWidth: 1600,
+      maxHeight: 1600,
+      quality: 0.82,
+    });
+  } catch {
+    prepared = file;
+  }
+  onProgress?.(15);
 
-  const accessToken = await getFreshAccessToken();
+  // 2) Auth + signature
+  let accessToken: string;
+  try {
+    accessToken = await getFreshAccessToken();
+  } catch (e: any) {
+    throw new UploadError("auth_expired", e?.message || "Session expired. Please sign in again.");
+  }
 
-  // 2) Get signature with light retry (Edge Function cold-starts can flake).
-  const sigRes = await fetchWithRetry(
-    `${CLOUDINARY_SIGN_URL}?folder=${encodeURIComponent(folder)}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-    2
-  );
+  let sigRes: Response;
+  try {
+    sigRes = await fetchWithRetry(
+      `${CLOUDINARY_SIGN_URL}?folder=${encodeURIComponent(folder)}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+      2
+    );
+  } catch {
+    throw new UploadError(
+      "signature_failed",
+      "Couldn't reach upload server. Check your connection and retry."
+    );
+  }
 
   if (!sigRes.ok) {
     const message = await readEdgeError(sigRes);
     if (sigRes.status === 401) {
       await supabase.auth.signOut();
-      throw new Error("Session expired. Please sign in again and retry.");
+      throw new UploadError("auth_expired", "Session expired. Please sign in again.");
     }
-    throw new Error(message || "Failed to get Cloudinary signature");
+    throw new UploadError("signature_failed", message || "Failed to get upload signature");
   }
 
   const { signature, timestamp, apiKey, cloudName } = await sigRes.json();
-
   const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+  onProgress?.(30);
 
-  // 3) Upload to Cloudinary with retry on network errors / 5xx.
+  // 3) Upload to Cloudinary using XHR so we get real progress events.
   let lastError: any = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const formData = new FormData();
-      formData.append("file", prepared);
-      formData.append("api_key", apiKey);
-      formData.append("timestamp", String(timestamp));
-      formData.append("signature", signature);
-      formData.append("folder", folder);
-
-      const res = await fetch(uploadUrl, { method: "POST", body: formData });
-      const data = await res.json().catch(() => ({}));
-
-      if (res.ok && data?.secure_url) return data.secure_url;
-
-      // Don't retry on auth/validation errors
-      if (res.status >= 400 && res.status < 500) {
-        console.error("Cloudinary Error:", data);
-        throw new Error(data?.error?.message || "Cloudinary upload failed");
-      }
-      lastError = new Error(data?.error?.message || `Upload failed (${res.status})`);
+      const result = await xhrUpload(uploadUrl, {
+        file: prepared,
+        apiKey,
+        timestamp,
+        signature,
+        folder,
+        onProgress: (pct) => onProgress?.(30 + Math.round(pct * 0.7)),
+      });
+      if (result?.secure_url) return result.secure_url;
+      lastError = new Error("Upload completed but no URL returned");
     } catch (err: any) {
+      // Don't retry on validation/auth errors
+      if (err?.status && err.status >= 400 && err.status < 500) {
+        if (err.status === 413) {
+          throw new UploadError("file_too_large", "Image is too large for the server.");
+        }
+        throw new UploadError("unknown", err?.message || "Upload rejected by server.");
+      }
       lastError = err;
     }
     await sleep(600 * (attempt + 1));
   }
-  throw new Error(
+  throw new UploadError(
+    "network_timeout",
     lastError?.message
-      ? `Upload failed after retries: ${lastError.message}`
-      : "Upload failed. Please check your internet connection and try again."
+      ? `Network timeout: ${lastError.message}`
+      : "Network timeout. Check your internet connection and try again."
   );
 }
+
+interface XhrUploadParams {
+  file: Blob;
+  apiKey: string;
+  timestamp: number;
+  signature: string;
+  folder: string;
+  onProgress?: (pct: number) => void;
+}
+
+function xhrUpload(url: string, params: XhrUploadParams): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append("file", params.file);
+    formData.append("api_key", params.apiKey);
+    formData.append("timestamp", String(params.timestamp));
+    formData.append("signature", params.signature);
+    formData.append("folder", params.folder);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.timeout = 60_000; // 60s per attempt
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && params.onProgress) {
+        params.onProgress(Math.min(100, (e.loaded / e.total) * 100));
+      }
+    };
+    xhr.ontimeout = () => {
+      const err: any = new Error("Upload timed out");
+      err.status = 0;
+      reject(err);
+    };
+    xhr.onerror = () => {
+      const err: any = new Error("Network error during upload");
+      err.status = 0;
+      reject(err);
+    };
+    xhr.onload = () => {
+      let data: any = {};
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch {
+        /* ignore */
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(data);
+      } else {
+        const err: any = new Error(data?.error?.message || `Upload failed (${xhr.status})`);
+        err.status = xhr.status;
+        reject(err);
+      }
+    };
+    xhr.send(formData);
+  });
+}
+
 
 async function fetchWithRetry(
   url: string,

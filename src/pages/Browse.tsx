@@ -434,13 +434,19 @@ const Browse = () => {
     if (pgFilters.sharingType !== 'all') {
       query = query.eq('sharing_type', pgFilters.sharingType);
     }
+    if (searchTerm) {
+      const escaped = searchTerm.replace(/[%,()]/g, '');
+      query = query.or(
+        `area_locality.ilike.%${escaped}%,landmark.ilike.%${escaped}%,property_type.ilike.%${escaped}%`
+      );
+    }
 
     const { data, error } = await query;
     if (!error) {
       setPgListings(data || []);
     }
     setLoading(false);
-  }, [pgFilters]);
+  }, [pgFilters, searchTerm]);
 
   // Initial Load
   useEffect(() => {
@@ -468,7 +474,7 @@ const Browse = () => {
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [activeTab, pgFilters, fetchPGListings]);
+  }, [activeTab, pgFilters, searchTerm, fetchPGListings]);
 
   const handleFilterChange = useCallback((key: keyof FilterState, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -688,6 +694,17 @@ const Browse = () => {
                 <Home className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500" />
                 Find PG & Rooms
               </h2>
+
+              {/* PG Search bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                <Input
+                  placeholder="Search by area, landmark, or property type..."
+                  value={searchTerm}
+                  onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
+                  className="pl-10 h-11"
+                />
+              </div>
 
               <div className="flex flex-wrap gap-3">
                 <Select value={pgFilters.propertyType} onValueChange={(v) => setPgFilters(prev => ({ ...prev, propertyType: v }))}>

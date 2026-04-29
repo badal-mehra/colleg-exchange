@@ -173,6 +173,7 @@ const PWASellItem = () => {
     uploading,
     addImages,
     removeLocalImage,
+    retryImage,
     uploadAllImages,
     imageCount,
     canAddMore,
@@ -484,29 +485,69 @@ const PWASellItem = () => {
 
           {/* Photo Grid */}
           <div className="grid grid-cols-3 gap-3">
-            {localImages.map((img, index) => (
-              <div
-                key={img.id}
-                className="relative aspect-square rounded-2xl overflow-hidden bg-muted ring-2 ring-border group"
-              >
-                <img
-                  src={img.previewUrl}
-                  alt=""
-                  className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                />
-                {index === 0 && (
-                  <div className="absolute bottom-1.5 left-1.5 bg-primary/90 text-primary-foreground text-[9px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm">
-                    COVER
+            {localImages.map((img, index) => {
+              const statusColor =
+                img.status === 'success' ? 'bg-green-500' :
+                img.status === 'failed' ? 'bg-red-500' :
+                img.status === 'uploading' ? 'bg-blue-500' :
+                'bg-gray-400';
+              const statusLabel =
+                img.status === 'success' ? '✓' :
+                img.status === 'failed' ? '!' :
+                img.status === 'uploading' ? `${Math.round(img.progress)}%` :
+                '•';
+              return (
+                <div key={img.id} className="space-y-1">
+                  <div
+                    className={`relative aspect-square rounded-2xl overflow-hidden bg-muted ring-2 group ${img.status === 'failed' ? 'ring-red-400' : 'ring-border'}`}
+                  >
+                    <img
+                      src={img.previewUrl}
+                      alt=""
+                      className={`w-full h-full object-cover transition-transform duration-200 group-hover:scale-105 ${img.status === 'failed' ? 'opacity-60' : ''}`}
+                    />
+                    {index === 0 && (
+                      <div className="absolute bottom-1.5 left-1.5 bg-primary/90 text-primary-foreground text-[9px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm">
+                        COVER
+                      </div>
+                    )}
+                    {/* Per-image status badge */}
+                    <span className={`absolute top-1.5 left-1.5 ${statusColor} text-white text-[10px] font-bold min-w-5 px-1 h-5 rounded-full flex items-center justify-center`}>
+                      {statusLabel}
+                    </span>
+                    {/* Progress bar */}
+                    {img.status === 'uploading' && (
+                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30">
+                        <div
+                          className="h-full bg-blue-500 transition-all"
+                          style={{ width: `${img.progress}%` }}
+                        />
+                      </div>
+                    )}
+                    <button
+                      onClick={() => removeLocalImage(img.id)}
+                      className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/80 transition-all active:scale-95"
+                    >
+                      <X className="h-3 w-3 text-white" />
+                    </button>
                   </div>
-                )}
-                <button
-                  onClick={() => removeLocalImage(img.id)}
-                  className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/80 transition-all active:scale-95"
-                >
-                  <X className="h-3 w-3 text-white" />
-                </button>
-              </div>
-            ))}
+                  {img.status === 'failed' && (
+                    <div className="px-1">
+                      <p className="text-[10px] text-red-600 leading-tight line-clamp-2">{img.errorMessage}</p>
+                      {img.errorCode !== 'file_too_large' && (
+                        <button
+                          type="button"
+                          onClick={() => retryImage(img.id)}
+                          className="text-[10px] font-semibold text-primary underline mt-0.5"
+                        >
+                          Retry
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
             {canAddMore && (
               <>
