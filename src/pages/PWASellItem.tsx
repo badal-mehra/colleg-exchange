@@ -173,6 +173,7 @@ const PWASellItem = () => {
     uploading,
     addImages,
     removeLocalImage,
+    retryImage,
     uploadAllImages,
     imageCount,
     canAddMore,
