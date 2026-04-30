@@ -579,6 +579,9 @@ const PWADashboard = () => {
         {/* Hero banner slider */}
         <PWAImageSlider />
 
+        {/* Daily Login Reward */}
+        {user && <DailyLoginReward />}
+
         {/* Results meta row */}
         {!loading && (
           <div className="flex items-center justify-between min-h-[24px]">
