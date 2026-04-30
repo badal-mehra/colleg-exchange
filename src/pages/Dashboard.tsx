@@ -721,6 +721,12 @@ const Dashboard = () => {
       <ImageSliderSection />
 
       <div className="container mx-auto px-4 py-12">
+        {/* Daily Login Reward */}
+        {user && (
+          <div className="mb-6 max-w-3xl mx-auto">
+            <DailyLoginReward />
+          </div>
+        )}
         {/* Tab Switcher */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'products' | 'pg')} className="mb-6">
           <TabsList className="grid w-full max-w-md grid-cols-2">
