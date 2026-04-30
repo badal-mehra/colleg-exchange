@@ -43,6 +43,7 @@ import PWACategoryChip from "@/components/PWACategoryChip";
 import PWAListingCard from "@/components/PWAListingCard";
 import PGListingCard from "@/components/PGListingCard";
 import PWAImageSlider from "@/components/PWAImageSlider";
+import DailyLoginReward from "@/components/DailyLoginReward";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
