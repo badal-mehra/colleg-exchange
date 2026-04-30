@@ -19,6 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PGListingCard from '@/components/PGListingCard';
 import { getSliderImageUrl } from '@/utils/cloudinaryUpload';
 import SliderSidePanels from '@/components/SliderSidePanels';
+import DailyLoginReward from '@/components/DailyLoginReward';
 
 
 // --- INTERFACES (Unchanged) ---
