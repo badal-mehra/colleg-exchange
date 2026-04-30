@@ -2,8 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { Gift, Flame, Sparkles, Loader2, Check, Trophy } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Gift, Flame, Sparkles, Loader2, Check, Trophy, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface RewardStatus {
@@ -32,11 +31,17 @@ const formatCountdown = (ms: number) => {
   return `${h}:${m}:${s}`;
 };
 
-const DailyLoginReward: React.FC<DailyLoginRewardProps> = ({ variant = "default", className }) => {
+const STREAK_DAYS = Array.from({ length: 7 }, (_, i) => i + 1);
+
+const DailyLoginReward: React.FC<DailyLoginRewardProps> = ({
+  variant = "default",
+  className,
+}) => {
   const { user } = useAuth();
   const [status, setStatus] = useState<RewardStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
+  const [claimed, setClaimed] = useState(false);
   const [countdown, setCountdown] = useState<string>("");
 
   const fetchStatus = useCallback(async () => {
@@ -44,6 +49,7 @@ const DailyLoginReward: React.FC<DailyLoginRewardProps> = ({ variant = "default"
     const { data, error } = await supabase.rpc("get_daily_reward_status");
     if (!error && data && (data as any).success) {
       setStatus(data as unknown as RewardStatus);
+      setClaimed(!(data as any).can_claim);
     }
     setLoading(false);
   }, [user]);
@@ -52,7 +58,6 @@ const DailyLoginReward: React.FC<DailyLoginRewardProps> = ({ variant = "default"
     fetchStatus();
   }, [fetchStatus]);
 
-  // Countdown timer
   useEffect(() => {
     if (!status?.next_claim_at || status.can_claim) {
       setCountdown("");
@@ -73,7 +78,7 @@ const DailyLoginReward: React.FC<DailyLoginRewardProps> = ({ variant = "default"
   }, [status, fetchStatus]);
 
   const handleClaim = async () => {
-    if (!user || claiming) return;
+    if (!user || claiming || claimed) return;
     setClaiming(true);
     try {
       const userAgent = navigator.userAgent;
@@ -96,6 +101,7 @@ const DailyLoginReward: React.FC<DailyLoginRewardProps> = ({ variant = "default"
           title: `+${result.points_awarded} MCK Points! 🎉`,
           description: result.message,
         });
+        setClaimed(true);
         await fetchStatus();
       }
     } catch (e: any) {
@@ -110,80 +116,198 @@ const DailyLoginReward: React.FC<DailyLoginRewardProps> = ({ variant = "default"
   };
 
   if (!user) return null;
+
   if (loading) {
     return (
-      <div className={cn("rounded-2xl border border-border/50 bg-card p-4 flex items-center justify-center h-32", className)}>
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      <div
+        className={cn(
+          "rounded-3xl border flex items-center justify-center h-48",
+          className
+        )}
+        style={{
+          background: "#0d0d0f",
+          borderColor: "rgba(255,179,0,0.12)",
+        }}
+      >
+        <Loader2
+          className="h-5 w-5 animate-spin"
+          style={{ color: "rgba(255,179,0,0.5)" }}
+        />
       </div>
     );
   }
+
   if (!status) return null;
 
-  const streakDays = Array.from({ length: 7 }, (_, i) => i + 1);
-  const displayStreak = status.can_claim ? status.next_streak_day : status.current_streak;
+  const isBonus7 = status.can_claim && status.next_streak_day === 7;
 
   return (
     <div
-      className={cn(
-        "relative overflow-hidden rounded-2xl border border-border/50 shadow-sm",
-        "bg-gradient-to-br from-primary/10 via-card to-amber-500/5",
-        className,
-      )}
+      className={cn("relative overflow-hidden rounded-3xl", className)}
+      style={{
+        background: "#0d0d0f",
+        border: "1px solid rgba(255,179,0,0.13)",
+        fontFamily: "'Syne', 'Inter', sans-serif",
+      }}
     >
-      {/* Decorative blobs */}
-      <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-primary/15 blur-2xl pointer-events-none" />
-      <div className="absolute -bottom-12 -left-12 h-32 w-32 rounded-full bg-amber-500/10 blur-2xl pointer-events-none" />
+      {/* Ambient glows */}
+      <div
+        className="pointer-events-none absolute"
+        style={{
+          top: -90,
+          right: -90,
+          width: 240,
+          height: 240,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(255,179,0,0.13) 0%, transparent 70%)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute"
+        style={{
+          bottom: -90,
+          left: -70,
+          width: 200,
+          height: 200,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(120,80,255,0.10) 0%, transparent 70%)",
+        }}
+      />
 
-      <div className="relative p-4 md:p-5">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center">
-              <Gift className="h-5 w-5 text-primary" />
+      <div className="relative p-6">
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex items-center justify-center rounded-2xl"
+              style={{
+                width: 46,
+                height: 46,
+                background: "rgba(255,179,0,0.10)",
+                border: "1px solid rgba(255,179,0,0.18)",
+              }}
+            >
+              <Gift className="h-5 w-5" style={{ color: "#ffb300" }} />
             </div>
             <div>
-              <h3 className="font-bold text-base md:text-lg text-foreground leading-tight">
-                Daily Login Reward
+              <h3
+                className="font-extrabold leading-tight"
+                style={{ fontSize: 17, color: "#f5f5f5" }}
+              >
+                Daily Reward
               </h3>
-              <p className="text-xs text-muted-foreground">
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.38)", marginTop: 1 }}>
                 {status.can_claim ? "Your reward is ready!" : "Come back tomorrow"}
               </p>
             </div>
           </div>
+
           {status.current_streak > 0 && (
-            <div className="flex items-center gap-1 bg-amber-500/15 text-amber-600 dark:text-amber-400 px-2 py-1 rounded-full">
-              <Flame className="h-3.5 w-3.5" />
-              <span className="text-xs font-bold">{status.current_streak}</span>
+            <div
+              className="flex items-center gap-1.5 rounded-full"
+              style={{
+                background: "rgba(255,179,0,0.08)",
+                border: "1px solid rgba(255,179,0,0.18)",
+                padding: "5px 12px",
+              }}
+            >
+              <Flame className="h-3.5 w-3.5" style={{ color: "#ffb300" }} />
+              <span
+                className="font-bold"
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 13,
+                  color: "#ffb300",
+                }}
+              >
+                {status.current_streak}
+              </span>
             </div>
           )}
         </div>
 
-        {/* Streak progress (7 days) */}
+        {/* ── Streak Grid (7 days) ── */}
         {variant === "default" && (
-          <div className="grid grid-cols-7 gap-1.5 mb-4">
-            {streakDays.map((day) => {
-              const isCompleted = day <= status.current_streak;
-              const isNext = status.can_claim && day === status.next_streak_day;
+          <div
+            className="grid mb-6"
+            style={{ gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}
+          >
+            {STREAK_DAYS.map((day) => {
+              const isPast = day < status.next_streak_day;
+              const isActive = status.can_claim && day === status.next_streak_day;
+              const isFuture = !isPast && !isActive;
               const isBonus = day === 7;
+
+              let bg = "rgba(255,255,255,0.04)";
+              let border = "1px solid rgba(255,255,255,0.07)";
+              let color = "rgba(255,255,255,0.2)";
+              let boxShadow = "none";
+              let scale = "scale(1)";
+
+              if (isPast) {
+                bg = isBonus
+                  ? "rgba(255,100,0,0.10)"
+                  : "rgba(255,179,0,0.10)";
+                border = isBonus
+                  ? "1px solid rgba(255,100,0,0.25)"
+                  : "1px solid rgba(255,179,0,0.22)";
+                color = isBonus ? "#ff8800" : "#ffb300";
+              } else if (isActive) {
+                bg = isBonus
+                  ? "linear-gradient(135deg,#ffb300,#ff6b00)"
+                  : "#ffb300";
+                border = isBonus
+                  ? "1px solid #ff8800"
+                  : "1px solid #ffb300";
+                color = "#0d0d0f";
+                boxShadow = isBonus
+                  ? "0 0 22px rgba(255,100,0,0.55)"
+                  : "0 0 18px rgba(255,179,0,0.55)";
+                scale = "scale(1.09)";
+              }
+
               return (
                 <div
                   key={day}
-                  className={cn(
-                    "relative aspect-square rounded-lg border flex flex-col items-center justify-center transition-all",
-                    isCompleted && "bg-primary border-primary text-primary-foreground",
-                    isNext && !isCompleted && "border-primary border-2 bg-primary/10 text-primary scale-105",
-                    !isCompleted && !isNext && "border-border/50 bg-muted/30 text-muted-foreground",
-                  )}
+                  className="flex flex-col items-center justify-center"
+                  style={{
+                    aspectRatio: "1",
+                    borderRadius: 10,
+                    background: bg,
+                    border,
+                    color,
+                    boxShadow,
+                    transform: scale,
+                    transition: "transform 0.15s",
+                    position: "relative",
+                  }}
                 >
                   {isBonus ? (
-                    <Sparkles className={cn("h-3 w-3", isCompleted ? "" : "text-amber-500")} />
-                  ) : isCompleted ? (
+                    <>
+                      <Sparkles
+                        className="h-3 w-3"
+                        style={{ color: isActive || isPast ? color : "rgba(255,255,255,0.2)" }}
+                      />
+                      <span style={{ fontSize: 8, fontWeight: 700, marginTop: 2, lineHeight: 1 }}>
+                        +50
+                      </span>
+                    </>
+                  ) : isPast ? (
                     <Check className="h-3 w-3" />
+                  ) : isActive ? (
+                    <Gift className="h-3 w-3" />
                   ) : (
-                    <span className="text-[10px] font-bold">{day}</span>
-                  )}
-                  {isBonus && (
-                    <span className="text-[8px] font-bold leading-none mt-0.5">+50</span>
+                    <span
+                      style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 10,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {day}
+                    </span>
                   )}
                 </div>
               );
@@ -191,71 +315,177 @@ const DailyLoginReward: React.FC<DailyLoginRewardProps> = ({ variant = "default"
           </div>
         )}
 
-        {/* Reward amount + CTA */}
-        <div className="flex items-end justify-between gap-3">
+        {/* ── Points + CTA ── */}
+        <div className="flex items-end justify-between gap-4 mb-5">
           <div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-3xl md:text-4xl font-extrabold text-foreground">
-                +{status.next_reward}
-              </span>
-              <span className="text-sm font-medium text-muted-foreground">MCK Points</span>
+            <p
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.09em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.32)",
+                marginBottom: 2,
+              }}
+            >
+              Today's Reward
+            </p>
+            <div
+              className="font-extrabold leading-none"
+              style={{
+                fontSize: 52,
+                background: "linear-gradient(135deg, #ffb300 30%, #ff8800 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              +{status.next_reward}
             </div>
-            {status.next_streak_day === 7 && status.can_claim && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mt-0.5 flex items-center gap-1">
-                <Sparkles className="h-3 w-3" /> 7-day bonus included!
-              </p>
+            <p
+              style={{
+                fontSize: 11,
+                color: "rgba(255,255,255,0.28)",
+                marginTop: 2,
+              }}
+            >
+              MCK Points
+            </p>
+
+            {isBonus7 && (
+              <div
+                className="inline-flex items-center gap-1 rounded-full mt-2"
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "#ff8800",
+                  background: "rgba(255,100,0,0.10)",
+                  border: "1px solid rgba(255,100,0,0.20)",
+                  padding: "3px 10px",
+                }}
+              >
+                <Sparkles className="h-3 w-3" />
+                7-day bonus included!
+              </div>
             )}
+
             {!status.can_claim && countdown && (
-              <p className="text-xs text-muted-foreground mt-0.5 font-mono">
-                Next claim in {countdown}
+              <p
+                className="mt-1"
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.35)",
+                }}
+              >
+                Next in {countdown}
               </p>
             )}
           </div>
 
-          <Button
+          {/* Claim Button */}
+          <button
             onClick={handleClaim}
-            disabled={!status.can_claim || claiming}
-            size="lg"
-            className={cn(
-              "rounded-xl font-semibold shadow-md",
-              status.can_claim && "bg-gradient-to-r from-primary to-primary/80 hover:opacity-90",
-            )}
+            disabled={!status.can_claim || claiming || claimed}
+            className="flex items-center gap-2 rounded-2xl font-extrabold transition-all"
+            style={{
+              fontFamily: "'Syne', 'Inter', sans-serif",
+              fontSize: 14,
+              padding: "14px 24px",
+              minWidth: 115,
+              justifyContent: "center",
+              border: "none",
+              cursor: status.can_claim && !claimed ? "pointer" : "not-allowed",
+              ...(status.can_claim && !claimed
+                ? {
+                    background: "linear-gradient(135deg, #ffb300, #ff6b00)",
+                    color: "#0d0d0f",
+                    boxShadow: "0 4px 24px rgba(255,179,0,0.45)",
+                  }
+                : {
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.09)",
+                    color: "rgba(255,255,255,0.28)",
+                  }),
+            }}
           >
             {claiming ? (
               <Loader2 className="h-4 w-4 animate-spin" />
-            ) : status.can_claim ? (
-              <>
-                <Gift className="h-4 w-4" />
-                Claim
-              </>
-            ) : (
+            ) : claimed || !status.can_claim ? (
               <>
                 <Check className="h-4 w-4" />
                 Claimed
               </>
+            ) : (
+              <>
+                <Gift className="h-4 w-4" />
+                Claim
+              </>
             )}
-          </Button>
+          </button>
         </div>
 
-        {/* Stats footer */}
+        {/* ── Stats Footer ── */}
         {variant === "default" && status.total_claims > 0 && (
-          <div className="mt-4 pt-3 border-t border-border/50 grid grid-cols-3 gap-2 text-center">
-            <div>
-              <p className="text-base font-bold text-foreground">{status.longest_streak}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Best streak</p>
+          <>
+            <div
+              style={{
+                height: 1,
+                background: "rgba(255,255,255,0.06)",
+                marginBottom: 16,
+              }}
+            />
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                {
+                  val: status.longest_streak,
+                  label: "Best Streak",
+                  icon: <Flame className="h-3 w-3" style={{ color: "#ffb300" }} />,
+                },
+                {
+                  val: status.total_claims,
+                  label: "Claims",
+                  icon: <Check className="h-3 w-3" style={{ color: "#ffb300" }} />,
+                },
+                {
+                  val: status.total_points_earned,
+                  label: "MCK Points",
+                  icon: <Trophy className="h-3 w-3" style={{ color: "#ffb300" }} />,
+                },
+              ].map(({ val, label, icon }) => (
+                <div
+                  key={label}
+                  className="flex flex-col items-center rounded-xl py-3"
+                  style={{
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                  }}
+                >
+                  <div
+                    className="flex items-center gap-1 font-bold"
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 17,
+                      color: "#f5f5f5",
+                    }}
+                  >
+                    {icon}
+                    {val}
+                  </div>
+                  <p
+                    style={{
+                      fontSize: 9,
+                      letterSpacing: "0.09em",
+                      textTransform: "uppercase",
+                      color: "rgba(255,255,255,0.28)",
+                      marginTop: 3,
+                    }}
+                  >
+                    {label}
+                  </p>
+                </div>
+              ))}
             </div>
-            <div>
-              <p className="text-base font-bold text-foreground">{status.total_claims}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Claims</p>
-            </div>
-            <div>
-              <p className="text-base font-bold text-foreground flex items-center justify-center gap-1">
-                <Trophy className="h-3 w-3 text-amber-500" />
-                {status.total_points_earned}
-              </p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Earned</p>
-            </div>
-          </div>
+          </>
         )}
       </div>
     </div>
