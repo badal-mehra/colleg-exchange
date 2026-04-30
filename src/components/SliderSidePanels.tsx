@@ -1,15 +1,13 @@
-import React from "react";
+YOU ARE A GENZ developer make it look more professional and modern with excellent ui and ux with high quality animations and more but look g ood not boring import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Home, ArrowUpRight, Sparkles, UserPlus, Flame } from "lucide-react";
-import { motion } from "framer-motion";
+import { Zap, Home, ShieldCheck, ArrowUpRight, Sparkles } from "lucide-react";
 
 interface ActionCardProps {
   icon: React.ReactNode;
   title: string;
   description: string;
   onClick: () => void;
-  variant?: "primary" | "secondary" | "glass";
-  className?: string;
+  variant?: "primary" | "default";
 }
 
 const ActionCard: React.FC<ActionCardProps> = ({
@@ -17,185 +15,96 @@ const ActionCard: React.FC<ActionCardProps> = ({
   title,
   description,
   onClick,
-  variant = "glass",
-  className = "",
+  variant = "default",
 }) => {
-  const getVariantStyles = () => {
-    switch (variant) {
-      case "primary":
-        return "bg-gradient-to-br from-violet-600 via-fuchsia-600 to-orange-500 text-white border-white/10 shadow-[0_0_40px_-10px_rgba(168,85,247,0.4)]";
-      case "secondary":
-        return "bg-zinc-900 text-white border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 shadow-lg";
-      default:
-        return "bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl border-black/5 dark:border-white/10 text-foreground hover:bg-white/60 dark:hover:bg-zinc-800/60 shadow-sm";
-    }
-  };
-
   const isPrimary = variant === "primary";
-
   return (
-    <motion.button
-      variants={{
-        hidden: { opacity: 0, scale: 0.95, y: 15 },
-        show: { 
-          opacity: 1, 
-          scale: 1,
-          y: 0, 
-          transition: { type: "spring", stiffness: 400, damping: 30 } 
-        },
-      }}
-      whileHover={{ scale: 1.03, y: -4 }}
-      whileTap={{ scale: 0.96 }}
+    <button
       onClick={onClick}
-      className={`group relative flex flex-col justify-between p-6 rounded-3xl border overflow-hidden transition-all duration-300 w-full text-left ${getVariantStyles()} ${className}`}
+      className={`group relative flex-1 min-h-0 w-full text-left p-5 rounded-2xl border overflow-hidden transition-all duration-300 ${
+        isPrimary
+          ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border-primary/40 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30"
+          : "bg-card text-card-foreground border-border/60 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5"
+      }`}
     >
-      {/* Grainy overlay for that modern aesthetic */}
       {isPrimary && (
-        <div 
-          className="absolute inset-0 opacity-30 mix-blend-overlay pointer-events-none"
-          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
-        />
+        <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-primary-foreground/10 blur-2xl pointer-events-none" />
       )}
-
-      {/* Ambient glow blobs */}
-      {isPrimary && (
-        <>
-          <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/30 blur-3xl rounded-full transition-transform duration-700 group-hover:scale-150" />
-          <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-orange-400/40 blur-3xl rounded-full transition-transform duration-700 group-hover:scale-150" />
-        </>
-      )}
-
-      <div className="relative z-10 flex items-start justify-between w-full mb-6">
-        <div
-          className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner transition-transform duration-500 group-hover:rotate-6 ${
-            isPrimary
-              ? "bg-white/20 text-white backdrop-blur-md border border-white/20"
-              : "bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 text-zinc-900 dark:text-white border border-black/5 dark:border-white/5"
-          }`}
-        >
-          {icon}
+      <div className="relative z-10 flex flex-col h-full justify-between gap-3">
+        <div className="flex items-start justify-between">
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 ${
+              isPrimary
+                ? "bg-primary-foreground/20 text-primary-foreground"
+                : "bg-muted text-foreground group-hover:bg-primary/10 group-hover:text-primary"
+            }`}
+          >
+            {icon}
+          </div>
+          <ArrowUpRight
+            className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${
+              isPrimary ? "text-primary-foreground/80" : "text-muted-foreground group-hover:text-primary"
+            }`}
+          />
         </div>
-        <div className={`p-2 rounded-full backdrop-blur-md transition-all duration-300 group-hover:scale-110 group-hover:rotate-45 ${
-          isPrimary ? "bg-white/10 text-white" : "bg-black/5 dark:bg-white/5 text-foreground"
-        }`}>
-          <ArrowUpRight className="w-4 h-4" />
+        <div>
+          <div className="font-semibold text-sm leading-tight">{title}</div>
+          <div
+            className={`text-xs mt-1 leading-snug ${
+              isPrimary ? "text-primary-foreground/85" : "text-muted-foreground"
+            }`}
+          >
+            {description}
+          </div>
         </div>
       </div>
-      
-      <div className="relative z-10 space-y-1.5">
-        <h4 className="font-bold text-lg tracking-tight leading-none">
-          {title}
-        </h4>
-        <p className={`text-sm font-medium leading-relaxed ${
-          isPrimary ? "text-white/90" : "text-muted-foreground"
-        }`}>
-          {description}
-        </p>
-      </div>
-    </motion.button>
+    </button>
   );
 };
 
 const RightPanel: React.FC = () => {
   const navigate = useNavigate();
-
-  const actions = [
-    {
-      id: "sell",
-      variant: "primary" as const,
-      icon: <Flame className="w-6 h-6" />,
-      title: "Drop a Listing",
-      description: "Secure the bag. Sell your stuff in 60s flat.",
-      path: "/sell",
-      className: "h-[180px]" // Bigger bento block for primary action
-    },
-    {
-      id: "follow",
-      variant: "secondary" as const,
-      icon: <UserPlus className="w-6 h-6" />,
-      title: "Campus Connect",
-      description: "Follow the drippiest sellers & catch the vibe.",
-      path: "/creators",
-    },
-    {
-      id: "pg",
-      variant: "glass" as const,
-      icon: <Home className="w-6 h-6" />,
-      title: "Find a Base",
-      description: "Aesthetic PGs & flats near your college.",
-      path: "/browse?tab=pg",
-    },
-  ];
-
   return (
-    <aside className="hidden lg:flex flex-col w-full h-full">
-      {/* Vercel-like Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="flex items-center justify-between px-1 pb-5"
-      >
-        <div className="flex items-center gap-2">
-          <div className="relative flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-tr from-violet-500 to-orange-500">
-            <Sparkles className="w-3 h-3 text-white" />
-            <div className="absolute inset-0 rounded-full bg-white/20 animate-ping opacity-20" />
-          </div>
-          <h3 className="text-[13px] font-bold uppercase tracking-[0.15em] text-foreground">
-            Explore
-          </h3>
-        </div>
-      </motion.div>
+    <aside className="hidden lg:flex flex-col gap-3 w-full h-full">
+      <div className="flex items-center gap-2 px-1">
+        <Sparkles className="w-3.5 h-3.5 text-primary" />
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Quick Actions
+        </h3>
+      </div>
 
-      {/* Bento Grid Container */}
-      <motion.div
-        variants={{
-          hidden: { opacity: 0 },
-          show: {
-            opacity: 1,
-            transition: { staggerChildren: 0.12, delayChildren: 0.1 },
-          },
-        }}
-        initial="hidden"
-        animate="show"
-        className="flex flex-col gap-4 flex-1"
-      >
-        {actions.map((action) => (
-          <ActionCard
-            key={action.id}
-            variant={action.variant}
-            icon={action.icon}
-            title={action.title}
-            description={action.description}
-            onClick={() => navigate(action.path)}
-            className={action.className}
-          />
-        ))}
-      </motion.div>
+      <ActionCard
+        variant="primary"
+        icon={<Zap className="w-5 h-5" />}
+        title="Sell in 60 seconds"
+        description="Snap, list & reach students instantly"
+        onClick={() => navigate("/sell")}
+      />
+
+      <ActionCard
+        icon={<Home className="w-5 h-5" />}
+        title="Find a PG"
+        description="Budget-friendly stays near campus"
+        onClick={() => navigate("/browse?tab=pg")}
+      />
+
+      <ActionCard
+        icon={<ShieldCheck className="w-5 h-5" />}
+        title="Verified sellers"
+        description="KYC-checked, safe transactions"
+        onClick={() => navigate("/browse")}
+      />
     </aside>
   );
 };
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  // Dotted background for that ultimate dev tool aesthetic
-  <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 min-h-screen bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#1f2937_1px,transparent_1px)] [background-size:16px_16px]">
-    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_22rem] gap-8 items-stretch py-8">
-      
-      {/* Main App Content */}
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, type: "spring", bounce: 0.2 }}
-        className="min-w-0 rounded-[2rem] overflow-hidden shadow-2xl border border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-3xl"
-      >
+  <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_17rem] xl:grid-cols-[minmax(0,1fr)_19rem] gap-5 items-stretch py-6">
+      <div className="min-w-0 rounded-2xl overflow-hidden shadow-md border border-border/50 bg-card">
         {children}
-      </motion.div>
-      
-      {/* Bento Sidebar */}
-      <div className="pt-2">
-        <RightPanel />
       </div>
-      
+      <RightPanel />
     </div>
   </div>
 );
