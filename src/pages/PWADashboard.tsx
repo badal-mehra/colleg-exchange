@@ -43,6 +43,7 @@ import PWACategoryChip from "@/components/PWACategoryChip";
 import PWAListingCard from "@/components/PWAListingCard";
 import PGListingCard from "@/components/PGListingCard";
 import PWAImageSlider from "@/components/PWAImageSlider";
+import DailyLoginReward from "@/components/DailyLoginReward";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -577,6 +578,9 @@ const PWADashboard = () => {
 
         {/* Hero banner slider */}
         <PWAImageSlider />
+
+        {/* Daily Login Reward */}
+        {user && <DailyLoginReward />}
 
         {/* Results meta row */}
         {!loading && (

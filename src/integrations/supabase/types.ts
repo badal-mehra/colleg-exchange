@@ -215,6 +215,39 @@ export type Database = {
           },
         ]
       }
+      daily_login_rewards: {
+        Row: {
+          bonus_applied: boolean
+          claimed_at: string
+          id: string
+          ip_address: string | null
+          points_awarded: number
+          streak_day: number
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          bonus_applied?: boolean
+          claimed_at?: string
+          id?: string
+          ip_address?: string | null
+          points_awarded: number
+          streak_day: number
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          bonus_applied?: boolean
+          claimed_at?: string
+          id?: string
+          ip_address?: string | null
+          points_awarded?: number
+          streak_day?: number
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
@@ -1125,6 +1158,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_login_streaks: {
+        Row: {
+          created_at: string
+          current_streak: number
+          last_claim_at: string | null
+          last_claim_date: string | null
+          longest_streak: number
+          total_claims: number
+          total_points_earned: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_streak?: number
+          last_claim_at?: string | null
+          last_claim_date?: string | null
+          longest_streak?: number
+          total_claims?: number
+          total_points_earned?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_streak?: number
+          last_claim_at?: string | null
+          last_claim_date?: string | null
+          longest_streak?: number
+          total_claims?: number
+          total_points_earned?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_terms_acceptance: {
         Row: {
           accepted_at: string | null
@@ -1175,6 +1244,10 @@ export type Database = {
         Args: { order_id: string; seller_id: string }
         Returns: Json
       }
+      claim_daily_reward: {
+        Args: { p_ip_address?: string; p_user_agent?: string }
+        Returns: Json
+      }
       complete_order: { Args: { order_id: string }; Returns: Json }
       complete_order_with_confirmation: {
         Args: {
@@ -1207,6 +1280,7 @@ export type Database = {
       delete_old_messages: { Args: never; Returns: undefined }
       generate_mck_id: { Args: never; Returns: string }
       get_admin_role: { Args: { user_id: string }; Returns: string }
+      get_daily_reward_status: { Args: never; Returns: Json }
       get_monthly_leaderboard: {
         Args: never
         Returns: {

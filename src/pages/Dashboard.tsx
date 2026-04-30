@@ -19,6 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PGListingCard from '@/components/PGListingCard';
 import { getSliderImageUrl } from '@/utils/cloudinaryUpload';
 import SliderSidePanels from '@/components/SliderSidePanels';
+import DailyLoginReward from '@/components/DailyLoginReward';
 
 
 // --- INTERFACES (Unchanged) ---
@@ -720,6 +721,12 @@ const Dashboard = () => {
       <ImageSliderSection />
 
       <div className="container mx-auto px-4 py-12">
+        {/* Daily Login Reward */}
+        {user && (
+          <div className="mb-6 max-w-3xl mx-auto">
+            <DailyLoginReward />
+          </div>
+        )}
         {/* Tab Switcher */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'products' | 'pg')} className="mb-6">
           <TabsList className="grid w-full max-w-md grid-cols-2">
