@@ -1,15 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Zap,
-  Home,
-  ArrowUpRight,
-  Sparkles,
-  Heart,
-  TrendingUp,
-  Flame,
-} from "lucide-react";
-import { motion } from "framer-motion";
+import { Zap, Home, ShieldCheck, ArrowUpRight, Sparkles } from "lucide-react";
 
 interface ActionCardProps {
   icon: React.ReactNode;
@@ -27,101 +18,81 @@ const ActionCard: React.FC<ActionCardProps> = ({
   variant = "default",
 }) => {
   const isPrimary = variant === "primary";
-
   return (
-    <motion.button
-      whileHover={{ y: -6, scale: 1.02 }}
-      whileTap={{ scale: 0.97 }}
+    <button
       onClick={onClick}
-      className={`group relative flex-1 w-full text-left p-5 rounded-3xl border overflow-hidden transition-all duration-300 backdrop-blur-xl ${
+      className={`group relative flex-1 min-h-0 w-full text-left p-5 rounded-2xl border overflow-hidden transition-all duration-300 ${
         isPrimary
-          ? "bg-gradient-to-br from-fuchsia-500 via-purple-500 to-indigo-500 text-white border-white/10 shadow-xl shadow-purple-500/30"
-          : "bg-white/60 dark:bg-zinc-900/60 border-white/10 hover:border-purple-400/40 shadow-lg hover:shadow-xl"
+          ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border-primary/40 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30"
+          : "bg-card text-card-foreground border-border/60 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5"
       }`}
     >
-      {/* glow background */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition duration-500 pointer-events-none">
-        <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl" />
-      </div>
-
-      <div className="relative z-10 flex flex-col justify-between h-full gap-4">
+      {isPrimary && (
+        <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-primary-foreground/10 blur-2xl pointer-events-none" />
+      )}
+      <div className="relative z-10 flex flex-col h-full justify-between gap-3">
         <div className="flex items-start justify-between">
-          <motion.div
-            whileHover={{ rotate: 8 }}
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 ${
               isPrimary
-                ? "bg-white/20 text-white"
-                : "bg-gradient-to-br from-purple-100 to-pink-100 text-purple-600 dark:from-zinc-800 dark:to-zinc-700 dark:text-purple-400"
+                ? "bg-primary-foreground/20 text-primary-foreground"
+                : "bg-muted text-foreground group-hover:bg-primary/10 group-hover:text-primary"
             }`}
           >
             {icon}
-          </motion.div>
-
-          <ArrowUpRight className="w-4 h-4 opacity-70 group-hover:translate-x-1 group-hover:-translate-y-1 transition" />
-        </div>
-
-        <div>
-          <div className="font-semibold text-sm tracking-tight">
-            {title}
           </div>
+          <ArrowUpRight
+            className={`w-4 h-4 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${
+              isPrimary ? "text-primary-foreground/80" : "text-muted-foreground group-hover:text-primary"
+            }`}
+          />
+        </div>
+        <div>
+          <div className="font-semibold text-sm leading-tight">{title}</div>
           <div
             className={`text-xs mt-1 leading-snug ${
-              isPrimary ? "text-white/90" : "text-zinc-500"
+              isPrimary ? "text-primary-foreground/85" : "text-muted-foreground"
             }`}
           >
             {description}
           </div>
         </div>
       </div>
-    </motion.button>
+    </button>
   );
 };
 
 const RightPanel: React.FC = () => {
   const navigate = useNavigate();
-
   return (
-    <aside className="hidden lg:flex flex-col gap-4 w-full h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-purple-500 animate-pulse" />
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-            Quick Actions
-          </h3>
-        </div>
-
-        <TrendingUp className="w-4 h-4 text-zinc-400" />
+    <aside className="hidden lg:flex flex-col gap-3 w-full h-full">
+      <div className="flex items-center gap-2 px-1">
+        <Sparkles className="w-3.5 h-3.5 text-primary" />
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Quick Actions
+        </h3>
       </div>
 
-      {/* Cards */}
       <ActionCard
         variant="primary"
         icon={<Zap className="w-5 h-5" />}
-        title="Sell in 60 sec"
-        description="Post fast. Reach buyers instantly."
+        title="Sell in 60 seconds"
+        description="Snap, list & reach students instantly"
         onClick={() => navigate("/sell")}
       />
 
       <ActionCard
         icon={<Home className="w-5 h-5" />}
-        title="Find PG / Room"
-        description="Nearby stays. Budget friendly."
+        title="Find a PG"
+        description="Budget-friendly stays near campus"
         onClick={() => navigate("/browse?tab=pg")}
       />
 
       <ActionCard
-        icon={<Heart className="w-5 h-5" />}
-        title="Follow Trending Sellers"
-        description="Like Instagram. Discover popular sellers."
-        onClick={() => navigate("/browse?tab=trending")}
-      />
-
-      <ActionCard
-        icon={<Flame className="w-5 h-5" />}
-        title="Hot Deals"
-        description="Most viewed items on campus."
-        onClick={() => navigate("/browse?tab=hot")}
+        icon={<ShieldCheck className="w-5 h-5" />}
+        title="Verified sellers"
+        description="KYC-checked, safe transactions"
+        onClick={() => navigate("/browse")}
       />
     </aside>
   );
@@ -129,19 +100,14 @@ const RightPanel: React.FC = () => {
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem] gap-6 items-stretch py-6">
-      
-      {/* Main Content */}
-      <div className="relative min-w-0 rounded-3xl overflow-hidden border border-white/10 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl shadow-xl">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_17rem] xl:grid-cols-[minmax(0,1fr)_19rem] gap-5 items-stretch py-6">
+      <div className="min-w-0 rounded-2xl overflow-hidden shadow-md border border-border/50 bg-card">
         {children}
       </div>
-
-      {/* Right Panel */}
       <RightPanel />
     </div>
   </div>
 );
 
 const SliderSidePanels = { Layout, RightPanel };
-
 export default SliderSidePanels;
