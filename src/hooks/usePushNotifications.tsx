@@ -19,7 +19,7 @@ async function getVapidPublicKey() {
   const envKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
   if (envKey) {
     cachedVapidPublicKey = envKey;
-    return cachedVapidPublicKey;
+    return envKey;
   }
 
   const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/push-public-key`, {
@@ -37,8 +37,9 @@ async function getVapidPublicKey() {
     throw new Error("Push public key is missing");
   }
 
-  cachedVapidPublicKey = data.publicKey;
-  return cachedVapidPublicKey;
+  const publicKey = data.publicKey as string;
+  cachedVapidPublicKey = publicKey;
+  return publicKey;
 }
 
 export async function subscribeToPush(userId?: string | null, options: { prompt?: boolean } = {}) {
