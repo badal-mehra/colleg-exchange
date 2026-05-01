@@ -14,7 +14,7 @@ import {
   Camera,
 } from "lucide-react";
 
-// ─── Sell Hero Card ───────────────────────────────────────────────────────────
+// ─── Sell Hero Card (unchanged) ──────────────────────────────────────────────
 const SellHeroCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   const [hovered, setHovered] = useState(false);
 
@@ -22,9 +22,10 @@ const SellHeroCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className="relative overflow-hidden rounded-2xl cursor-pointer select-none w-full"
+      className="relative overflow-hidden rounded-2xl cursor-pointer select-none"
       style={{
-        background: "linear-gradient(135deg, #FF6B35 0%, #FF3D71 60%, #C2185B 100%)",
+        background:
+          "linear-gradient(135deg, #FF6B35 0%, #FF3D71 60%, #C2185B 100%)",
         padding: "1.25rem",
         boxShadow: hovered
           ? "0 20px 40px -8px rgba(255,107,53,0.45)"
@@ -134,7 +135,7 @@ const SellHeroCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   );
 };
 
-// ─── Trending Chip ────────────────────────────────────────────────────────────
+// ─── Trending Chip (unchanged) ────────────────────────────────────────────────
 const trendingItems = [
   "Cycle 🚴",
   "MacBook",
@@ -157,8 +158,8 @@ const TrendingRow: React.FC = () => {
 
   return (
     <div
-      className="rounded-xl border border-border/50 bg-card w-full"
-      style={{ padding: "14px" }}
+      className="rounded-xl border border-border/50 bg-card"
+      style={{ padding: "12px 14px" }}
     >
       <div
         style={{
@@ -233,7 +234,7 @@ const TrendingRow: React.FC = () => {
   );
 };
 
-// ─── Action Row (PG + Verified) ───────────────────────────────────────────────
+// ─── MiniActionCard (still exported, but not used in the panel anymore) ──────
 interface MiniCardProps {
   icon: React.ReactNode;
   iconBg: string;
@@ -261,7 +262,7 @@ const MiniActionCard: React.FC<MiniCardProps> = ({
       onMouseLeave={() => setHovered(false)}
       className="rounded-xl border border-border/50 bg-card text-left w-full"
       style={{
-        padding: "14px", // Standardized padding to match other sidebar cards exactly
+        padding: "12px",
         cursor: "pointer",
         transform: hovered ? "translateY(-1px)" : "translateY(0)",
         boxShadow: hovered ? "0 6px 16px -4px rgba(0,0,0,0.12)" : "none",
@@ -343,10 +344,8 @@ const MiniActionCard: React.FC<MiniCardProps> = ({
   );
 };
 
-// ─── Instagram Widget ─────────────────────────────────────────────────────────
+// ─── Instagram Widget (Revamped – Gen‑Z energy + real Insta link) ────────────
 const InstagramWidget: React.FC = () => {
-  const [hovered, setHovered] = useState(false);
-
   const posts = [
     { bg: "#FF6B35", emoji: "📦" },
     { bg: "#7C3AED", emoji: "🤝" },
@@ -358,10 +357,10 @@ const InstagramWidget: React.FC = () => {
 
   return (
     <div
-      className="rounded-xl border border-border/50 bg-card overflow-hidden w-full"
+      className="rounded-xl border border-border/50 bg-card overflow-hidden"
       style={{ padding: "14px" }}
     >
-      {/* Header */}
+      {/* Bold header with Instagram icon */}
       <div
         style={{
           display: "flex",
@@ -376,23 +375,21 @@ const InstagramWidget: React.FC = () => {
             height: "40px",
             borderRadius: "50%",
             padding: "2px",
-            background: "linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)",
+            background:
+              "linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)",
             flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          <div
+          <Instagram
             style={{
-              width: "100%",
-              height: "100%",
-              borderRadius: "50%",
-              background: "linear-gradient(135deg,#FF6B35,#FF3D71)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              width: "22px",
+              height: "22px",
+              color: "white",
             }}
-          >
-            <span style={{ fontSize: "16px" }}>🛒</span>
-          </div>
+          />
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -402,9 +399,10 @@ const InstagramWidget: React.FC = () => {
               fontSize: "13px",
               fontWeight: 700,
               color: "var(--foreground)",
+              lineHeight: 1.2,
             }}
           >
-            @mycampuskart
+            we’re on the ’gram 👀
           </p>
           <p
             style={{
@@ -413,41 +411,40 @@ const InstagramWidget: React.FC = () => {
               color: "var(--muted-foreground)",
             }}
           >
-            we post memes & deals ngl
+            @mycampuskart · memes + hot deals
           </p>
         </div>
 
-        {/* Gen Z Insta Redirect Button */}
+        {/* Real follow button – redirects to Instagram */}
         <a
-          href="https://instagram.com/mycampuskart"
+          href="https://www.instagram.com/mycampuskart"
           target="_blank"
           rel="noopener noreferrer"
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "6px 14px",
-            borderRadius: "999px",
-            fontSize: "11px",
-            fontWeight: 800,
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
-            textDecoration: "none",
-            background: "linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
-            color: "white",
-            transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
-            transform: hovered ? "scale(1.05) translateY(-2px)" : "scale(1)",
-            boxShadow: hovered ? "0 8px 16px -4px rgba(220, 39, 67, 0.4)" : "none",
-          }}
+          style={{ textDecoration: "none" }}
         >
-          <Instagram style={{ width: "12px", height: "12px" }} />
-          Stalk Us 👀
+          <button
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "5px 12px",
+              borderRadius: "999px",
+              fontSize: "12px",
+              fontWeight: 700,
+              border: "none",
+              background: "linear-gradient(90deg,#FF6B35,#FF3D71)",
+              color: "white",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              boxShadow: "0 2px 8px rgba(255,107,53,0.3)",
+            }}
+          >
+            follow us 🔥
+          </button>
         </a>
       </div>
 
-      {/* Fake post grid */}
+      {/* Fake post grid – stays the same */}
       <div
         style={{
           display: "grid",
@@ -520,24 +517,23 @@ const InstagramWidget: React.FC = () => {
             margin: 0,
           }}
         >
-          📸 tap to join the cult
+          📸 updated daily
         </p>
       </div>
     </div>
   );
 };
 
-// ─── Social Proof Footer ──────────────────────────────────────────────────────
+// ─── Social Proof (unchanged) ──────────────────────────────────────────────────
 const SocialProof: React.FC = () => (
   <div
     style={{
       display: "flex",
       alignItems: "center",
       gap: "8px",
-      padding: "10px 14px", // Matched width padding to the rest
+      padding: "8px 12px",
       borderRadius: "12px",
       background: "var(--secondary)",
-      width: "100%",
     }}
   >
     <div style={{ display: "flex", marginRight: "2px" }}>
@@ -577,40 +573,17 @@ const SocialProof: React.FC = () => (
   </div>
 );
 
-// ─── Right Panel ──────────────────────────────────────────────────────────────
+// ─── Right Panel (without MiniActionCards – lean sidebar) ────────────────────
 const RightPanel: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <aside className="hidden lg:flex flex-col gap-4 w-full h-full">
+    <aside className="hidden lg:flex flex-col gap-3 w-full h-full">
       <SellHeroCard onClick={() => navigate("/sell")} />
 
       <TrendingRow />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
-        <MiniActionCard
-          icon={<Home style={{ width: "18px", height: "18px", color: "#7C3AED" }} />}
-          iconBg="rgba(124,58,237,0.12)"
-          title="Find a PG"
-          subtitle="hostel wifi got you crying? relatable."
-          tag="new"
-          tagColor="#7C3AED"
-          onClick={() => navigate("/browse?tab=pg")}
-        />
-        <MiniActionCard
-          icon={
-            <ShieldCheck
-              style={{ width: "18px", height: "18px", color: "#10B981" }}
-            />
-          }
-          iconBg="rgba(16,185,129,0.12)"
-          title="Verified sellers only"
-          subtitle="KYC-checked. no cap, no scam."
-          tag="safe"
-          tagColor="#10B981"
-          onClick={() => navigate("/browse")}
-        />
-      </div>
+      {/* MiniActionCards removed to match sidebar style */}
 
       <InstagramWidget />
 
@@ -626,8 +599,8 @@ const RightPanel: React.FC = () => {
   );
 };
 
-// ─── Layout ───────────────────────────────────────────────────────────────────
-export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+// ─── Layout (unchanged) ───────────────────────────────────────────────────────
+const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_17rem] xl:grid-cols-[minmax(0,1fr)_19rem] gap-5 items-start py-6">
       <div className="min-w-0 rounded-2xl overflow-hidden shadow-md border border-border/50 bg-card">
@@ -639,4 +612,4 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 );
 
 const SliderSidePanels = { Layout, RightPanel };
-export default SliderSidePanels;     
+export default SliderSidePanels;
