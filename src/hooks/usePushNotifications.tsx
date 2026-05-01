@@ -33,6 +33,10 @@ async function getVapidPublicKey() {
   }
 
   const data = await res.json();
+  if (!data.publicKey) {
+    throw new Error("Push public key is missing");
+  }
+
   cachedVapidPublicKey = data.publicKey;
   return cachedVapidPublicKey;
 }
