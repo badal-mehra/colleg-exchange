@@ -15,14 +15,14 @@ import {
 } from "lucide-react";
 
 // ─── Sell Hero Card ───────────────────────────────────────────────────────────
-const SellHeroCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+const SellHeroCard = ({ onClick }) => {
   const [hovered, setHovered] = useState(false);
 
   return (
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className="relative overflow-hidden rounded-2xl cursor-pointer select-none"
+      className="relative overflow-hidden rounded-2xl cursor-pointer select-none w-full"
       style={{
         background: "linear-gradient(135deg, #FF6B35 0%, #FF3D71 60%, #C2185B 100%)",
         padding: "1.25rem",
@@ -144,7 +144,7 @@ const trendingItems = [
   "Mattress",
 ];
 
-const TrendingRow: React.FC = () => {
+const TrendingRow = () => {
   const [activeIdx, setActiveIdx] = useState(0);
 
   useEffect(() => {
@@ -157,7 +157,7 @@ const TrendingRow: React.FC = () => {
 
   return (
     <div
-      className="rounded-xl border border-border/50 bg-card"
+      className="rounded-xl border border-border/50 bg-card w-full"
       style={{ padding: "12px 14px" }}
     >
       <div
@@ -234,17 +234,7 @@ const TrendingRow: React.FC = () => {
 };
 
 // ─── Action Row (PG + Verified) ───────────────────────────────────────────────
-interface MiniCardProps {
-  icon: React.ReactNode;
-  iconBg: string;
-  title: string;
-  subtitle: string;
-  tag: string;
-  tagColor: string;
-  onClick: () => void;
-}
-
-const MiniActionCard: React.FC<MiniCardProps> = ({
+const MiniActionCard = ({
   icon,
   iconBg,
   title,
@@ -261,18 +251,18 @@ const MiniActionCard: React.FC<MiniCardProps> = ({
       onMouseLeave={() => setHovered(false)}
       className="rounded-xl border border-border/50 bg-card text-left w-full"
       style={{
-        padding: "12px",
+        padding: "14px", // Standardized padding to match the sidebar components
         cursor: "pointer",
         transform: hovered ? "translateY(-1px)" : "translateY(0)",
         boxShadow: hovered ? "0 6px 16px -4px rgba(0,0,0,0.12)" : "none",
         transition: "all 0.2s ease",
       }}
     >
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
         <div
           style={{
-            width: "36px",
-            height: "36px",
+            width: "38px",
+            height: "38px",
             borderRadius: "10px",
             background: iconBg,
             display: "flex",
@@ -289,12 +279,12 @@ const MiniActionCard: React.FC<MiniCardProps> = ({
               display: "flex",
               alignItems: "center",
               gap: "6px",
-              marginBottom: "2px",
+              marginBottom: "3px",
             }}
           >
             <span
               style={{
-                fontSize: "13px",
+                fontSize: "14px",
                 fontWeight: 700,
                 color: "var(--foreground)",
               }}
@@ -304,8 +294,8 @@ const MiniActionCard: React.FC<MiniCardProps> = ({
             <span
               style={{
                 fontSize: "9px",
-                fontWeight: 700,
-                padding: "1px 6px",
+                fontWeight: 800,
+                padding: "2px 6px",
                 borderRadius: "999px",
                 background: tagColor,
                 color: "white",
@@ -319,7 +309,7 @@ const MiniActionCard: React.FC<MiniCardProps> = ({
           </div>
           <p
             style={{
-              fontSize: "11px",
+              fontSize: "12px",
               color: "var(--muted-foreground)",
               margin: 0,
               lineHeight: 1.4,
@@ -330,11 +320,11 @@ const MiniActionCard: React.FC<MiniCardProps> = ({
         </div>
         <ArrowRight
           style={{
-            width: "13px",
-            height: "13px",
+            width: "14px",
+            height: "14px",
             color: "var(--muted-foreground)",
             flexShrink: 0,
-            transform: hovered ? "translate(2px,-2px)" : "none",
+            transform: hovered ? "translate(3px,-3px)" : "none",
             transition: "transform 0.2s ease",
           }}
         />
@@ -343,9 +333,8 @@ const MiniActionCard: React.FC<MiniCardProps> = ({
   );
 };
 
-// ─── Instagram Widget ─────────────────────────────────────────────────────────
-const InstagramWidget: React.FC = () => {
-  const [followed, setFollowed] = useState(false);
+// ─── Instagram Widget (GenZ Redirect) ─────────────────────────────────────────
+const InstagramWidget = () => {
   const [hovered, setHovered] = useState(false);
 
   const posts = [
@@ -359,7 +348,7 @@ const InstagramWidget: React.FC = () => {
 
   return (
     <div
-      className="rounded-xl border border-border/50 bg-card overflow-hidden"
+      className="rounded-xl border border-border/50 bg-card overflow-hidden w-full"
       style={{ padding: "14px" }}
     >
       {/* Header */}
@@ -414,35 +403,36 @@ const InstagramWidget: React.FC = () => {
               color: "var(--muted-foreground)",
             }}
           >
-            we post memes between listings ngl
+            we post memes & deals ngl
           </p>
         </div>
 
-        <button
-          onClick={() => setFollowed((f) => !f)}
+        {/* Redirect Anchor Tag */}
+        <a
+          href="https://instagram.com/mycampuskart"
+          target="_blank"
+          rel="noopener noreferrer"
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
           style={{
             display: "inline-flex",
             alignItems: "center",
-            gap: "4px",
-            padding: "5px 12px",
+            gap: "5px",
+            padding: "6px 12px",
             borderRadius: "999px",
-            fontSize: "12px",
-            fontWeight: 700,
-            border: followed ? "1.5px solid var(--border)" : "none",
-            background: followed
-              ? "transparent"
-              : "linear-gradient(90deg,#FF6B35,#FF3D71)",
-            color: followed ? "var(--foreground)" : "white",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-            transform: hovered && !followed ? "scale(1.04)" : "scale(1)",
+            fontSize: "11px",
+            fontWeight: 800,
+            textDecoration: "none",
+            background: "linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
+            color: "white",
+            transition: "transform 0.2s ease, box-shadow 0.2s ease",
+            transform: hovered ? "scale(1.05)" : "scale(1)",
+            boxShadow: hovered ? "0 4px 12px rgba(220, 39, 67, 0.4)" : "none",
           }}
         >
-          <Instagram style={{ width: "11px", height: "11px" }} />
-          {followed ? "following ✓" : "follow"}
-        </button>
+          <Instagram style={{ width: "12px", height: "12px" }} />
+          Stalk Us 👀
+        </a>
       </div>
 
       {/* Fake post grid */}
@@ -518,7 +508,7 @@ const InstagramWidget: React.FC = () => {
             margin: 0,
           }}
         >
-          📸 updated daily
+          📸 tap to join the cult
         </p>
       </div>
     </div>
@@ -526,15 +516,16 @@ const InstagramWidget: React.FC = () => {
 };
 
 // ─── Social Proof Footer ──────────────────────────────────────────────────────
-const SocialProof: React.FC = () => (
+const SocialProof = () => (
   <div
     style={{
       display: "flex",
       alignItems: "center",
       gap: "8px",
-      padding: "8px 12px",
+      padding: "10px 12px",
       borderRadius: "12px",
       background: "var(--secondary)",
+      width: "full",
     }}
   >
     <div style={{ display: "flex", marginRight: "2px" }}>
@@ -575,16 +566,16 @@ const SocialProof: React.FC = () => (
 );
 
 // ─── Right Panel ──────────────────────────────────────────────────────────────
-const RightPanel: React.FC = () => {
+const RightPanel = () => {
   const navigate = useNavigate();
 
   return (
-    <aside className="hidden lg:flex flex-col gap-3 w-full h-full">
+    <aside className="hidden lg:flex flex-col gap-4 w-full h-full">
       <SellHeroCard onClick={() => navigate("/sell")} />
 
       <TrendingRow />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
         <MiniActionCard
           icon={<Home style={{ width: "18px", height: "18px", color: "#7C3AED" }} />}
           iconBg="rgba(124,58,237,0.12)"
@@ -624,7 +615,7 @@ const RightPanel: React.FC = () => {
 };
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
-const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+const Layout = ({ children }) => (
   <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_17rem] xl:grid-cols-[minmax(0,1fr)_19rem] gap-5 items-start py-6">
       <div className="min-w-0 rounded-2xl overflow-hidden shadow-md border border-border/50 bg-card">
@@ -635,5 +626,4 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </div>
 );
 
-const SliderSidePanels = { Layout, RightPanel };
-export default SliderSidePanels;
+export default Layout;
