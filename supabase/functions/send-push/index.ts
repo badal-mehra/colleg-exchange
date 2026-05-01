@@ -377,16 +377,19 @@ serve(async (req) => {
     const signatureB64 = base64UrlEncode(new Uint8Array(signatureBuffer));
     const jwt = `${unsignedToken}.${signatureB64}`;
 
-    // Send to push endpoint
+    const encryptedPayload = await encryptPushPayload(subscription, payload);
+
+    // Send encrypted payload to push endpoint
     const pushResponse = await fetch(subscription.endpoint, {
       method: "POST",
       headers: {
-        "Content-Type": "text/plain",
+        "Content-Type": "application/octet-stream",
+        "Content-Encoding": "aes128gcm",
         "TTL": "86400",
         "Authorization": `vapid t=${jwt}, k=${vapidPublicKey}`,
         "Urgency": "high",
       },
-      body: payload,
+      body: encryptedPayload,
     });
 
     if (!pushResponse.ok) {
