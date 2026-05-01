@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 // ─── Sell Hero Card ───────────────────────────────────────────────────────────
-const SellHeroCard = ({ onClick }) => {
+const SellHeroCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -144,7 +144,7 @@ const trendingItems = [
   "Mattress",
 ];
 
-const TrendingRow = () => {
+const TrendingRow: React.FC = () => {
   const [activeIdx, setActiveIdx] = useState(0);
 
   useEffect(() => {
@@ -158,7 +158,7 @@ const TrendingRow = () => {
   return (
     <div
       className="rounded-xl border border-border/50 bg-card w-full"
-      style={{ padding: "12px 14px" }}
+      style={{ padding: "14px" }}
     >
       <div
         style={{
@@ -234,7 +234,17 @@ const TrendingRow = () => {
 };
 
 // ─── Action Row (PG + Verified) ───────────────────────────────────────────────
-const MiniActionCard = ({
+interface MiniCardProps {
+  icon: React.ReactNode;
+  iconBg: string;
+  title: string;
+  subtitle: string;
+  tag: string;
+  tagColor: string;
+  onClick: () => void;
+}
+
+const MiniActionCard: React.FC<MiniCardProps> = ({
   icon,
   iconBg,
   title,
@@ -251,18 +261,18 @@ const MiniActionCard = ({
       onMouseLeave={() => setHovered(false)}
       className="rounded-xl border border-border/50 bg-card text-left w-full"
       style={{
-        padding: "14px", // Standardized padding to match the sidebar components
+        padding: "14px", // Standardized padding to match other sidebar cards exactly
         cursor: "pointer",
         transform: hovered ? "translateY(-1px)" : "translateY(0)",
         boxShadow: hovered ? "0 6px 16px -4px rgba(0,0,0,0.12)" : "none",
         transition: "all 0.2s ease",
       }}
     >
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
         <div
           style={{
-            width: "38px",
-            height: "38px",
+            width: "36px",
+            height: "36px",
             borderRadius: "10px",
             background: iconBg,
             display: "flex",
@@ -279,12 +289,12 @@ const MiniActionCard = ({
               display: "flex",
               alignItems: "center",
               gap: "6px",
-              marginBottom: "3px",
+              marginBottom: "2px",
             }}
           >
             <span
               style={{
-                fontSize: "14px",
+                fontSize: "13px",
                 fontWeight: 700,
                 color: "var(--foreground)",
               }}
@@ -294,8 +304,8 @@ const MiniActionCard = ({
             <span
               style={{
                 fontSize: "9px",
-                fontWeight: 800,
-                padding: "2px 6px",
+                fontWeight: 700,
+                padding: "1px 6px",
                 borderRadius: "999px",
                 background: tagColor,
                 color: "white",
@@ -309,7 +319,7 @@ const MiniActionCard = ({
           </div>
           <p
             style={{
-              fontSize: "12px",
+              fontSize: "11px",
               color: "var(--muted-foreground)",
               margin: 0,
               lineHeight: 1.4,
@@ -320,11 +330,11 @@ const MiniActionCard = ({
         </div>
         <ArrowRight
           style={{
-            width: "14px",
-            height: "14px",
+            width: "13px",
+            height: "13px",
             color: "var(--muted-foreground)",
             flexShrink: 0,
-            transform: hovered ? "translate(3px,-3px)" : "none",
+            transform: hovered ? "translate(2px,-2px)" : "none",
             transition: "transform 0.2s ease",
           }}
         />
@@ -333,8 +343,8 @@ const MiniActionCard = ({
   );
 };
 
-// ─── Instagram Widget (GenZ Redirect) ─────────────────────────────────────────
-const InstagramWidget = () => {
+// ─── Instagram Widget ─────────────────────────────────────────────────────────
+const InstagramWidget: React.FC = () => {
   const [hovered, setHovered] = useState(false);
 
   const posts = [
@@ -407,7 +417,7 @@ const InstagramWidget = () => {
           </p>
         </div>
 
-        {/* Redirect Anchor Tag */}
+        {/* Gen Z Insta Redirect Button */}
         <a
           href="https://instagram.com/mycampuskart"
           target="_blank"
@@ -417,17 +427,19 @@ const InstagramWidget = () => {
           style={{
             display: "inline-flex",
             alignItems: "center",
-            gap: "5px",
-            padding: "6px 12px",
+            gap: "6px",
+            padding: "6px 14px",
             borderRadius: "999px",
             fontSize: "11px",
             fontWeight: 800,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
             textDecoration: "none",
             background: "linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
             color: "white",
-            transition: "transform 0.2s ease, box-shadow 0.2s ease",
-            transform: hovered ? "scale(1.05)" : "scale(1)",
-            boxShadow: hovered ? "0 4px 12px rgba(220, 39, 67, 0.4)" : "none",
+            transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+            transform: hovered ? "scale(1.05) translateY(-2px)" : "scale(1)",
+            boxShadow: hovered ? "0 8px 16px -4px rgba(220, 39, 67, 0.4)" : "none",
           }}
         >
           <Instagram style={{ width: "12px", height: "12px" }} />
@@ -516,16 +528,16 @@ const InstagramWidget = () => {
 };
 
 // ─── Social Proof Footer ──────────────────────────────────────────────────────
-const SocialProof = () => (
+const SocialProof: React.FC = () => (
   <div
     style={{
       display: "flex",
       alignItems: "center",
       gap: "8px",
-      padding: "10px 12px",
+      padding: "10px 14px", // Matched width padding to the rest
       borderRadius: "12px",
       background: "var(--secondary)",
-      width: "full",
+      width: "100%",
     }}
   >
     <div style={{ display: "flex", marginRight: "2px" }}>
@@ -566,7 +578,7 @@ const SocialProof = () => (
 );
 
 // ─── Right Panel ──────────────────────────────────────────────────────────────
-const RightPanel = () => {
+const RightPanel: React.FC = () => {
   const navigate = useNavigate();
 
   return (
@@ -575,7 +587,7 @@ const RightPanel = () => {
 
       <TrendingRow />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
         <MiniActionCard
           icon={<Home style={{ width: "18px", height: "18px", color: "#7C3AED" }} />}
           iconBg="rgba(124,58,237,0.12)"
@@ -615,7 +627,7 @@ const RightPanel = () => {
 };
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
-const Layout = ({ children }) => (
+export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_17rem] xl:grid-cols-[minmax(0,1fr)_19rem] gap-5 items-start py-6">
       <div className="min-w-0 rounded-2xl overflow-hidden shadow-md border border-border/50 bg-card">
@@ -626,4 +638,5 @@ const Layout = ({ children }) => (
   </div>
 );
 
-export default Layout;
+const SliderSidePanels = { Layout, RightPanel };
+export default SliderSidePanels;     
