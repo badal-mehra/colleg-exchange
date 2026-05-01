@@ -1297,6 +1297,7 @@ export type Database = {
         Args: { conv_id: string; uid: string }
         Returns: number
       }
+      get_vault_secret: { Args: { p_name: string }; Returns: string }
       handle_ad_expiry: { Args: never; Returns: undefined }
       is_admin: { Args: { user_id: string }; Returns: boolean }
       mark_messages_read: {
