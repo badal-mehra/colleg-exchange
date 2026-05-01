@@ -52,12 +52,25 @@ const MainLayout = () => {
     setIsPWA(checkPWA);
   }, []);
 
-  // Subscribe to push notifications when user logs in (PWA mode)
+  // Keep push subscriptions fresh on app load and when returning to the tab.
   useEffect(() => {
-    if (user && isPWA && "Notification" in window && "serviceWorker" in navigator) {
-      subscribeToPush(user.id).catch(console.error);
-    }
-  }, [user, isPWA]);
+    if (!user || !("Notification" in window) || !("serviceWorker" in navigator)) return;
+
+    const refreshSubscription = () => {
+      if (Notification.permission === "granted") {
+        subscribeToPush(user.id, { prompt: false }).catch(console.error);
+      }
+    };
+
+    refreshSubscription();
+    window.addEventListener("focus", refreshSubscription);
+    document.addEventListener("visibilitychange", refreshSubscription);
+
+    return () => {
+      window.removeEventListener("focus", refreshSubscription);
+      document.removeEventListener("visibilitychange", refreshSubscription);
+    };
+  }, [user]);
 
   return (
     <div className="min-h-screen flex flex-col">
