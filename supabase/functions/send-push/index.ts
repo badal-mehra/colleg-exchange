@@ -47,6 +47,106 @@ function base64UrlToUint8Array(base64Url: string): Uint8Array {
   return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
 }
 
+function concatUint8Arrays(...arrays: Uint8Array[]): Uint8Array {
+  const totalLength = arrays.reduce((sum, arr) => sum + arr.length, 0);
+  const output = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const arr of arrays) {
+    output.set(arr, offset);
+    offset += arr.length;
+  }
+  return output;
+}
+
+async function hmacSha256(keyData: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  return new Uint8Array(await crypto.subtle.sign("HMAC", key, data));
+}
+
+async function hkdfExtract(salt: Uint8Array, ikm: Uint8Array): Promise<Uint8Array> {
+  return hmacSha256(salt, ikm);
+}
+
+async function hkdfExpand(prk: Uint8Array, info: Uint8Array, length: number): Promise<Uint8Array> {
+  const blocks: Uint8Array[] = [];
+  let previous = new Uint8Array(0);
+  let counter = 1;
+
+  while (concatUint8Arrays(...blocks).length < length) {
+    previous = await hmacSha256(
+      prk,
+      concatUint8Arrays(previous, info, new Uint8Array([counter]))
+    );
+    blocks.push(previous);
+    counter += 1;
+  }
+
+  return concatUint8Arrays(...blocks).slice(0, length);
+}
+
+async function encryptPushPayload(
+  subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
+  payload: string
+): Promise<Uint8Array> {
+  const encoder = new TextEncoder();
+  const receiverPublicKeyBytes = base64UrlToUint8Array(subscription.keys.p256dh);
+  const receiverPublicKey = await crypto.subtle.importKey(
+    "raw",
+    receiverPublicKeyBytes,
+    { name: "ECDH", namedCurve: "P-256" },
+    true,
+    []
+  );
+
+  const senderKeys = await crypto.subtle.generateKey(
+    { name: "ECDH", namedCurve: "P-256" },
+    true,
+    ["deriveBits"]
+  );
+  const senderPublicKey = new Uint8Array(await crypto.subtle.exportKey("raw", senderKeys.publicKey));
+  const sharedSecret = new Uint8Array(
+    await crypto.subtle.deriveBits(
+      { name: "ECDH", public: receiverPublicKey },
+      senderKeys.privateKey,
+      256
+    )
+  );
+
+  const authSecret = base64UrlToUint8Array(subscription.keys.auth);
+  const keyInfo = concatUint8Arrays(
+    encoder.encode("WebPush: info\0"),
+    receiverPublicKeyBytes,
+    senderPublicKey
+  );
+  const prkKey = await hkdfExtract(authSecret, sharedSecret);
+  const ikm = await hkdfExpand(prkKey, keyInfo, 32);
+
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const prk = await hkdfExtract(salt, ikm);
+  const cek = await hkdfExpand(prk, encoder.encode("Content-Encoding: aes128gcm\0"), 16);
+  const nonce = await hkdfExpand(prk, encoder.encode("Content-Encoding: nonce\0"), 12);
+  const plaintext = concatUint8Arrays(encoder.encode(payload), new Uint8Array([2]));
+
+  const aesKey = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
+  const ciphertext = new Uint8Array(
+    await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, aesKey, plaintext)
+  );
+
+  return concatUint8Arrays(
+    salt,
+    new Uint8Array([0, 0, 16, 0]),
+    new Uint8Array([senderPublicKey.length]),
+    senderPublicKey,
+    ciphertext
+  );
+}
+
 // Create VAPID JWT token
 async function createVapidJwt(
   audience: string,
@@ -277,16 +377,19 @@ serve(async (req) => {
     const signatureB64 = base64UrlEncode(new Uint8Array(signatureBuffer));
     const jwt = `${unsignedToken}.${signatureB64}`;
 
-    // Send to push endpoint
+    const encryptedPayload = await encryptPushPayload(subscription, payload);
+
+    // Send encrypted payload to push endpoint
     const pushResponse = await fetch(subscription.endpoint, {
       method: "POST",
       headers: {
-        "Content-Type": "text/plain",
+        "Content-Type": "application/octet-stream",
+        "Content-Encoding": "aes128gcm",
         "TTL": "86400",
         "Authorization": `vapid t=${jwt}, k=${vapidPublicKey}`,
         "Urgency": "high",
       },
-      body: payload,
+      body: encryptedPayload,
     });
 
     if (!pushResponse.ok) {

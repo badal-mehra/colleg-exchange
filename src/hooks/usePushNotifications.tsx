@@ -1,23 +1,8 @@
-// export async function subscribeToPush(userId: string) {
-//   const permission = await Notification.requestPermission();
-//   if (permission !== "granted") return;
+import { supabase } from "@/integrations/supabase/client";
 
-//   const reg = await navigator.serviceWorker.ready;
+let cachedVapidPublicKey: string | null = null;
+let subscriptionPromise: Promise<boolean> | null = null;
 
-//   const sub = await reg.pushManager.subscribe({
-//     userVisibleOnly: true,
-//     applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY
-//   });
-
-//   await fetch("/api/save-push", {
-//     method: "POST",
-//     headers: { "Content-Type": "application/json" },
-//     body: JSON.stringify({
-//       user_id: userId,
-//       subscription: sub
-//     })
-//   });
-// }
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding)
@@ -28,38 +13,89 @@ function urlBase64ToUint8Array(base64String: string) {
   return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }
 
-export async function subscribeToPush(userId: string) {
-  console.log("🔥 subscribeToPush CALLED", userId);
+async function getVapidPublicKey() {
+  if (cachedVapidPublicKey) return cachedVapidPublicKey;
 
-  const permission = await Notification.requestPermission();
-  if (permission !== "granted") {
-    console.warn("❌ Notification permission denied");
-    return;
+  const envKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+  if (envKey) {
+    cachedVapidPublicKey = envKey;
+    return envKey;
   }
 
-  const reg = await navigator.serviceWorker.ready;
-  // @ts-ignore - pushManager exists on ServiceWorkerRegistration in browsers with Push API support
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(
-      import.meta.env.VITE_VAPID_PUBLIC_KEY
-    ),
+  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/push-public-key`, {
+    headers: {
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    },
   });
 
-  const res = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-push`,
-    {
+  if (!res.ok) {
+    throw new Error(`Failed to load push public key: ${res.status}`);
+  }
+
+  const data = await res.json();
+  if (!data.publicKey) {
+    throw new Error("Push public key is missing");
+  }
+
+  const publicKey = data.publicKey as string;
+  cachedVapidPublicKey = publicKey;
+  return publicKey;
+}
+
+export async function subscribeToPush(userId?: string | null, options: { prompt?: boolean } = {}) {
+  if (!userId || !("Notification" in window) || !("serviceWorker" in navigator)) {
+    return false;
+  }
+
+  if (subscriptionPromise) return subscriptionPromise;
+
+  subscriptionPromise = (async () => {
+    const shouldPrompt = options.prompt ?? true;
+    const permission = Notification.permission === "default" && shouldPrompt
+      ? await Notification.requestPermission()
+      : Notification.permission;
+
+    if (permission !== "granted") {
+      return false;
+    }
+
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session?.access_token) {
+      throw new Error("Cannot save push subscription without an active session");
+    }
+
+    const reg = await navigator.serviceWorker.ready;
+    const vapidPublicKey = await getVapidPublicKey();
+    let sub = await reg.pushManager.getSubscription();
+
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      });
+    }
+
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-push`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({
         user_id: userId,
         subscription: sub,
       }),
-    }
-  );
+    });
 
-  console.log("✅ save-push response", await res.text());
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to save push subscription: ${text}`);
+    }
+
+    return true;
+  })().finally(() => {
+    subscriptionPromise = null;
+  });
+
+  return subscriptionPromise;
 }

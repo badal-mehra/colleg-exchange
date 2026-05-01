@@ -41,6 +41,10 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { subscribeToPush } from "@/hooks/usePushNotifications";
 
+interface StandaloneNavigator extends Navigator {
+  standalone?: boolean;
+}
+
 const MainLayout = () => {
   const [isPWA, setIsPWA] = useState(false);
   const { user } = useAuth();
@@ -48,16 +52,29 @@ const MainLayout = () => {
 
   useEffect(() => {
     const checkPWA = window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true;
+      (window.navigator as StandaloneNavigator).standalone === true;
     setIsPWA(checkPWA);
   }, []);
 
-  // Subscribe to push notifications when user logs in (PWA mode)
+  // Keep push subscriptions fresh on app load and when returning to the tab.
   useEffect(() => {
-    if (user && isPWA && "Notification" in window && "serviceWorker" in navigator) {
-      subscribeToPush(user.id).catch(console.error);
-    }
-  }, [user, isPWA]);
+    if (!user || !("Notification" in window) || !("serviceWorker" in navigator)) return;
+
+    const refreshSubscription = () => {
+      if (Notification.permission === "granted") {
+        subscribeToPush(user.id, { prompt: false }).catch(console.error);
+      }
+    };
+
+    refreshSubscription();
+    window.addEventListener("focus", refreshSubscription);
+    document.addEventListener("visibilitychange", refreshSubscription);
+
+    return () => {
+      window.removeEventListener("focus", refreshSubscription);
+      document.removeEventListener("visibilitychange", refreshSubscription);
+    };
+  }, [user]);
 
   return (
     <div className="min-h-screen flex flex-col">
