@@ -41,6 +41,10 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { subscribeToPush } from "@/hooks/usePushNotifications";
 
+interface StandaloneNavigator extends Navigator {
+  standalone?: boolean;
+}
+
 const MainLayout = () => {
   const [isPWA, setIsPWA] = useState(false);
   const { user } = useAuth();
@@ -48,7 +52,7 @@ const MainLayout = () => {
 
   useEffect(() => {
     const checkPWA = window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true;
+      (window.navigator as StandaloneNavigator).standalone === true;
     setIsPWA(checkPWA);
   }, []);
 
