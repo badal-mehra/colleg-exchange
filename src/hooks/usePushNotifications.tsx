@@ -13,6 +13,10 @@ function urlBase64ToUint8Array(base64String: string) {
   return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }
 
+function arraysEqual(a: Uint8Array, b: Uint8Array) {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
 async function getVapidPublicKey() {
   if (cachedVapidPublicKey) return cachedVapidPublicKey;
 
@@ -66,12 +70,22 @@ export async function subscribeToPush(userId?: string | null, options: { prompt?
 
     const reg = await navigator.serviceWorker.ready;
     const vapidPublicKey = await getVapidPublicKey();
+    const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
     let sub = await reg.pushManager.getSubscription();
+
+    const existingKey = sub?.options?.applicationServerKey
+      ? new Uint8Array(sub.options.applicationServerKey)
+      : null;
+
+    if (sub && existingKey && !arraysEqual(existingKey, applicationServerKey)) {
+      await sub.unsubscribe();
+      sub = null;
+    }
 
     if (!sub) {
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        applicationServerKey,
       });
     }
 
