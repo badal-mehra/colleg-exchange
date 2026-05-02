@@ -1314,6 +1314,16 @@ export type Database = {
         }
         Returns: Json
       }
+      submit_kyc: {
+        Args: {
+          p_college_name: string
+          p_document_path: string
+          p_full_name: string
+          p_phone: string
+          p_student_id: string
+        }
+        Returns: Json
+      }
       update_user_ranks: { Args: never; Returns: undefined }
     }
     Enums: {
