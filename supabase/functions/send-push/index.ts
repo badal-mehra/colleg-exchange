@@ -166,22 +166,23 @@ async function createVapidJwt(
   const payloadB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
   const unsignedToken = `${headerB64}.${payloadB64}`;
 
-  // Import the private key
-  const privateKeyBytes = base64UrlToUint8Array(vapidPrivateKey);
-  
-  // Create PKCS8 formatted key
-  const pkcs8Header = new Uint8Array([
-    0x30, 0x41, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48,
-    0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03,
-    0x01, 0x07, 0x04, 0x27, 0x30, 0x25, 0x02, 0x01, 0x01, 0x04, 0x20,
-  ]);
-  const pkcs8Key = new Uint8Array(pkcs8Header.length + 32);
-  pkcs8Key.set(pkcs8Header);
-  pkcs8Key.set(privateKeyBytes.slice(0, 32), pkcs8Header.length);
+  const publicKeyBytes = base64UrlToUint8Array(vapidPublicKey);
+  if (publicKeyBytes.length !== 65 || publicKeyBytes[0] !== 4) {
+    throw new Error("Invalid VAPID public key format");
+  }
 
+  // VAPID private keys are stored as raw base64url `d` values, not PKCS8.
+  // Importing via JWK avoids InvalidEncoding errors in Supabase Edge Runtime.
   const cryptoKey = await crypto.subtle.importKey(
-    "pkcs8",
-    pkcs8Key.buffer as ArrayBuffer,
+    "jwk",
+    {
+      kty: "EC",
+      crv: "P-256",
+      d: vapidPrivateKey,
+      x: base64UrlEncode(publicKeyBytes.slice(1, 33)),
+      y: base64UrlEncode(publicKeyBytes.slice(33, 65)),
+      ext: true,
+    },
     { name: "ECDSA", namedCurve: "P-256" },
     false,
     ["sign"]
@@ -194,7 +195,6 @@ async function createVapidJwt(
     new TextEncoder().encode(unsignedToken)
   );
 
-  // Convert signature from DER to raw format (if needed) and encode
   const signatureB64 = base64UrlEncode(new Uint8Array(signature));
 
   return `${unsignedToken}.${signatureB64}`;
