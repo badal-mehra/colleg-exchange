@@ -333,49 +333,13 @@ serve(async (req) => {
       url: sanitizedUrl,
     });
 
-    // Send push using native fetch with VAPID auth
     const audience = new URL(subscription.endpoint).origin;
-    const now = Math.floor(Date.now() / 1000);
-    
-    // Create JWT header and payload
-    const jwtHeader = { typ: "JWT", alg: "ES256" };
-    const jwtPayload = {
-      aud: audience,
-      exp: now + 12 * 60 * 60,
-      sub: "mailto:support@mycampuskart.com",
-    };
-
-    const headerB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(jwtHeader)));
-    const payloadB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(jwtPayload)));
-    const unsignedToken = `${headerB64}.${payloadB64}`;
-
-    // Import private key and sign
-    const privateKeyBytes = base64UrlToUint8Array(vapidPrivateKey);
-    const pkcs8Header = new Uint8Array([
-      0x30, 0x41, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48,
-      0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03,
-      0x01, 0x07, 0x04, 0x27, 0x30, 0x25, 0x02, 0x01, 0x01, 0x04, 0x20,
-    ]);
-    const pkcs8Key = new Uint8Array(pkcs8Header.length + 32);
-    pkcs8Key.set(pkcs8Header);
-    pkcs8Key.set(privateKeyBytes.slice(0, 32), pkcs8Header.length);
-
-    const cryptoKey = await crypto.subtle.importKey(
-      "pkcs8",
-      pkcs8Key.buffer as ArrayBuffer,
-      { name: "ECDSA", namedCurve: "P-256" },
-      false,
-      ["sign"]
+    const jwt = await createVapidJwt(
+      audience,
+      "mailto:support@mycampuskart.com",
+      vapidPublicKey,
+      vapidPrivateKey
     );
-
-    const signatureBuffer = await crypto.subtle.sign(
-      { name: "ECDSA", hash: "SHA-256" },
-      cryptoKey,
-      new TextEncoder().encode(unsignedToken)
-    );
-
-    const signatureB64 = base64UrlEncode(new Uint8Array(signatureBuffer));
-    const jwt = `${unsignedToken}.${signatureB64}`;
 
     const encryptedPayload = await encryptPushPayload(subscription, payload);
 
