@@ -439,7 +439,7 @@ const InstagramWidget: React.FC = () => {
               boxShadow: "0 2px 8px rgba(255,107,53,0.3)",
             }}
           >
-            follow us 🔥
+            FolloW uS 🔥
           </button>
         </a>
       </div>
@@ -483,8 +483,8 @@ const InstagramWidget: React.FC = () => {
       >
         <div style={{ display: "flex", gap: "12px" }}>
           {[
-            { label: "posts", val: "142" },
-            { label: "followers", val: "4.2k" },
+            { label: "posts", val: "10+" },
+            { label: "followers", val: "20+" },
           ].map(({ label, val }) => (
             <div key={label} style={{ textAlign: "center" }}>
               <p
