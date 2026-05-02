@@ -566,7 +566,7 @@ const SocialProof: React.FC = () => (
       }}
     >
       <strong style={{ color: "var(--foreground)", fontWeight: 700 }}>
-        2,400+ students
+        240+ students
       </strong>{" "}
       already flexing on here
     </p>
