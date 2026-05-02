@@ -308,6 +308,15 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Always save the in-app notification, even if browser push is unavailable.
+    await supabase.from("notifications").insert({
+      user_id,
+      title: sanitizedTitle,
+      body: sanitizedBody,
+      url: sanitizedUrl,
+      type: "push",
+    });
+
     const { data: subscriptionData, error: subError } = await supabase
       .from("push_subscriptions")
       .select("subscription")
@@ -373,15 +382,6 @@ serve(async (req) => {
     }
 
     console.log("✅ Push notification sent successfully to user:", user_id);
-
-    // Save to notifications table
-    await supabase.from("notifications").insert({
-      user_id,
-      title: sanitizedTitle,
-      body: sanitizedBody,
-      url: sanitizedUrl,
-      type: "push",
-    });
 
     return new Response(
       JSON.stringify({ success: true }),
