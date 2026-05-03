@@ -278,7 +278,7 @@ serve(async (req) => {
       isAdmin = adminCheck === true;
     }
 
-    const { user_id, title, body, url } = await req.json();
+    const { user_id, title, body, url, skip_insert } = await req.json();
     console.log("Send push request for user:", user_id);
 
     if (!user_id) {
