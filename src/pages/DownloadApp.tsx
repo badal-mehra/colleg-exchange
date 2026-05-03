@@ -233,7 +233,7 @@ const DownloadApp = () => {
               </button>
               <div className="flex items-center gap-5 mt-4 text-slate-400 text-[11px] font-bold uppercase tracking-widest">
                 <span className="flex gap-1.5 items-center"><CheckCircle className="h-3.5 w-3.5 text-green-500" />Free Forever</span>
-                <span className="flex gap-1.5 items-center"><CheckCircle className="h-3.5 w-3.5 text-green-500" />LPU Verified</span>
+                <span className="flex gap-1.5 items-center"><CheckCircle className="h-3.5 w-3.5 text-green-500" />LPU Verified Students</span>
                 <span className="flex gap-1.5 items-center"><CheckCircle className="h-3.5 w-3.5 text-green-500" />Zero Commission</span>
               </div>
             </div>
@@ -496,7 +496,7 @@ const DownloadApp = () => {
           </h2>
 
           <p className="text-slate-500 text-lg max-w-xl mx-auto">
-            4,200+ LPU students are already on here. The ₹3,800 semester average isn't a number we made up. It's what your batchmates are saving. Every semester you don't use this is money gone.
+            500+ LPU students are already on here. The ₹3,800 semester average isn't a number we made up. It's what your batchmates are saving. Every semester you don't use this is money gone.
           </p>
 
           <button
