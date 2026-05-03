@@ -38,6 +38,7 @@ import MyReports from "./pages/MyReports";
 import StaticPage from "./pages/StaticPage";
 import PWAProfile from "./pages/PWAProfile";
 import DownloadApp from "./pages/DownloadApp";
+import Notifications from "./pages/Notifications";
 
 // Check if running as PWA
 const isPWA = () => typeof window !== 'undefined' && (
@@ -120,6 +121,7 @@ const App = () => (
     <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
     <Route path="/scan-qr" element={<ProtectedRoute><ScanQR /></ProtectedRoute>} />
     <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+    <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
 
     {/** NOT FOUND */}
     <Route path="*" element={<NotFound />} />

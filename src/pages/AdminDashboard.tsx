@@ -7,13 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, Users, ShoppingBag, CheckCircle, XCircle, UserPlus, Trash2, Eye, AlertTriangle, Filter, BookOpen, Settings } from 'lucide-react';
+import { Shield, Users, ShoppingBag, CheckCircle, XCircle, UserPlus, Trash2, Eye, AlertTriangle, Filter, BookOpen, Settings, Bell, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Footer } from '@/components/Footer'; // Import Footer for consistent styling (optional)
 import { getSliderImageUrl, uploadToCloudinary } from "@/utils/cloudinaryUpload"; // 1️⃣ ADDED CLOUDINARY IMPORT
+import { BroadcastNotifications } from "@/components/admin/BroadcastNotifications";
 
 // ------------------- Interfaces (Unchanged) -------------------
 interface Profile {
@@ -519,7 +520,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7"> {/* FIX: Grid reduced from 8 to 7 columns */}
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="users">
               <Users className="h-4 w-4 mr-2" />
               Users & KYC
@@ -532,9 +533,12 @@ const AdminDashboard = () => {
               <AlertTriangle className="h-4 w-4 mr-2" />
               Reports
             </TabsTrigger>
+            <TabsTrigger value="notify">
+              <Bell className="h-4 w-4 mr-2" />
+              Notify
+            </TabsTrigger>
             <TabsTrigger value="slider">Images</TabsTrigger>
             <TabsTrigger value="universities">Universities</TabsTrigger>
-            {/* FIX: Combined Terms and Footer Management into Content */}
             <TabsTrigger value="content">
                 <BookOpen className="h-4 w-4 mr-2" /> 
                 Content (CMS)
@@ -543,7 +547,6 @@ const AdminDashboard = () => {
               <Shield className="h-4 w-4 mr-2" />
               Admins
             </TabsTrigger>
-            {/* OLD: TabsTrigger value="footer" REMOVED */}
           </TabsList>
 
           <TabsContent value="users">
@@ -1301,8 +1304,10 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
           
-          {/* OLD: TabsContent value="footer" REMOVED */}
-          
+          <TabsContent value="notify">
+            <BroadcastNotifications profiles={profiles} />
+          </TabsContent>
+
         </Tabs>
       </div>
     </div>
