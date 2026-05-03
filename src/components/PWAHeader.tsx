@@ -80,17 +80,7 @@ const PWAHeader: React.FC<PWAHeaderProps> = ({
               <Search className="h-5 w-5" />
             </Button>
           )}
-          {showNotification && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-full hover:bg-muted/80 active:scale-95 transition-all relative"
-            >
-              <Bell className="h-5 w-5" />
-              {/* Notification dot */}
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-destructive rounded-full" />
-            </Button>
-          )}
+          {showNotification && <NotificationBell variant="icon" />}
           {showMore && (
             <Button
               variant="ghost"
