@@ -445,15 +445,7 @@ const PWADashboard = () => {
             </div>
           </button>
 
-          <button
-            onClick={() => navigate("/my-chats")}
-            className="relative h-10 w-10 rounded-2xl bg-muted/70 flex items-center justify-center active:scale-90 transition-transform"
-          >
-            <Bell className="h-5 w-5 text-foreground" />
-            {unreadChats > 0 && (
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500 border border-background" />
-            )}
-          </button>
+          <NotificationBell variant="icon" className="h-10 w-10 rounded-2xl bg-muted/70" />
         </div>
 
         {/* Row 2 — Search + Sort + Filter */}
