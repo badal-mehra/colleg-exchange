@@ -134,6 +134,7 @@ const Header = () => {
             {/* Profile Button (Conditional Rendering based on Auth) */}
             {user ? (
                 <>
+                <NotificationBell variant="header" />
                 <Button variant="outline" size="sm" onClick={() => navigate('/profile')} className="hover-scale gap-2 shrink-0">
                     {profile?.avatar_url ? (
   <Avatar className="h-4 w-4 lg:h-5 lg:w-5">
