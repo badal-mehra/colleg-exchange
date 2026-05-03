@@ -1,386 +1,60 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { formatDistanceToNow } from "date-fns";
+import { Bell, ArrowLeft, CheckCheck, MessageCircle, Heart, UserPlus, AtSign, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { formatDistanceToNow, isToday, isYesterday, format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
-/* ─── Injected styles ──────────────────────────────────────────────────────── */
-const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
+interface NotificationItem {
+  id: string;
+  title: string | null;
+  body: string | null;
+  url: string | null;
+  is_read: boolean;
+  created_at: string;
+  type: string | null;
+}
 
-  .notif-root {
-    --bg: #0a0b10;
-    --surface: rgba(255,255,255,0.04);
-    --surface-hover: rgba(255,255,255,0.07);
-    --surface-unread: rgba(110,86,255,0.08);
-    --border: rgba(255,255,255,0.08);
-    --border-unread: rgba(110,86,255,0.35);
-    --accent: #6e56ff;
-    --accent-glow: rgba(110,86,255,0.4);
-    --accent2: #a78bfa;
-    --text-primary: rgba(255,255,255,0.93);
-    --text-secondary: rgba(255,255,255,0.5);
-    --text-tertiary: rgba(255,255,255,0.3);
-    --dot-from: #6e56ff;
-    --dot-to: #a78bfa;
-    --header-h: 64px;
-    font-family: 'DM Sans', sans-serif;
-    min-height: 100svh;
-    background: var(--bg);
-    color: var(--text-primary);
-    overscroll-behavior: none;
-  }
-
-  /* noise layer */
-  .notif-root::before {
-    content:'';
-    position:fixed;inset:0;pointer-events:none;z-index:0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-    opacity:.6;
-  }
-
-  /* ambient orb */
-  .notif-orb {
-    position:fixed;top:-180px;left:50%;transform:translateX(-50%);
-    width:600px;height:400px;border-radius:50%;
-    background: radial-gradient(ellipse at center, rgba(110,86,255,0.15) 0%, transparent 70%);
-    pointer-events:none;z-index:0;
-  }
-
-  /* ── header ── */
-  .notif-header {
-    position: sticky;top:0;z-index:50;
-    height: var(--header-h);
-    display:flex;align-items:center;justify-content:space-between;
-    padding: 0 20px;
-    background: rgba(10,11,16,0.8);
-    backdrop-filter: blur(20px) saturate(1.4);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
-    border-bottom: 0.5px solid var(--border);
-  }
-
-  .notif-header-left {
-    display:flex;align-items:center;gap:12px;
-  }
-
-  .notif-back-btn {
-    width:38px;height:38px;border-radius:12px;
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    display:flex;align-items:center;justify-content:center;
-    cursor:pointer;transition:background .15s, transform .15s;
-    color: var(--text-secondary);
-  }
-  .notif-back-btn:hover { background: var(--surface-hover); transform:scale(1.05); }
-  .notif-back-btn:active { transform:scale(0.95); }
-
-  .notif-title {
-    font-family:'Syne',sans-serif;
-    font-size: 18px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    color: var(--text-primary);
-  }
-
-  .notif-count-badge {
-    display:inline-flex;align-items:center;justify-content:center;
-    min-width:20px;height:20px;padding:0 6px;
-    border-radius:20px;
-    background: linear-gradient(135deg, var(--dot-from), var(--dot-to));
-    font-size:11px;font-weight:600;color:#fff;
-    font-family:'Syne',sans-serif;
-    animation: badgePop .3s cubic-bezier(.34,1.56,.64,1) both;
-  }
-
-  .notif-mark-btn {
-    display:flex;align-items:center;gap:6px;
-    padding: 8px 14px;
-    border-radius:12px;
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    cursor:pointer;
-    font-family:'DM Sans',sans-serif;
-    font-size:13px;font-weight:500;
-    color: var(--text-secondary);
-    transition: all .15s;
-    white-space:nowrap;
-  }
-  .notif-mark-btn:hover { background: var(--surface-hover); color: var(--text-primary); border-color:var(--accent); }
-  .notif-mark-btn:active { transform:scale(0.97); }
-  .notif-mark-btn.marking { color: var(--accent2); }
-
-  /* ── main ── */
-  .notif-main {
-    position:relative;z-index:1;
-    max-width: 680px;
-    margin: 0 auto;
-    padding: 20px 16px 80px;
-  }
-
-  /* ── section label ── */
-  .notif-section-label {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-tertiary);
-    padding: 0 4px;
-    margin: 24px 0 10px;
-  }
-  .notif-section-label:first-child { margin-top: 4px; }
-
-  /* ── list ── */
-  .notif-list { display:flex;flex-direction:column;gap:6px; }
-
-  /* ── item ── */
-  .notif-item {
-    position:relative;
-    width:100%;text-align:left;
-    padding: 14px 16px 14px 16px;
-    border-radius:16px;
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    cursor:pointer;
-    transition: background .15s, border-color .15s, transform .15s;
-    overflow:hidden;
-    animation: slideUp .4s cubic-bezier(.22,1,.36,1) both;
-  }
-  .notif-item:hover { background: var(--surface-hover); transform: translateY(-1px); }
-  .notif-item:active { transform: translateY(0) scale(0.99); }
-
-  .notif-item.unread {
-    background: var(--surface-unread);
-    border-color: var(--border-unread);
-  }
-  .notif-item.unread::before {
-    content:'';
-    position:absolute;inset:0;
-    background: linear-gradient(90deg, rgba(110,86,255,0.06) 0%, transparent 60%);
-    pointer-events:none;
-  }
-
-  .notif-item.reading { animation: readPulse .4s ease; }
-
-  .notif-item-inner { display:flex;align-items:flex-start;gap:12px; }
-
-  /* dot */
-  .notif-dot-wrap {
-    flex-shrink:0;margin-top:4px;
-    width:8px;height:8px;
-    display:flex;align-items:center;justify-content:center;
-  }
-  .notif-dot {
-    width:8px;height:8px;border-radius:50%;
-    background: linear-gradient(135deg, var(--dot-from), var(--dot-to));
-    box-shadow: 0 0 8px var(--accent-glow);
-    animation: dotPulse 2.5s ease-in-out infinite;
-  }
-
-  /* icon */
-  .notif-icon {
-    flex-shrink:0;
-    width:40px;height:40px;border-radius:12px;
-    display:flex;align-items:center;justify-content:center;
-    background: rgba(110,86,255,0.12);
-    border: 0.5px solid rgba(110,86,255,0.2);
-    font-size:16px;
-  }
-  .notif-icon.type-like    { background:rgba(239,68,68,0.1);  border-color:rgba(239,68,68,0.2); }
-  .notif-icon.type-comment { background:rgba(59,130,246,0.1); border-color:rgba(59,130,246,0.2); }
-  .notif-icon.type-follow  { background:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.2); }
-  .notif-icon.type-system  { background:rgba(245,158,11,0.1); border-color:rgba(245,158,11,0.2); }
-
-  /* content */
-  .notif-content { flex:1;min-width:0; }
-  .notif-item-title {
-    font-size:14px;font-weight:500;
-    color: var(--text-primary);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-    line-height:1.4;
-  }
-  .notif-item.unread .notif-item-title { font-weight:600; }
-  .notif-item-body {
-    font-size:13px;color: var(--text-secondary);
-    margin-top:3px;line-height:1.5;
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-  }
-  .notif-item-time {
-    font-size:11px;color: var(--text-tertiary);
-    margin-top:6px;
-    display:flex;align-items:center;gap:5px;
-  }
-
-  /* chevron */
-  .notif-chevron {
-    flex-shrink:0;
-    color: var(--text-tertiary);
-    margin-top:2px;
-    transition: transform .15s, color .15s;
-  }
-  .notif-item:hover .notif-chevron { transform:translateX(2px); color: var(--accent2); }
-
-  /* ── empty state ── */
-  .notif-empty {
-    display:flex;flex-direction:column;align-items:center;
-    padding: 80px 20px 40px;
-    text-align:center;
-    animation: fadeIn .5s ease both;
-  }
-  .notif-empty-bell {
-    width:72px;height:72px;
-    border-radius:20px;
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    display:flex;align-items:center;justify-content:center;
-    margin-bottom:20px;
-    animation: bellFloat 3s ease-in-out infinite;
-    font-size:28px;
-  }
-  .notif-empty-title {
-    font-family:'Syne',sans-serif;
-    font-size:17px;font-weight:600;
-    color: var(--text-primary);
-    margin-bottom:8px;
-  }
-  .notif-empty-sub {
-    font-size:14px;color: var(--text-secondary);
-    line-height:1.6;max-width:260px;
-  }
-
-  /* ── skeleton ── */
-  .notif-skeleton { display:flex;flex-direction:column;gap:6px; }
-  .notif-skel-item {
-    height:80px;border-radius:16px;
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    overflow:hidden;position:relative;
-    animation: slideUp .3s cubic-bezier(.22,1,.36,1) both;
-  }
-  .notif-skel-item::after {
-    content:'';position:absolute;inset:0;
-    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.04) 50%, transparent 100%);
-    animation: shimmer 1.8s infinite;
-  }
-
-  /* ── divider ── */
-  .notif-divider {
-    height:0.5px;
-    background: var(--border);
-    margin: 12px 0;
-  }
-
-  /* ── animations ── */
-  @keyframes slideUp {
-    from { opacity:0; transform:translateY(16px); }
-    to   { opacity:1; transform:translateY(0); }
-  }
-  @keyframes fadeIn {
-    from { opacity:0; }
-    to   { opacity:1; }
-  }
-  @keyframes shimmer {
-    from { transform:translateX(-100%); }
-    to   { transform:translateX(100%); }
-  }
-  @keyframes dotPulse {
-    0%,100% { transform:scale(1); opacity:1; }
-    50%      { transform:scale(1.3); opacity:.7; }
-  }
-  @keyframes bellFloat {
-    0%,100% { transform:translateY(0) rotate(0deg); }
-    25%      { transform:translateY(-6px) rotate(-4deg); }
-    75%      { transform:translateY(-3px) rotate(3deg); }
-  }
-  @keyframes badgePop {
-    from { transform:scale(0); opacity:0; }
-    to   { transform:scale(1); opacity:1; }
-  }
-  @keyframes readPulse {
-    0%   { background: rgba(110,86,255,0.15); }
-    100% { background: var(--surface); }
-  }
-  @keyframes markAllFlash {
-    0%   { background: rgba(110,86,255,0.15); }
-    100% { background: var(--surface); }
-  }
-
-  /* ── bottom safe area ── */
-  @supports (padding-bottom: env(safe-area-inset-bottom)) {
-    .notif-main { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
-  }
-`;
-
-/* ─── Icon helpers ─────────────────────────────────────────────────────────── */
-const IconBack = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M19 12H5M12 5l-7 7 7 7" />
-  </svg>
-);
-
-const IconCheck = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 6L9 17l-5-5" />
-    <path d="M20 12L9 23l-5-5" />
-  </svg>
-);
-
-const IconChevron = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="notif-chevron">
-    <path d="M9 18l6-6-6-6" />
-  </svg>
-);
-
-const IconClock = () => (
-  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-  </svg>
-);
-
-/* type → emoji icon */
-const typeEmoji = (type) => {
-  const map = { like: "♥", comment: "💬", follow: "✦", mention: "@", system: "⚙", message: "✉", alert: "!", update: "↑" };
-  return map[type] ?? "✦";
-};
-const typeClass = (type) => {
-  const map = { like: "type-like", comment: "type-comment", follow: "type-follow", system: "type-system" };
-  return map[type] ?? "";
+// Icon mapping based on notification type (customize to your needs)
+const typeIcons: Record<string, React.ReactNode> = {
+  message: <MessageCircle className="h-4 w-4 text-blue-400" />,
+  like: <Heart className="h-4 w-4 text-pink-400" />,
+  follow: <UserPlus className="h-4 w-4 text-emerald-400" />,
+  mention: <AtSign className="h-4 w-4 text-violet-400" />,
+  default: <Bell className="h-4 w-4 text-muted-foreground" />,
 };
 
-/* group notifications into Today / Yesterday / Earlier */
-const groupItems = (items) => {
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yestStart  = new Date(todayStart - 86400000);
+// Group notifications by date for a cleaner UI
+const groupByDate = (items: NotificationItem[]) => {
+  const groups: { label: string; items: NotificationItem[] }[] = [];
+  let lastDate = "";
 
-  const groups = { Today: [], Yesterday: [], Earlier: [] };
-  items.forEach((n) => {
-    const d = new Date(n.created_at);
-    if (d >= todayStart) groups.Today.push(n);
-    else if (d >= yestStart) groups.Yesterday.push(n);
-    else groups.Earlier.push(n);
+  items.forEach((item) => {
+    const date = new Date(item.created_at);
+    let label = "";
+    if (isToday(date)) label = "Today";
+    else if (isYesterday(date)) label = "Yesterday";
+    else label = format(date, "MMMM d, yyyy");
+
+    if (lastDate !== label) {
+      groups.push({ label, items: [item] });
+      lastDate = label;
+    } else {
+      groups[groups.length - 1].items.push(item);
+    }
   });
   return groups;
 };
 
-/* ─── Component ────────────────────────────────────────────────────────────── */
 const Notifications = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [marking, setMarking] = useState(false);
-  const [readingIds, setReadingIds] = useState(new Set());
-  const styleInjected = useRef(false);
-
-  /* inject styles once */
-  useEffect(() => {
-    if (styleInjected.current) return;
-    styleInjected.current = true;
-    const el = document.createElement("style");
-    el.textContent = CSS;
-    document.head.appendChild(el);
-    return () => el.remove();
-  }, []);
+  const [markingAll, setMarkingAll] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -391,124 +65,214 @@ const Notifications = () => {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(100);
-    if (data) setItems(data);
+    if (data) setItems(data as NotificationItem[]);
     setLoading(false);
   }, [user]);
 
   useEffect(() => {
-    if (!user) { navigate("/auth"); return; }
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
     load();
     const channel = supabase
       .channel(`notif-page-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, load)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        () => load(),
+      )
       .subscribe();
-    return () => supabase.removeChannel(channel);
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, load, navigate]);
 
   const unreadCount = items.filter((n) => !n.is_read).length;
 
   const markAllRead = async () => {
-    if (!user || marking) return;
-    setMarking(true);
-    await supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).eq("is_read", false);
+    if (!user || unreadCount === 0) return;
+    setMarkingAll(true);
+    await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("user_id", user.id)
+      .eq("is_read", false);
+    // Optimistically update UI
     setItems((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    setTimeout(() => setMarking(false), 800);
+    setMarkingAll(false);
   };
 
-  const handleClick = async (n) => {
+  const handleClick = async (n: NotificationItem) => {
     if (!n.is_read) {
-      setReadingIds((prev) => new Set(prev).add(n.id));
       await supabase.from("notifications").update({ is_read: true }).eq("id", n.id);
-      setItems((prev) => prev.map((x) => x.id === n.id ? { ...x, is_read: true } : x));
-      setTimeout(() => setReadingIds((prev) => { const s = new Set(prev); s.delete(n.id); return s; }), 500);
+      setItems((prev) => prev.map((i) => (i.id === n.id ? { ...i, is_read: true } : i)));
     }
     if (n.url) navigate(n.url);
   };
 
-  const groups = groupItems(items);
+  const grouped = groupByDate(items);
+
+  // Stagger animation for list items
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05 },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20, scale: 0.98 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: { type: "spring", stiffness: 260, damping: 20 },
+    },
+  };
 
   return (
-    <div className="notif-root">
-      <div className="notif-orb" />
-
-      {/* ── Header ── */}
-      <header className="notif-header">
-        <div className="notif-header-left">
-          <button className="notif-back-btn" onClick={() => navigate(-1)} aria-label="Go back">
-            <IconBack />
-          </button>
-          <h1 className="notif-title">Notifications</h1>
-          {unreadCount > 0 && (
-            <span className="notif-count-badge" key={unreadCount}>{unreadCount}</span>
-          )}
+    <div className="min-h-screen bg-background">
+      {/* Glassmorphism header */}
+      <header className="sticky top-0 z-40 bg-background/70 backdrop-blur-xl border-b border-border/40 shadow-sm">
+        <div className="max-w-2xl mx-auto flex items-center justify-between px-4 h-14">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="hover:bg-white/10"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-lg font-semibold">Notifications</h1>
+            {unreadCount > 0 && (
+              <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-primary text-primary-foreground rounded-full">
+                {unreadCount} new
+              </span>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={markAllRead}
+            disabled={unreadCount === 0 || markingAll}
+            className="text-sm font-medium gap-1.5 transition-all hover:bg-primary/10"
+          >
+            {markingAll ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCheck className="h-4 w-4" />
+            )}
+            Mark all read
+          </Button>
         </div>
-        {unreadCount > 0 && (
-          <button className={`notif-mark-btn${marking ? " marking" : ""}`} onClick={markAllRead}>
-            <IconCheck />
-            {marking ? "Marking…" : "Mark all read"}
-          </button>
-        )}
       </header>
 
-      {/* ── Main ── */}
-      <main className="notif-main">
+      <main className="max-w-2xl mx-auto px-4 py-4">
         {loading ? (
-          <div className="notif-skeleton">
-            {Array.from({ length: 5 }, (_, i) => (
-              <div key={i} className="notif-skel-item" style={{ animationDelay: `${i * 60}ms` }} />
+          // Skeleton loader
+          <div className="space-y-6">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="space-y-3">
+                <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                {Array.from({ length: 2 }).map((_, j) => (
+                  <div
+                    key={j}
+                    className="flex items-start gap-3 p-3 rounded-xl border bg-card animate-pulse"
+                  >
+                    <div className="h-8 w-8 rounded-full bg-muted" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-3/4 bg-muted rounded" />
+                      <div className="h-3 w-1/2 bg-muted rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ))}
           </div>
         ) : items.length === 0 ? (
-          <div className="notif-empty">
-            <div className="notif-empty-bell">🔔</div>
-            <p className="notif-empty-title">All caught up</p>
-            <p className="notif-empty-sub">No notifications right now. We'll let you know when something new arrives.</p>
-          </div>
+          // Animated empty state
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center py-20"
+          >
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+              className="inline-block"
+            >
+              <Bell className="h-14 w-14 mx-auto text-muted-foreground/30 mb-4" />
+            </motion.div>
+            <p className="text-muted-foreground text-lg font-medium">All clear!</p>
+            <p className="text-sm text-muted-foreground/70 mt-1">
+              New notifications will appear here.
+            </p>
+          </motion.div>
         ) : (
-          <>
-            {Object.entries(groups).map(([label, group]) =>
-              group.length === 0 ? null : (
-                <div key={label}>
-                  <p className="notif-section-label">{label}</p>
-                  <ul className="notif-list">
-                    {group.map((n, i) => (
-                      <li key={n.id} style={{ animationDelay: `${i * 40}ms` }}>
-                        <button
-                          className={`notif-item${!n.is_read ? " unread" : ""}${readingIds.has(n.id) ? " reading" : ""}`}
-                          onClick={() => handleClick(n)}
-                        >
-                          <div className="notif-item-inner">
-                            {/* unread dot */}
-                            <div className="notif-dot-wrap">
-                              {!n.is_read && <span className="notif-dot" />}
-                            </div>
-
-                            {/* type icon */}
-                            <div className={`notif-icon ${typeClass(n.type)}`}>
-                              {typeEmoji(n.type)}
-                            </div>
-
-                            {/* text */}
-                            <div className="notif-content">
-                              <p className="notif-item-title">{n.title || "Notification"}</p>
-                              {n.body && <p className="notif-item-body">{n.body}</p>}
-                              <p className="notif-item-time">
-                                <IconClock />
-                                {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
-                              </p>
-                            </div>
-
-                            {/* chevron only if navigable */}
-                            {n.url && <IconChevron />}
+          <AnimatePresence mode="wait">
+            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
+              {grouped.map((group) => (
+                <div key={group.label}>
+                  <motion.p
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 pl-2"
+                  >
+                    {group.label}
+                  </motion.p>
+                  <motion.div className="space-y-2" layout>
+                    {group.items.map((n) => (
+                      <motion.button
+                        key={n.id}
+                        layout
+                        variants={itemVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                        onClick={() => handleClick(n)}
+                        className={cn(
+                          "w-full text-left p-4 rounded-xl border transition-all duration-200 hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                          !n.is_read
+                            ? "bg-primary/5 border-primary/30 shadow-sm"
+                            : "bg-card border-border/60 hover:bg-muted/20"
+                        )}
+                      >
+                        <div className="flex items-start gap-4">
+                          {/* Type icon */}
+                          <div className="mt-0.5 shrink-0">
+                            {n.type ? (
+                              typeIcons[n.type] || typeIcons.default
+                            ) : (
+                              typeIcons.default
+                            )}
                           </div>
-                        </button>
-                      </li>
+                          <div className="flex-1 min-w-0">
+                            <p className={cn("font-medium", !n.is_read && "text-foreground font-semibold")}>
+                              {n.title || "Notification"}
+                            </p>
+                            {n.body && (
+                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                {n.body}
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-2">
+                              {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                              {!n.is_read && (
+                                <span className="h-2 w-2 rounded-full bg-primary inline-block" />
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </motion.button>
                     ))}
-                  </ul>
+                  </motion.div>
                 </div>
-              )
-            )}
-          </>
+              ))}
+            </motion.div>
+          </AnimatePresence>
         )}
       </main>
     </div>
