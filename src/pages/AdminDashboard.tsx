@@ -519,7 +519,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7"> {/* FIX: Grid reduced from 8 to 7 columns */}
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="users">
               <Users className="h-4 w-4 mr-2" />
               Users & KYC
@@ -532,9 +532,12 @@ const AdminDashboard = () => {
               <AlertTriangle className="h-4 w-4 mr-2" />
               Reports
             </TabsTrigger>
+            <TabsTrigger value="notify">
+              <Bell className="h-4 w-4 mr-2" />
+              Notify
+            </TabsTrigger>
             <TabsTrigger value="slider">Images</TabsTrigger>
             <TabsTrigger value="universities">Universities</TabsTrigger>
-            {/* FIX: Combined Terms and Footer Management into Content */}
             <TabsTrigger value="content">
                 <BookOpen className="h-4 w-4 mr-2" /> 
                 Content (CMS)
@@ -543,7 +546,6 @@ const AdminDashboard = () => {
               <Shield className="h-4 w-4 mr-2" />
               Admins
             </TabsTrigger>
-            {/* OLD: TabsTrigger value="footer" REMOVED */}
           </TabsList>
 
           <TabsContent value="users">
