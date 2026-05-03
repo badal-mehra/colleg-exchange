@@ -1303,8 +1303,10 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
           
-          {/* OLD: TabsContent value="footer" REMOVED */}
-          
+          <TabsContent value="notify">
+            <BroadcastNotifications profiles={profiles} />
+          </TabsContent>
+
         </Tabs>
       </div>
     </div>
