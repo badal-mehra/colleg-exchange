@@ -569,6 +569,7 @@ export type Database = {
           body: string | null
           created_at: string | null
           id: string
+          is_read: boolean
           title: string | null
           type: string | null
           url: string | null
@@ -578,6 +579,7 @@ export type Database = {
           body?: string | null
           created_at?: string | null
           id?: string
+          is_read?: boolean
           title?: string | null
           type?: string | null
           url?: string | null
@@ -587,6 +589,7 @@ export type Database = {
           body?: string | null
           created_at?: string | null
           id?: string
+          is_read?: boolean
           title?: string | null
           type?: string | null
           url?: string | null
@@ -1231,6 +1234,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_broadcast_notification: {
+        Args: {
+          p_body: string
+          p_target_user_id?: string
+          p_title: string
+          p_url?: string
+        }
+        Returns: Json
+      }
       award_points: {
         Args: {
           p_action: string
