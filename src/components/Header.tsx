@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import logo from '@/assets/mycampuskart-logo.png';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
+import NotificationBell from '@/components/NotificationBell';
 
 interface Profile {
   full_name: string;
