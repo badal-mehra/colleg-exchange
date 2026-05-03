@@ -302,9 +302,9 @@ const DownloadApp = () => {
       <div className="border-y border-slate-100 bg-white">
         <div className="max-w-6xl mx-auto px-5 py-10 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {[
-            { n: 4200, suf: '+', label: 'LPU Students' },
-            { n: 18400, suf: '+', label: 'Items Sold' },
-            { n: 93, suf: '%', label: 'Sell in <24 hrs' },
+            { n: 500, suf: '+', label: 'LPU Students' },
+            { n: 1000, suf: '+', label: 'Items Sold' },
+            { n: 87, suf: '%', label: 'Sell in <24 hrs' },
             { n: 3800, pre: '₹', label: 'Avg Saved / Sem' },
           ].map(({ n, suf, pre, label }) => (
             <div key={label} className="space-y-1">
