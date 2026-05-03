@@ -38,6 +38,7 @@ import MyReports from "./pages/MyReports";
 import StaticPage from "./pages/StaticPage";
 import PWAProfile from "./pages/PWAProfile";
 import DownloadApp from "./pages/DownloadApp";
+import Notifications from "./pages/Notifications";
 
 // Check if running as PWA
 const isPWA = () => typeof window !== 'undefined' && (
