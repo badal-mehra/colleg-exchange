@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Footer } from '@/components/Footer'; // Import Footer for consistent styling (optional)
 import { getSliderImageUrl, uploadToCloudinary } from "@/utils/cloudinaryUpload"; // 1️⃣ ADDED CLOUDINARY IMPORT
+import { BroadcastNotifications } from "@/components/admin/BroadcastNotifications";
 
 // ------------------- Interfaces (Unchanged) -------------------
 interface Profile {
