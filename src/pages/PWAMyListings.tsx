@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -50,14 +50,9 @@ const PWAMyListings = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'active' | 'sold'>('active');
+  const [busyItemId, setBusyItemId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      fetchMyListings();
-    }
-  }, [user]);
-
-  const fetchMyListings = async () => {
+  const fetchMyListings = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
@@ -78,13 +73,24 @@ const PWAMyListings = () => {
       setItems(data || []);
     }
     setLoading(false);
-  };
+  }, [toast, user]);
+
+  useEffect(() => {
+    fetchMyListings();
+  }, [fetchMyListings]);
 
   const deleteItem = async (itemId: string) => {
+    if (!user) return;
+    const shouldDelete = window.confirm('Delete this listing permanently?');
+    if (!shouldDelete) return;
+
+    setBusyItemId(itemId);
     const { error } = await supabase
       .from('items')
       .delete()
-      .eq('id', itemId);
+      .eq('id', itemId)
+      .eq('seller_id', user.id);
+    setBusyItemId(null);
 
     if (error) {
       toast({
@@ -102,10 +108,15 @@ const PWAMyListings = () => {
   };
 
   const toggleSoldStatus = async (itemId: string, currentStatus: boolean) => {
+    if (!user) return;
+    const nextSold = !currentStatus;
+    setBusyItemId(itemId);
     const { error } = await supabase
       .from('items')
-      .update({ is_sold: !currentStatus })
-      .eq('id', itemId);
+      .update({ is_sold: nextSold, status: nextSold ? 'sold' : 'available' })
+      .eq('id', itemId)
+      .eq('seller_id', user.id);
+    setBusyItemId(null);
 
     if (error) {
       toast({
@@ -116,7 +127,7 @@ const PWAMyListings = () => {
     } else {
       toast({
         title: "Updated",
-        description: `Marked as ${!currentStatus ? 'sold' : 'available'}`,
+        description: `Marked as ${nextSold ? 'sold' : 'available'}`,
       });
       fetchMyListings();
     }
@@ -166,7 +177,7 @@ const PWAMyListings = () => {
             <div className="text-xs text-muted-foreground">Active</div>
           </div>
           <div className="text-center p-3 bg-card rounded-xl border border-border/50">
-            <div className="text-xl font-bold text-green-500">{stats.sold}</div>
+            <div className="text-xl font-bold text-accent">{stats.sold}</div>
             <div className="text-xs text-muted-foreground">Sold</div>
           </div>
           <div className="text-center p-3 bg-card rounded-xl border border-border/50">
@@ -226,7 +237,10 @@ const PWAMyListings = () => {
               )}
             </div>
           ) : (
-            displayedItems.map((item) => (
+            displayedItems.map((item) => {
+              const isBusy = busyItemId === item.id;
+
+              return (
               <div
                 key={item.id}
                 className="flex gap-3 p-3 bg-card rounded-xl border border-border/50 active:scale-[0.98] transition-transform"
@@ -297,7 +311,7 @@ const PWAMyListings = () => {
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toggleSoldStatus(item.id, item.is_sold)}>
+                      <DropdownMenuItem disabled={isBusy} onClick={() => toggleSoldStatus(item.id, item.is_sold)}>
                         {item.is_sold ? (
                           <>
                             <RefreshCw className="h-4 w-4 mr-2" />
@@ -311,6 +325,7 @@ const PWAMyListings = () => {
                         )}
                       </DropdownMenuItem>
                       <DropdownMenuItem 
+                        disabled={isBusy}
                         onClick={() => deleteItem(item.id)}
                         className="text-destructive focus:text-destructive"
                       >
@@ -322,7 +337,8 @@ const PWAMyListings = () => {
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

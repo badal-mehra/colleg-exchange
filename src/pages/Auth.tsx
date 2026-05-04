@@ -39,7 +39,14 @@ const LoadingOverlay = () => (
 );
 
 // 2. Pro Password Input
-const PasswordInput = ({ id, name, placeholder, disabled }: any) => {
+interface PasswordInputProps {
+    id?: string;
+    name?: string;
+    placeholder?: string;
+    disabled?: boolean;
+}
+
+const PasswordInput = ({ id, name, placeholder, disabled }: PasswordInputProps) => {
     const [show, setShow] = useState(false);
     return (
         <div className="relative">
@@ -114,7 +121,7 @@ const Auth = () => {
     setIsLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?flow=oauth` },
     });
     
     if (error) {
