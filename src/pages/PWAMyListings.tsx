@@ -11,7 +11,8 @@ import {
   MoreVertical,
   CheckCircle,
   RefreshCw,
-  ChevronRight
+  ChevronRight,
+  Edit
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -291,6 +292,10 @@ const PWAMyListings = () => {
                       <DropdownMenuItem onClick={() => navigate(`/item/${item.id}`)}>
                         <Eye className="h-4 w-4 mr-2" />
                         View
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate(`/edit-item/${item.id}`)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => toggleSoldStatus(item.id, item.is_sold)}>
                         {item.is_sold ? (

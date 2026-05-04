@@ -385,6 +385,15 @@ const MyListings = () => {
                         </Button>
                         <Button 
                           size="sm" 
+                          variant="outline"
+                          className="flex-1 h-8 text-xs"
+                          onClick={() => navigate(`/edit-item/${item.id}`)}
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                        <Button 
+                          size="sm" 
                           variant={item.is_sold ? "secondary" : "default"}
                           className="flex-1 h-8 text-xs"
                           onClick={() => toggleSoldStatus(item.id, item.is_sold)}

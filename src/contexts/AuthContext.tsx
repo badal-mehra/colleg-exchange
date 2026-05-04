@@ -54,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, university?: string) => {
-    const redirectUrl = `${window.location.origin}/`; //
+    const redirectUrl = `${window.location.origin}/`;
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -65,12 +65,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
+    // Detect "already registered": Supabase returns user with empty identities[] when email confirmation is ON
+    const alreadyRegistered =
+      !error && data?.user && Array.isArray((data.user as any).identities) && (data.user as any).identities.length === 0;
+
     if (error) {
+      const msg = /already|registered|exists/i.test(error.message)
+        ? "Account already exists. Please try logging in instead."
+        : error.message;
       toast({
         title: "Sign Up Error",
-        description: error.message,
+        description: msg,
         variant: "destructive"
       });
+    } else if (alreadyRegistered) {
+      toast({
+        title: "Account already exists",
+        description: "This email is already registered. Please log in instead.",
+        variant: "destructive"
+      });
+      return { data: null, error: { message: "Account already exists" } };
     } else {
       toast({
         title: "Success",
@@ -85,14 +99,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password
-    }); //
+    });
 
     if (error) {
+      const lower = error.message.toLowerCase();
+      let description = error.message;
+      if (lower.includes("invalid login credentials") || lower.includes("invalid_credentials")) {
+        description = "No account found with these credentials. Try creating an account, or check your password.";
+      }
       toast({
         title: "Sign In Error",
-        description: error.message,
+        description,
         variant: "destructive"
-      }); //
+      });
     }
 
     return { error };
