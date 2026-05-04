@@ -11,7 +11,8 @@ import {
   MoreVertical,
   CheckCircle,
   RefreshCw,
-  ChevronRight
+  ChevronRight,
+  Edit
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
