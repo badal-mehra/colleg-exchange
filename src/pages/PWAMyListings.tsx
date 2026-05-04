@@ -50,6 +50,7 @@ const PWAMyListings = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'active' | 'sold'>('active');
+  const [busyItemId, setBusyItemId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -81,10 +82,17 @@ const PWAMyListings = () => {
   };
 
   const deleteItem = async (itemId: string) => {
+    if (!user) return;
+    const shouldDelete = window.confirm('Delete this listing permanently?');
+    if (!shouldDelete) return;
+
+    setBusyItemId(itemId);
     const { error } = await supabase
       .from('items')
       .delete()
-      .eq('id', itemId);
+      .eq('id', itemId)
+      .eq('seller_id', user.id);
+    setBusyItemId(null);
 
     if (error) {
       toast({
@@ -102,10 +110,15 @@ const PWAMyListings = () => {
   };
 
   const toggleSoldStatus = async (itemId: string, currentStatus: boolean) => {
+    if (!user) return;
+    const nextSold = !currentStatus;
+    setBusyItemId(itemId);
     const { error } = await supabase
       .from('items')
-      .update({ is_sold: !currentStatus })
-      .eq('id', itemId);
+      .update({ is_sold: nextSold, status: nextSold ? 'sold' : 'available' })
+      .eq('id', itemId)
+      .eq('seller_id', user.id);
+    setBusyItemId(null);
 
     if (error) {
       toast({
@@ -116,7 +129,7 @@ const PWAMyListings = () => {
     } else {
       toast({
         title: "Updated",
-        description: `Marked as ${!currentStatus ? 'sold' : 'available'}`,
+        description: `Marked as ${nextSold ? 'sold' : 'available'}`,
       });
       fetchMyListings();
     }
