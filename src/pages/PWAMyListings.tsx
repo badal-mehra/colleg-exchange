@@ -293,6 +293,10 @@ const PWAMyListings = () => {
                         <Eye className="h-4 w-4 mr-2" />
                         View
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate(`/edit-item/${item.id}`)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => toggleSoldStatus(item.id, item.is_sold)}>
                         {item.is_sold ? (
                           <>
