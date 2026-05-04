@@ -239,7 +239,10 @@ const PWAMyListings = () => {
               )}
             </div>
           ) : (
-            displayedItems.map((item) => (
+            displayedItems.map((item) => {
+              const isBusy = busyItemId === item.id;
+
+              return (
               <div
                 key={item.id}
                 className="flex gap-3 p-3 bg-card rounded-xl border border-border/50 active:scale-[0.98] transition-transform"
@@ -310,7 +313,7 @@ const PWAMyListings = () => {
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toggleSoldStatus(item.id, item.is_sold)}>
+                      <DropdownMenuItem disabled={isBusy} onClick={() => toggleSoldStatus(item.id, item.is_sold)}>
                         {item.is_sold ? (
                           <>
                             <RefreshCw className="h-4 w-4 mr-2" />
@@ -324,6 +327,7 @@ const PWAMyListings = () => {
                         )}
                       </DropdownMenuItem>
                       <DropdownMenuItem 
+                        disabled={isBusy}
                         onClick={() => deleteItem(item.id)}
                         className="text-destructive focus:text-destructive"
                       >
@@ -335,7 +339,8 @@ const PWAMyListings = () => {
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
