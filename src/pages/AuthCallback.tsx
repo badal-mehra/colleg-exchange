@@ -15,13 +15,24 @@ const AuthCallback = () => {
       return;
     }
 
-    supabase.auth.getSession().then(({ data }) => {
+    const finishSignIn = async () => {
+      if (url.searchParams.has("code")) {
+        const { error } = await supabase.auth.exchangeCodeForSession(url.searchParams.get("code") || "");
+        if (error) {
+          window.location.replace("/auth");
+          return;
+        }
+      }
+
+      const { data } = await supabase.auth.getSession();
       if (data.session) {
         window.location.replace("/dashboard");
       } else {
         window.location.replace("/auth");
       }
-    });
+    };
+
+    finishSignIn();
   }, []);
 
   return <p>Signing you in…</p>;
