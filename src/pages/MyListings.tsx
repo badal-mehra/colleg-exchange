@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -72,13 +72,7 @@ const MyListings = () => {
   const [loading, setLoading] = useState(true);
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      fetchMyListings();
-    }
-  }, [user]);
-
-  const fetchMyListings = async () => {
+  const fetchMyListings = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
@@ -99,7 +93,11 @@ const MyListings = () => {
       setItems(data || []);
     }
     setLoading(false);
-  };
+  }, [toast, user]);
+
+  useEffect(() => {
+    fetchMyListings();
+  }, [fetchMyListings]);
 
   const deleteItem = async (itemId: string) => {
     if (!user) return;
