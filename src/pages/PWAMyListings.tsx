@@ -179,7 +179,7 @@ const PWAMyListings = () => {
             <div className="text-xs text-muted-foreground">Active</div>
           </div>
           <div className="text-center p-3 bg-card rounded-xl border border-border/50">
-            <div className="text-xl font-bold text-green-500">{stats.sold}</div>
+            <div className="text-xl font-bold text-accent">{stats.sold}</div>
             <div className="text-xs text-muted-foreground">Sold</div>
           </div>
           <div className="text-center p-3 bg-card rounded-xl border border-border/50">
