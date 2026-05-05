@@ -20,6 +20,7 @@ import PGListingCard from '@/components/PGListingCard';
 import { getSliderImageUrl } from '@/utils/cloudinaryUpload';
 import SliderSidePanels from '@/components/SliderSidePanels';
 import DailyLoginReward from '@/components/DailyLoginReward';
+import InstallAppPopup from '@/components/InstallAppPopup';
 
 
 // --- INTERFACES (Unchanged) ---
@@ -936,6 +937,7 @@ const Dashboard = () => {
           </>
         )}
       </div>
+      <InstallAppPopup pageKey="dashboard" />
     </div>
   );
 };
