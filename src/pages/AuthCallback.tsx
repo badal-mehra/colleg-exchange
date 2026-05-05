@@ -7,21 +7,21 @@ const AuthCallback = () => {
     const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
     const queryType = url.searchParams.get("type");
     const hashType = hashParams.get("type");
-    const isOAuth = url.searchParams.get("flow") === "oauth" || hashParams.get("provider_token") || hashParams.get("provider_refresh_token");
-    const isRecovery = !isOAuth && (queryType === "recovery" || hashType === "recovery");
-
-    if (isRecovery) {
-      window.location.replace(`/reset-password${url.hash || ""}`);
-      return;
-    }
+    const hasAuthCode = url.searchParams.has("code");
+    const isExplicitRecovery = queryType === "recovery" || hashType === "recovery";
 
     const finishSignIn = async () => {
-      if (url.searchParams.has("code")) {
+      if (hasAuthCode) {
         const { error } = await supabase.auth.exchangeCodeForSession(url.searchParams.get("code") || "");
         if (error) {
           window.location.replace("/auth");
           return;
         }
+      }
+
+      if (isExplicitRecovery) {
+        window.location.replace(`/reset-password${url.hash || ""}`);
+        return;
       }
 
       const { data } = await supabase.auth.getSession();

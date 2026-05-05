@@ -32,10 +32,15 @@ const ResetPassword = () => {
    */
   useEffect(() => {
     const checkSession = async () => {
+      const url = new URL(window.location.href);
+      const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+      const isRecoveryLink = url.searchParams.get("type") === "recovery" || hashParams.get("type") === "recovery";
       const { data: { session } } = await supabase.auth.getSession();
 
-      if (session) {
+      if (session && isRecoveryLink) {
         setIsValidSession(true);
+      } else if (session) {
+        navigate('/dashboard', { replace: true });
       } else {
         toast({
           title: 'Authentication Required',
