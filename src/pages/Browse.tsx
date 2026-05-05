@@ -22,6 +22,7 @@ import { Footer } from '@/components/Footer';
 import logo from '@/assets/mycampuskart-logo.png';
 import { getSliderImageUrl } from '@/utils/cloudinaryUpload';
 import SliderSidePanels from '@/components/SliderSidePanels';
+import InstallAppPopup from '@/components/InstallAppPopup';
 
 // --- INTERFACES ---
 interface MinimalCategory {
@@ -787,6 +788,7 @@ const Browse = () => {
 
       {/* Footer */}
       <Footer />
+      <InstallAppPopup pageKey="browse" />
     </div>
   );
 };
