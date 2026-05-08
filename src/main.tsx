@@ -23,21 +23,17 @@ root.render(
   <React.StrictMode>
     {/* 🔥 CRITICAL FIX 1: BrowserRouter is the root of the routing */}
     <BrowserRouter>
-      {/* 🔥 CRITICAL FIX 2: ALL Providers MUST be here, outside of App.tsx */}
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            
-            {/* App Component (containing ONLY Routes) */}
-            <App /> 
-            
-            {/* Toasters/Notifications */}
-            <Toaster />
-            <Sonner />
-            
-          </TooltipProvider>
-        </AuthProvider>
-      </QueryClientProvider>
+      <HelmetProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <TooltipProvider>
+              <App />
+              <Toaster />
+              <Sonner />
+            </TooltipProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </HelmetProvider>
     </BrowserRouter>
   </React.StrictMode>
 );
