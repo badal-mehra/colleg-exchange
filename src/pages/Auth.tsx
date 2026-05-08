@@ -34,7 +34,7 @@ const LoadingOverlay = () => (
         <div className="bg-white p-4 rounded-full shadow-xl">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
         </div>
-        <p className="mt-4 text-sm font-semibold text-gray-600 animate-pulse">Connecting to campus...</p>
+        <p className="mt-4 text-sm font-semibold text-gray-600 animate-pulse">Connecting to MyCampusKart...</p>
     </div>
 );
 
