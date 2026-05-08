@@ -41,6 +41,17 @@ import DownloadApp from "./pages/DownloadApp";
 import Notifications from "./pages/Notifications";
 import EditItem from "./pages/EditItem";
 
+// Blog & Campus
+import BlogHub from "./pages/blog/BlogHub";
+import BlogPostPage from "./pages/blog/BlogPostPage";
+import BlogTaxonomyPage from "./pages/blog/BlogTaxonomyPage";
+import CampusIndex from "./pages/campus/CampusIndex";
+import CampusPage from "./pages/campus/CampusPage";
+import BlogAdmin from "./pages/admin/blog/BlogAdmin";
+import BlogEditor from "./pages/admin/blog/BlogEditor";
+import { CategoryAdmin, TagAdmin } from "./pages/admin/blog/TaxonomyAdmin";
+import CampusAdmin from "./pages/admin/campus/CampusAdmin";
+
 // Check if running as PWA
 const isPWA = () => typeof window !== 'undefined' && (
   window.matchMedia("(display-mode: standalone)").matches ||
