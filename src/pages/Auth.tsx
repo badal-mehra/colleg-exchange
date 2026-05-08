@@ -224,7 +224,7 @@ const Auth = () => {
             <div className="mx-auto mb-2 bg-white p-2 rounded-full shadow-sm w-fit">
                 <img src={logo} alt="MyCampusKart" className="h-12 w-auto" />
             </div>
-            <CardTitle className="text-xl font-bold text-gray-800">Welcome to Campus</CardTitle>
+            <CardTitle className="text-xl font-bold text-gray-800">Welcome to YourCampusKart</CardTitle>
             
             {/* Ticker */}
             <div className="mt-3 h-8 flex items-center justify-center text-xs text-muted-foreground italic bg-gray-50 rounded-md px-3 transition-all duration-500">
