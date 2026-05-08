@@ -136,6 +136,25 @@ const App = () => (
     <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
     <Route path="/edit-item/:id" element={<ProtectedRoute><EditItem /></ProtectedRoute>} />
 
+    {/** BLOG (public) */}
+    <Route path="/blog" element={<BlogHub />} />
+    <Route path="/blog/category/:slug" element={<BlogTaxonomyPage kind="category" />} />
+    <Route path="/blog/tag/:slug" element={<BlogTaxonomyPage kind="tag" />} />
+    <Route path="/blog/:slug" element={<BlogPostPage />} />
+
+    {/** CAMPUS (public) */}
+    <Route path="/campuses" element={<CampusIndex />} />
+    <Route path="/campus/:slug" element={<CampusPage />} />
+
+    {/** ADMIN BLOG */}
+    <Route path="/admin/blog" element={<ProtectedRoute><BlogAdmin /></ProtectedRoute>} />
+    <Route path="/admin/blog/new" element={<ProtectedRoute><BlogEditor /></ProtectedRoute>} />
+    <Route path="/admin/blog/:id/edit" element={<ProtectedRoute><BlogEditor /></ProtectedRoute>} />
+    <Route path="/admin/blog/categories" element={<ProtectedRoute><CategoryAdmin /></ProtectedRoute>} />
+    <Route path="/admin/blog/tags" element={<ProtectedRoute><TagAdmin /></ProtectedRoute>} />
+    <Route path="/admin/campus" element={<ProtectedRoute><CampusAdmin /></ProtectedRoute>} />
+
+
     {/** NOT FOUND */}
     <Route path="*" element={<NotFound />} />
   </Routes>
