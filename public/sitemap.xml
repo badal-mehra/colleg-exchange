@@ -1,59 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://www.mycampuskart.com/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://www.mycampuskart.com/about</loc><changefreq>monthly</changefreq></url>
+  <url><loc>https://www.mycampuskart.com/terms</loc><changefreq>monthly</changefreq></url>
+  <url><loc>https://www.mycampuskart.com/privacy</loc><changefreq>monthly</changefreq></url>
+  <url><loc>https://www.mycampuskart.com/shipping</loc><changefreq>monthly</changefreq></url>
+  <url><loc>https://www.mycampuskart.com/help</loc><changefreq>monthly</changefreq></url>
+  <url><loc>https://www.mycampuskart.com/report</loc><changefreq>monthly</changefreq></url>
 
-  <!-- ✅ Homepage -->
-  <url>
-    <loc>https://www.mycampuskart.com/</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
+  <url><loc>https://www.mycampuskart.com/blog</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://www.mycampuskart.com/blog/best-calculators-engineering-students</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.mycampuskart.com/blog/hostel-room-essentials-checklist</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.mycampuskart.com/blog/how-students-can-save-money-in-college</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.mycampuskart.com/blog/top-things-seniors-sell-before-graduation</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.mycampuskart.com/blog/best-budget-gadgets-students-2026</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.mycampuskart.com/blog/freshers-hostel-checklist-india</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.mycampuskart.com/blog/safe-ways-buy-second-hand-electronics</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 
-  <!-- ✅ Static Public Pages -->
-  <url>
-    <loc>https://www.mycampuskart.com/about</loc>
-    <changefreq>monthly</changefreq>
-  </url>
+  <url><loc>https://www.mycampuskart.com/campuses</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.mycampuskart.com/campus/lpu</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.mycampuskart.com/campus/iit-delhi</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.mycampuskart.com/campus/chandigarh-university</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 
-  <url>
-    <loc>https://www.mycampuskart.com/terms</loc>
-    <changefreq>monthly</changefreq>
-  </url>
-
-  <url>
-    <loc>https://www.mycampuskart.com/privacy</loc>
-    <changefreq>monthly</changefreq>
-  </url>
-
-  <url>
-    <loc>https://www.mycampuskart.com/shipping</loc>
-    <changefreq>monthly</changefreq>
-  </url>
-
-  <url>
-    <loc>https://www.mycampuskart.com/help</loc>
-    <changefreq>monthly</changefreq>
-  </url>
-
-  <url>
-    <loc>https://www.mycampuskart.com/report</loc>
-    <changefreq>monthly</changefreq>
-  </url>
-
-  <!-- ✅ Dynamic Public Pages (Patterns Only) -->
-  <url>
-    <loc>https://www.mycampuskart.com/item/</loc>
-    <changefreq>daily</changefreq>
-  </url>
-
-  <url>
-    <loc>https://www.mycampuskart.com/profile/</loc>
-    <changefreq>daily</changefreq>
-  </url>
-
-  <url>
-    <loc>https://www.mycampuskart.com/downloadmycampuskartapp</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-
+  <url><loc>https://www.mycampuskart.com/item/</loc><changefreq>daily</changefreq></url>
+  <url><loc>https://www.mycampuskart.com/profile/</loc><changefreq>daily</changefreq></url>
+  <url><loc>https://www.mycampuskart.com/downloadmycampuskartapp</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
 </urlset>

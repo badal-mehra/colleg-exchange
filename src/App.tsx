@@ -41,6 +41,17 @@ import DownloadApp from "./pages/DownloadApp";
 import Notifications from "./pages/Notifications";
 import EditItem from "./pages/EditItem";
 
+// Blog & Campus
+import BlogHub from "./pages/blog/BlogHub";
+import BlogPostPage from "./pages/blog/BlogPostPage";
+import BlogTaxonomyPage from "./pages/blog/BlogTaxonomyPage";
+import CampusIndex from "./pages/campus/CampusIndex";
+import CampusPage from "./pages/campus/CampusPage";
+import BlogAdmin from "./pages/admin/blog/BlogAdmin";
+import BlogEditor from "./pages/admin/blog/BlogEditor";
+import { CategoryAdmin, TagAdmin } from "./pages/admin/blog/TaxonomyAdmin";
+import CampusAdmin from "./pages/admin/campus/CampusAdmin";
+
 // Check if running as PWA
 const isPWA = () => typeof window !== 'undefined' && (
   window.matchMedia("(display-mode: standalone)").matches ||
@@ -124,6 +135,25 @@ const App = () => (
     <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
     <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
     <Route path="/edit-item/:id" element={<ProtectedRoute><EditItem /></ProtectedRoute>} />
+
+    {/** BLOG (public) */}
+    <Route path="/blog" element={<BlogHub />} />
+    <Route path="/blog/category/:slug" element={<BlogTaxonomyPage kind="category" />} />
+    <Route path="/blog/tag/:slug" element={<BlogTaxonomyPage kind="tag" />} />
+    <Route path="/blog/:slug" element={<BlogPostPage />} />
+
+    {/** CAMPUS (public) */}
+    <Route path="/campuses" element={<CampusIndex />} />
+    <Route path="/campus/:slug" element={<CampusPage />} />
+
+    {/** ADMIN BLOG */}
+    <Route path="/admin/blog" element={<ProtectedRoute><BlogAdmin /></ProtectedRoute>} />
+    <Route path="/admin/blog/new" element={<ProtectedRoute><BlogEditor /></ProtectedRoute>} />
+    <Route path="/admin/blog/:id/edit" element={<ProtectedRoute><BlogEditor /></ProtectedRoute>} />
+    <Route path="/admin/blog/categories" element={<ProtectedRoute><CategoryAdmin /></ProtectedRoute>} />
+    <Route path="/admin/blog/tags" element={<ProtectedRoute><TagAdmin /></ProtectedRoute>} />
+    <Route path="/admin/campus" element={<ProtectedRoute><CampusAdmin /></ProtectedRoute>} />
+
 
     {/** NOT FOUND */}
     <Route path="*" element={<NotFound />} />
