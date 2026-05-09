@@ -7,7 +7,7 @@ import logo from '@/assets/mycampuskart-logo.png';
 interface StaticPage {
   id: string;
   title: string;
-  slug: string; // e.g., 'terms', 'privacy', 'about'
+  slug: string; 
   content: string;
   version: string;
   link_url?: string | null;
@@ -46,7 +46,7 @@ export const Footer = () => {
     copyright: []
   });
 
-  // Define the hardcoded Home Link object
+  // 1. Hardcoded Home Link
   const homeLink: (StaticPage & { value: string }) = {
     id: 'home-link-hardcoded',
     title: 'Home',
@@ -59,8 +59,8 @@ export const Footer = () => {
     value: 'Home'
   };
 
-  // Define the hardcoded Download App Link object
-  const downloadApp: (StaticPage & { value: string }) = {
+  // 2. Hardcoded Download App Link (THIS IS THE FIX)
+  const downloadAppLink: (StaticPage & { value: string }) = {
     id: 'download-app-hardcoded',
     title: 'Download App',
     slug: 'download-app',
@@ -72,33 +72,33 @@ export const Footer = () => {
     value: 'Download App'
   };
 
-  // Define the hardcoded Blog Link object
+  // 3. Hardcoded Blog Link
   const blogLink: (StaticPage & { value: string }) = {
     id: 'blog-link-hardcoded',
     title: 'Blog',
     slug: 'blog',
     content: '',
     version: '1',
-    link_url: '/blog', // Relative path for React Router
+    link_url: '/blog',
     is_active: true,
     created_at: new Date().toISOString(),
     value: 'Blog'
   };
 
-  // Define the hardcoded LPU Link object
+  // 4. Hardcoded LPU Link
   const lpuLink: (StaticPage & { value: string }) = {
     id: 'lpu-link-hardcoded',
     title: 'LPU Campus',
     slug: 'lpu-campus',
     content: '',
     version: '1',
-    link_url: '/campus/lpu', // Relative path for React Router
+    link_url: '/campus/lpu', 
     is_active: true,
     created_at: new Date().toISOString(),
     value: 'LPU Campus'
   };
 
-  // Helper function for setting data to avoid repetition
+  // Helper function for setting data
   const setFooterData = (data: typeof staticData) => {
       setStaticData(data);
   };
@@ -108,7 +108,6 @@ export const Footer = () => {
   }, []);
 
   const fetchFooterSettings = async () => {
-    // 1. Fetch all active Static Pages (latest version first)
     const { data: pageData, error: pageError } = await supabase
         .from('static_pages')
         .select('*')
@@ -118,10 +117,10 @@ export const Footer = () => {
 
     if (pageError) {
         console.error("Error fetching static pages:", pageError);
-        // Include hardcoded links on error
+        // Include hardcoded links on error so they always show
         setFooterData({
             aboutContent: [],
-            quickLinks: [homeLink, downloadApp], // Added Download App here
+            quickLinks: [homeLink, downloadAppLink], // Ensures Download app shows even if DB fails
             exploreLinks: [blogLink, lpuLink], 
             supportLinks: [],
             contactLinks: [],
@@ -132,7 +131,7 @@ export const Footer = () => {
 
     const pages = pageData || [];
     
-    // Ensure only unique (latest) active slugs are processed
+    // Process unique pages
     const uniquePagesMap = new Map<string, StaticPage>();
     for (const page of pages) {
         if (!uniquePagesMap.has(page.slug)) {
@@ -141,7 +140,7 @@ export const Footer = () => {
     }
     const uniquePages = Array.from(uniquePagesMap.values());
     
-    // Quick Links: Generate links for Terms, Privacy, About, Shipping
+    // Generate links for DB pages
     const fetchedQuickLinks = uniquePages
         .filter(p => ['terms', 'privacy', 'about', 'shipping'].includes(p.slug))
         .map(current => ({
@@ -150,34 +149,25 @@ export const Footer = () => {
             value: current.title || current.slug.replace('-', ' ') 
         }));
 
-    // Quick Links now has Home + Download App + CMS pages
-    const finalQuickLinks = [homeLink, downloadApp, ...fetchedQuickLinks];
+    // MERGE: Combine hardcoded Home + Download App + DB Quick Links
+    const finalQuickLinks = [homeLink, downloadAppLink, ...fetchedQuickLinks];
     
-    // Explore Links
+    // Explore Links section
     const finalExploreLinks = [blogLink, lpuLink];
 
     const groupedData = {
-        // About Content
         aboutContent: uniquePages.filter(p => p.slug === 'about').slice(0, 1) as StaticPage[],
-
-        quickLinks: finalQuickLinks, 
-        
+        quickLinks: finalQuickLinks, // State populated here!
         exploreLinks: finalExploreLinks, 
-
-        // Support Links
         supportLinks: [
             { key: 'help', value: 'Help Center', link_url: '/help' },
             { key: 'report', value: 'Report an Issue', link_url: 'https://forms.gle/NyAipeYYQDobkydr9' },
         ] as CustomLink[],
-
-        // Contact Links
         contactLinks: [
             { key: 'linkedin', value: 'MyCampusKart', link_url: 'https://www.linkedin.com/company/mycampuskart' },
             { key: 'instagram', value: '@mycampuskart', link_url: 'https://instagram.com/mycampuskart' },
             { key: 'email', value: 'teammycampuskart@gmail.com', link_url: 'mailto:teammycampuskart.com' },
         ] as CustomLink[],
-
-        // Copyright Content
         copyright: uniquePages.filter(p => p.slug === 'copyright').slice(0, 1) as StaticPage[],
     };
     
@@ -389,4 +379,3 @@ export const Footer = () => {
     </footer>
   );
 };
-```</Link>
