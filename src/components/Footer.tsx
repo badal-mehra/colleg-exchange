@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
-import { Linkedin, Instagram, Mail, Home } from 'lucide-react'; // Import Home icon
+import { Linkedin, Instagram, Mail, Home } from 'lucide-react';
 import logo from '@/assets/mycampuskart-logo.png';
 
 interface StaticPage {
@@ -33,12 +33,14 @@ export const Footer = () => {
   const [staticData, setStaticData] = useState<{
     aboutContent: StaticPage[];
     quickLinks: (StaticPage & { value: string })[];
+    exploreLinks: (StaticPage & { value: string })[]; // Added new section state
     supportLinks: CustomLink[];
     contactLinks: CustomLink[];
     copyright: StaticPage[];
   }>({
     aboutContent: [],
     quickLinks: [],
+    exploreLinks: [],
     supportLinks: [],
     contactLinks: [],
     copyright: []
@@ -106,7 +108,8 @@ export const Footer = () => {
         // Include hardcoded links on error
         setFooterData({
             aboutContent: [],
-            quickLinks: [homeLink, blogLink, lpuLink], 
+            quickLinks: [homeLink], 
+            exploreLinks: [blogLink, lpuLink], // Error fallback for new section
             supportLinks: [],
             contactLinks: [],
             copyright: [],
@@ -134,14 +137,19 @@ export const Footer = () => {
             value: current.title || current.slug.replace('-', ' ') 
         }));
 
-    // Combine hardcoded links with fetched links
-    const finalQuickLinks = [homeLink, blogLink, lpuLink, ...fetchedQuickLinks];
+    // Quick Links now only has Home + CMS pages
+    const finalQuickLinks = [homeLink, ...fetchedQuickLinks];
+    
+    // Explore Links (The new separate section)
+    const finalExploreLinks = [blogLink, lpuLink];
 
     const groupedData = {
         // About Content
         aboutContent: uniquePages.filter(p => p.slug === 'about').slice(0, 1) as StaticPage[],
 
         quickLinks: finalQuickLinks, 
+        
+        exploreLinks: finalExploreLinks, // New section data
 
         // Support Links
         supportLinks: [
@@ -188,8 +196,8 @@ export const Footer = () => {
           />
         </div>
         
-        {/* Main Footer Content */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+        {/* Main Footer Content - UPDATED to grid-cols-5 for the extra section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-8">
           {/* About Column */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">About MyCampusKart</h3>
@@ -242,6 +250,46 @@ export const Footer = () => {
                 })
               ) : (
                 <li><span className="text-sm text-muted-foreground">No Quick Links configured.</span></li>
+              )}
+            </ul>
+          </div>
+
+          {/* NEW: Explore Column (For Blog and LPU) */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-foreground">Explore</h3>
+            <ul className="space-y-2">
+              {staticData.exploreLinks.length > 0 ? (
+                staticData.exploreLinks.map((item) => {
+                  const linkKey = item.id || item.slug;
+                  const external = isExternal(item.link_url); 
+                  return (
+                    <li key={linkKey}>
+                      {item.link_url ? (
+                        external ? ( 
+                          <a
+                            href={item.link_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            {item.value}
+                          </a>
+                        ) : ( 
+                          <Link
+                            to={item.link_url}
+                            className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            {item.value}
+                          </Link>
+                        )
+                      ) : (
+                        <span className="text-sm text-muted-foreground">{item.value}</span>
+                      )}
+                  </li>
+                  );
+                })
+              ) : (
+                <li><span className="text-sm text-muted-foreground">Nothing to explore right now.</span></li>
               )}
             </ul>
           </div>
