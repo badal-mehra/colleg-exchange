@@ -33,7 +33,7 @@ export const Footer = () => {
   const [staticData, setStaticData] = useState<{
     aboutContent: StaticPage[];
     quickLinks: (StaticPage & { value: string })[];
-    exploreLinks: (StaticPage & { value: string })[]; // Added new section state
+    exploreLinks: (StaticPage & { value: string })[]; 
     supportLinks: CustomLink[];
     contactLinks: CustomLink[];
     copyright: StaticPage[];
@@ -57,6 +57,19 @@ export const Footer = () => {
     is_active: true,
     created_at: new Date().toISOString(),
     value: 'Home'
+  };
+
+  // Define the hardcoded Download App Link object
+  const downloadApp: (StaticPage & { value: string }) = {
+    id: 'download-app-hardcoded',
+    title: 'Download App',
+    slug: 'download-app',
+    content: '',
+    version: '1',
+    link_url: 'https://mycampuskart.com/downloadmycampuskartapp', // External link
+    is_active: true,
+    created_at: new Date().toISOString(),
+    value: 'Download App'
   };
 
   // Define the hardcoded Blog Link object
@@ -108,8 +121,8 @@ export const Footer = () => {
         // Include hardcoded links on error
         setFooterData({
             aboutContent: [],
-            quickLinks: [homeLink], 
-            exploreLinks: [blogLink, lpuLink], // Error fallback for new section
+            quickLinks: [homeLink, downloadApp], // Added Download App here
+            exploreLinks: [blogLink, lpuLink], 
             supportLinks: [],
             contactLinks: [],
             copyright: [],
@@ -137,10 +150,10 @@ export const Footer = () => {
             value: current.title || current.slug.replace('-', ' ') 
         }));
 
-    // Quick Links now only has Home + CMS pages
-    const finalQuickLinks = [homeLink, ...fetchedQuickLinks];
+    // Quick Links now has Home + Download App + CMS pages
+    const finalQuickLinks = [homeLink, downloadApp, ...fetchedQuickLinks];
     
-    // Explore Links (The new separate section)
+    // Explore Links
     const finalExploreLinks = [blogLink, lpuLink];
 
     const groupedData = {
@@ -149,7 +162,7 @@ export const Footer = () => {
 
         quickLinks: finalQuickLinks, 
         
-        exploreLinks: finalExploreLinks, // New section data
+        exploreLinks: finalExploreLinks, 
 
         // Support Links
         supportLinks: [
@@ -196,7 +209,7 @@ export const Footer = () => {
           />
         </div>
         
-        {/* Main Footer Content - UPDATED to grid-cols-5 for the extra section */}
+        {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-8">
           {/* About Column */}
           <div className="space-y-4">
@@ -254,7 +267,7 @@ export const Footer = () => {
             </ul>
           </div>
 
-          {/* NEW: Explore Column (For Blog and LPU) */}
+          {/* Explore Column */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Explore</h3>
             <ul className="space-y-2">
@@ -376,3 +389,4 @@ export const Footer = () => {
     </footer>
   );
 };
+```</Link>
