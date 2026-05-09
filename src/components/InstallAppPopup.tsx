@@ -71,7 +71,12 @@ const InstallAppPopup: React.FC<InstallAppPopupProps> = ({ pageKey = "global", d
         <DialogHeader>
           <div className="flex justify-center mb-3">
             <div className="relative">
-              <img src={logo} alt="MyCampusKart" className="h-16 w-16 rounded-2xl shadow-lg" />
+              {/* FIXED LOGO HERE: Handles Next.js (.src) or Vite (string) + added object-cover */}
+              <img 
+                src={typeof logo === 'string' ? logo : (logo as any)?.src} 
+                alt="MyCampusKart" 
+                className="h-16 w-16 rounded-2xl shadow-lg object-cover" 
+              />
               <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground rounded-full p-1.5 shadow-md">
                 <Smartphone className="h-3.5 w-3.5" />
               </div>
