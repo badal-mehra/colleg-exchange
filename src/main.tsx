@@ -11,6 +11,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { HelmetProvider } from "react-helmet-async";
 
 const container = document.getElementById("root");
 const root = createRoot(container!);
@@ -22,21 +23,17 @@ root.render(
   <React.StrictMode>
     {/* 🔥 CRITICAL FIX 1: BrowserRouter is the root of the routing */}
     <BrowserRouter>
-      {/* 🔥 CRITICAL FIX 2: ALL Providers MUST be here, outside of App.tsx */}
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            
-            {/* App Component (containing ONLY Routes) */}
-            <App /> 
-            
-            {/* Toasters/Notifications */}
-            <Toaster />
-            <Sonner />
-            
-          </TooltipProvider>
-        </AuthProvider>
-      </QueryClientProvider>
+      <HelmetProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <TooltipProvider>
+              <App />
+              <Toaster />
+              <Sonner />
+            </TooltipProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </HelmetProvider>
     </BrowserRouter>
   </React.StrictMode>
 );

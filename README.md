@@ -1,2 +1,1 @@
-Founder -> Badal Mehra
- 
+<h1>MyCampusKart</h1>

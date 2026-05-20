@@ -406,45 +406,50 @@ export default function MyOrders() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-6">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-3xl font-bold tracking-tight">Your Transactions</h1>
+    <div className="min-h-screen bg-background pb-20">
+      <div className="max-w-6xl mx-auto">
+        {/* Header - Native PWA Style */}
+        <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur-md border-b border-border/50 safe-area-top">
+          <div className="flex items-center h-14 px-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-9 w-9 rounded-full hover:bg-muted/80 active:scale-95 transition-all">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-lg font-semibold ml-2">My Orders</h1>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="px-4 py-4 space-y-6">
+          {/* Tabs */}
+          <Tabs defaultValue="sales" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 h-11 p-1 bg-muted/70 rounded-xl">
+              <TabsTrigger 
+                  value="sales" 
+                  className="text-sm font-medium rounded-lg data-[state=active]:shadow-sm"
+              >
+                <Package className="mr-2 h-4 w-4" />
+                Sales ({sellerOrders.length})
+              </TabsTrigger>
+              <TabsTrigger 
+                  value="purchases" 
+                  className="text-sm font-medium rounded-lg data-[state=active]:shadow-sm"
+              >
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Purchases ({buyerOrders.length})
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Sales Tab Content */}
+            <TabsContent value="sales" className="space-y-4 mt-4">
+              {salesContent}
+            </TabsContent>
+
+            {/* Purchases Tab Content */}
+            <TabsContent value="purchases" className="space-y-4 mt-4">
+              {purchasesContent}
+            </TabsContent>
+          </Tabs>
         </div>
-
-        {/* Tabs */}
-        <Tabs defaultValue="sales" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 h-12 rounded-lg bg-muted p-1">
-            <TabsTrigger 
-                value="sales" 
-                className="transition-all duration-300 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md"
-            >
-              <Package className="mr-2 h-4 w-4" />
-              Sales <span className="ml-2 font-mono text-sm">({sellerOrders.length})</span>
-            </TabsTrigger>
-            <TabsTrigger 
-                value="purchases" 
-                className="transition-all duration-300 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md"
-            >
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Purchases <span className="ml-2 font-mono text-sm">({buyerOrders.length})</span>
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Sales Tab Content */}
-          <TabsContent value="sales" className="space-y-4 mt-6">
-            {salesContent}
-          </TabsContent>
-
-          {/* Purchases Tab Content */}
-          <TabsContent value="purchases" className="space-y-4 mt-6">
-            {purchasesContent}
-          </TabsContent>
-        </Tabs>
       </div>
     </div>
   );

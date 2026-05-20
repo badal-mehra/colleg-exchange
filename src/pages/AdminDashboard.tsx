@@ -7,13 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, Users, ShoppingBag, CheckCircle, XCircle, UserPlus, Trash2, Eye, AlertTriangle, Filter, BookOpen, Settings } from 'lucide-react';
+import { Shield, Users, ShoppingBag, CheckCircle, XCircle, UserPlus, Trash2, Eye, AlertTriangle, Filter, BookOpen, Settings, Bell, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Footer } from '@/components/Footer'; // Import Footer for consistent styling (optional)
-import { uploadToCloudinary } from "@/utils/cloudinaryUpload"; // 1️⃣ ADDED CLOUDINARY IMPORT
+import { getSliderImageUrl, uploadToCloudinary } from "@/utils/cloudinaryUpload"; // 1️⃣ ADDED CLOUDINARY IMPORT
+import { BroadcastNotifications } from "@/components/admin/BroadcastNotifications";
 
 // ------------------- Interfaces (Unchanged) -------------------
 interface Profile {
@@ -34,6 +35,40 @@ interface Item {
   seller_id: string;
   is_sold: boolean;
   created_at: string;
+}
+
+function validateSliderImageRatio(file: File): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const ratio = img.width / img.height;
+      resolve(ratio >= 1.6 && ratio <= 2.0);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(false);
+    };
+
+    img.src = url;
+  });
+}
+
+function validateSliderImageUrl(url: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image();
+
+    img.onload = () => {
+      const ratio = img.naturalWidth / img.naturalHeight;
+      resolve(ratio >= 1.6 && ratio <= 2.0);
+    };
+
+    img.onerror = () => resolve(false);
+    img.src = url;
+  });
 }
 
 // NEW INTERFACE for consolidated static pages
@@ -166,9 +201,14 @@ const AdminDashboard = () => {
   };
 
   const handleVerificationUpdate = async (profileId: string, newStatus: string) => {
+    // When approving, also set is_verified to true
+    const updateData = newStatus === 'approved' 
+      ? { verification_status: newStatus, is_verified: true }
+      : { verification_status: newStatus, is_verified: false };
+
     const { error } = await supabase
       .from('profiles')
-      .update({ verification_status: newStatus })
+      .update(updateData)
       .eq('id', profileId);
 
     if (error) {
@@ -480,7 +520,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7"> {/* FIX: Grid reduced from 8 to 7 columns */}
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="users">
               <Users className="h-4 w-4 mr-2" />
               Users & KYC
@@ -493,9 +533,12 @@ const AdminDashboard = () => {
               <AlertTriangle className="h-4 w-4 mr-2" />
               Reports
             </TabsTrigger>
+            <TabsTrigger value="notify">
+              <Bell className="h-4 w-4 mr-2" />
+              Notify
+            </TabsTrigger>
             <TabsTrigger value="slider">Images</TabsTrigger>
             <TabsTrigger value="universities">Universities</TabsTrigger>
-            {/* FIX: Combined Terms and Footer Management into Content */}
             <TabsTrigger value="content">
                 <BookOpen className="h-4 w-4 mr-2" /> 
                 Content (CMS)
@@ -504,7 +547,6 @@ const AdminDashboard = () => {
               <Shield className="h-4 w-4 mr-2" />
               Admins
             </TabsTrigger>
-            {/* OLD: TabsTrigger value="footer" REMOVED */}
           </TabsList>
 
           <TabsContent value="users">
@@ -512,10 +554,11 @@ const AdminDashboard = () => {
             <Card>
               <CardHeader>
                 <CardTitle>User Management & KYC Verification</CardTitle>
+                <p className="text-sm text-muted-foreground">Showing only users who have uploaded verification documents</p>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {profiles.map((profile) => (
+                  {profiles.filter(p => p.verification_document_url).map((profile) => (
                     <div key={profile.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
@@ -861,6 +904,17 @@ const AdminDashboard = () => {
                                 return;
                               }
 
+                              const isValidRatio = await validateSliderImageRatio(file);
+                              if (!isValidRatio) {
+                                toast({
+                                  title: "Wrong image ratio",
+                                  description: "Slider images must be 16:9 landscape (e.g. 1280×720, 1920×1080). Please crop and re-upload.",
+                                  variant: "destructive",
+                                });
+                                e.target.value = '';
+                                return;
+                              }
+
                               setImageFile(file);
                             }}
                             className="flex-1"
@@ -874,6 +928,9 @@ const AdminDashboard = () => {
                             </Button>
                           )}
                         </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          ⚠️ Only 16:9 landscape images accepted (e.g. 1280×720, 1920×1080)
+                        </p>
                         {imageFile && (
                           <p className="text-sm text-muted-foreground">
                             Selected: {imageFile.name}
@@ -939,6 +996,16 @@ const AdminDashboard = () => {
                             // 🔥 Upload file to Cloudinary (REPLACED SUPABASE LOGIC)
                             if (imageFile) {
                               imageUrl = await uploadToCloudinary(imageFile, "slider");
+                            } else {
+                              const isValidRatio = await validateSliderImageUrl(imageUrl);
+                              if (!isValidRatio) {
+                                toast({
+                                  title: "Wrong image ratio",
+                                  description: "Slider images must be 16:9 landscape (e.g. 1280×720, 1920×1080). Please crop and re-upload.",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
                             }
 
                             console.log('Inserting into database with URL:', imageUrl);
@@ -990,12 +1057,14 @@ const AdminDashboard = () => {
                   <div className="space-y-4">
                     <h3 className="font-medium">Existing Slider Images</h3>
                     {sliderImages.map((image) => (
-                      <div key={image.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                        <img
-                          src={image.image_url}
-                          alt={image.title}
-                          className="w-24 h-16 object-cover rounded"
-                        />
+                      <div key={image.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 border rounded-lg">
+                        <div className="aspect-video w-full sm:w-48 overflow-hidden rounded-xl bg-muted flex-shrink-0">
+                          <img
+                            src={getSliderImageUrl(image.image_url)}
+                            alt={image.title || 'Slider image'}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
                         <div className="flex-1">
                           <h4 className="font-medium">{image.title || 'No title'}</h4>
                           <p className="text-sm text-muted-foreground">{image.description || 'No description'}</p>
@@ -1235,8 +1304,10 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
           
-          {/* OLD: TabsContent value="footer" REMOVED */}
-          
+          <TabsContent value="notify">
+            <BroadcastNotifications profiles={profiles} />
+          </TabsContent>
+
         </Tabs>
       </div>
     </div>

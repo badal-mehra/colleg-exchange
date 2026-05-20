@@ -1,9 +1,9 @@
-// ✅ FIXED INDEX: No redirect, real homepage
-import Home from "./Home";
+// Index - Public browse page (like OLX/Amazon)
+// Users can browse listings without login, but need auth for interactions
+import Browse from "./Browse";
 
 const Index = () => {
-  return <Home />;
+  return <Browse />;
 };
 
 export default Index;
-
