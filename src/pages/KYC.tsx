@@ -141,15 +141,18 @@ const KYC = () => {
     setSubmitting(true);
 
     try {
-      let documentPath: string | null = profile?.verification_document_url ?? null;
+      let verification_document_url = profile?.verification_document_url;
 
-      // Upload document to PRIVATE kyc-documents bucket if new file is selected
+      // Upload document if new file is selected
       if (formData.verification_document) {
         const fileExt = formData.verification_document.name.split('.').pop();
         const fileName = `${user.id}/verification-${Date.now()}.${fileExt}`;
-
+        
+        // Remove old file if exists (optional cleanup, good for storage)
+        // logic omitted to keep it simple, just uploading new one
+        
         const { error: uploadError } = await supabase.storage
-          .from('kyc-documents')
+          .from('avatars')
           .upload(fileName, formData.verification_document, {
             upsert: true,
           });
@@ -158,19 +161,26 @@ const KYC = () => {
           throw new Error(`Upload failed: ${uploadError.message}`);
         }
 
-        // Store the storage path (not a public URL). Admins fetch via signed URL.
-        documentPath = fileName;
+        const { data: urlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+        
+        verification_document_url = urlData.publicUrl;
       }
 
-      // Use the secure RPC so sensitive fields (verification_status, document URL)
-      // are written server-side, bypassing the privilege-escalation trigger.
-      const { error } = await supabase.rpc('submit_kyc', {
-        p_full_name: formData.full_name,
-        p_phone: formData.phone,
-        p_college_name: formData.college_name,
-        p_student_id: formData.student_id,
-        p_document_path: documentPath,
-      });
+      const updateData = {
+        full_name: formData.full_name,
+        phone: formData.phone,
+        college_name: formData.college_name,
+        student_id: formData.student_id,
+        verification_document_url,
+        verification_status: 'pending'
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('user_id', user.id);
 
       if (error) {
         throw error;

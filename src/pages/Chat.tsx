@@ -119,7 +119,7 @@ const Chat = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const previousScrollHeightRef = useRef(0); 
   const channelsRef = useRef<any[]>([]);
 

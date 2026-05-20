@@ -26,7 +26,6 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Tooltip is now unused
 import { Footer } from '@/components/Footer';
-import InstallAppPopup from '@/components/InstallAppPopup';
 
 interface Category {
   id: string;
@@ -314,7 +313,6 @@ const Home = () => {
 
       {/* Footer */}
       <Footer />
-      <InstallAppPopup pageKey="home" />
     </div>
   );
 };

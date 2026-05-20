@@ -38,27 +38,14 @@ interface Item {
   images: string[];
 }
 
-interface PGListing {
-  id: string;
-  property_type: string;
-  area_locality: string;
-  rent_per_month: number;
-  images: string[];
-}
-
-interface UnifiedConversation {
+interface Conversation {
   id: string;
   buyer_id: string;
   seller_id: string;
-  item_id?: string;
-  pg_listing_id?: string;
+  item_id: string;
   created_at: string;
   updated_at: string;
-  type: 'item' | 'pg';
-  // Unified display fields
-  title: string;
-  price: number;
-  images: string[];
+  items: Item;
   buyer_profile: Profile;
   seller_profile: Profile;
   last_message?: {
@@ -103,7 +90,7 @@ const MyChats = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [conversations, setConversations] = useState<UnifiedConversation[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set()); 
   
@@ -122,18 +109,18 @@ const MyChats = () => {
     return `${Math.floor(diffInMinutes / 1440)}d`;
   };
 
-  const getOtherUser = useCallback((conversation: UnifiedConversation): Profile => {
+  const getOtherUser = useCallback((conversation: Conversation): Profile => {
     if (conversation.buyer_id === user?.id) {
       return conversation.seller_profile;
     }
     return conversation.buyer_profile;
   }, [user]);
 
-  const getOtherUserId = useCallback((conversation: UnifiedConversation): string => {
+  const getOtherUserId = useCallback((conversation: Conversation): string => {
     return conversation.buyer_id === user?.id ? conversation.seller_id : conversation.buyer_id;
   }, [user]);
   
-  // Optimized Fetch Conversations logic
+  // Optimized Fetch Conversations logic (Dependencies are stable: user and toast)
   const fetchConversations = useCallback(async () => {
     if (!user) {
         setConversations([]);
@@ -144,54 +131,39 @@ const MyChats = () => {
     setLoading(true);
     
     try {
-      // 1. Fetch BOTH item conversations and PG conversations in parallel
-      const [itemConvsResult, pgConvsResult] = await Promise.all([
-        supabase
-          .from('conversations')
-          .select(`id, buyer_id, seller_id, item_id, created_at, updated_at, items (id, title, price, images)`)
-          .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-          .order('updated_at', { ascending: false }),
-        supabase
-          .from('pg_conversations')
-          .select(`id, buyer_id, seller_id, pg_listing_id, created_at, updated_at, pg_listings (id, property_type, area_locality, rent_per_month, images)`)
-          .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-          .order('updated_at', { ascending: false })
-      ]);
+      // 1. Fetch conversations and item details
+      const { data: conversationsData, error: convError } = await supabase
+        .from('conversations')
+        .select(`
+          id, buyer_id, seller_id, item_id, created_at, updated_at,
+          items (id, title, price, images)
+        `)
+        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+        .order('updated_at', { ascending: false });
 
-      const itemConvs = itemConvsResult.data || [];
-      const pgConvs = pgConvsResult.data || [];
-
-      if (itemConvs.length === 0 && pgConvs.length === 0) {
+      if (convError || !conversationsData || conversationsData.length === 0) {
         setConversations([]);
         setLoading(false);
         return;
       }
       
-      // Collect all user IDs and conversation IDs
-      const allUserIds = new Set<string>();
-      const allConversationIds: string[] = [];
+      const allUserIds = new Set(
+          conversationsData.flatMap(c => [c.buyer_id, c.seller_id])
+      );
+      const conversationIds = conversationsData.map(c => c.id);
 
-      itemConvs.forEach(c => {
-        allUserIds.add(c.buyer_id);
-        allUserIds.add(c.seller_id);
-        allConversationIds.push(c.id);
-      });
-      pgConvs.forEach(c => {
-        allUserIds.add(c.buyer_id);
-        allUserIds.add(c.seller_id);
-        allConversationIds.push(c.id);
-      });
-
-      // 2. BATCH FETCH PROFILES
+      // 2. BATCH FETCH PROFILES: Fetch all related profiles in a single query
       const { data: profilesData } = await supabase
         .from('profiles')
         .select('user_id, full_name, is_verified, verification_status, avatar_url')
         .in('user_id', Array.from(allUserIds));
       
-      const profileMap = new Map((profilesData || []).map(p => [p.user_id, p]));
+      const profileMap = new Map(
+          (profilesData || []).map(p => [p.user_id, p])
+      );
 
-      // 3. BATCH FETCH LAST MESSAGE & UNREAD COUNT for all conversations
-      const lastMessagePromises = allConversationIds.map(id => 
+      // 3. BATCH FETCH LAST MESSAGE & UNREAD COUNT
+      const lastMessagePromises = conversationIds.map(id => 
         supabase
             .from('messages')
             .select('content, created_at, sender_id')
@@ -201,8 +173,11 @@ const MyChats = () => {
             .maybeSingle()
       );
 
-      const unreadCountPromises = allConversationIds.map(id => 
-        supabase.rpc('get_unread_count', { conv_id: id, uid: user.id })
+      const unreadCountPromises = conversationIds.map(id => 
+        supabase.rpc('get_unread_count', {
+            conv_id: id,
+            uid: user.id
+        })
       );
       
       const [lastMessagesResults, unreadCountsResults] = await Promise.all([
@@ -210,64 +185,25 @@ const MyChats = () => {
           Promise.all(unreadCountPromises)
       ]);
 
-      // Build a map of conversation id -> { lastMessage, unreadCount }
-      const messageDataMap = new Map<string, { lastMessage: any; unreadCount: number }>();
-      allConversationIds.forEach((id, index) => {
-        messageDataMap.set(id, {
-          lastMessage: lastMessagesResults[index].data,
-          unreadCount: (unreadCountsResults[index].data as number) || 0
-        });
-      });
 
-      // 4. Transform item conversations
-      const itemConversations: UnifiedConversation[] = itemConvs.map(conv => {
-        const item = conv.items as unknown as Item;
-        const msgData = messageDataMap.get(conv.id);
+      // 4. Combine all data
+      const conversationsWithData: Conversation[] = conversationsData.map((conversation, index) => {
+        const buyerProfile = profileMap.get(conversation.buyer_id) || { user_id: conversation.buyer_id, full_name: 'Unknown User' };
+        const sellerProfile = profileMap.get(conversation.seller_id) || { user_id: conversation.seller_id, full_name: 'Unknown User' };
+        const lastMessage = lastMessagesResults[index].data;
+        const unreadCount = unreadCountsResults[index].data as number || 0; 
+
         return {
-          id: conv.id,
-          buyer_id: conv.buyer_id,
-          seller_id: conv.seller_id,
-          item_id: conv.item_id,
-          created_at: conv.created_at,
-          updated_at: conv.updated_at,
-          type: 'item' as const,
-          title: item?.title || 'Item',
-          price: item?.price || 0,
-          images: item?.images || [],
-          buyer_profile: (profileMap.get(conv.buyer_id) || { user_id: conv.buyer_id, full_name: 'Unknown User' }) as Profile,
-          seller_profile: (profileMap.get(conv.seller_id) || { user_id: conv.seller_id, full_name: 'Unknown User' }) as Profile,
-          last_message: msgData?.lastMessage || undefined,
-          unread_count: msgData?.unreadCount || 0
-        };
+          ...conversation,
+          items: conversation.items as Item, 
+          buyer_profile: buyerProfile as Profile,
+          seller_profile: sellerProfile as Profile,
+          last_message: lastMessage || undefined,
+          unread_count: unreadCount
+        } as Conversation;
       });
-
-      // 5. Transform PG conversations
-      const pgConversations: UnifiedConversation[] = pgConvs.map(conv => {
-        const pg = conv.pg_listings as unknown as PGListing;
-        const msgData = messageDataMap.get(conv.id);
-        return {
-          id: conv.id,
-          buyer_id: conv.buyer_id,
-          seller_id: conv.seller_id,
-          pg_listing_id: conv.pg_listing_id,
-          created_at: conv.created_at,
-          updated_at: conv.updated_at,
-          type: 'pg' as const,
-          title: pg ? `${pg.property_type} - ${pg.area_locality}` : 'PG Listing',
-          price: pg?.rent_per_month || 0,
-          images: pg?.images || [],
-          buyer_profile: (profileMap.get(conv.buyer_id) || { user_id: conv.buyer_id, full_name: 'Unknown User' }) as Profile,
-          seller_profile: (profileMap.get(conv.seller_id) || { user_id: conv.seller_id, full_name: 'Unknown User' }) as Profile,
-          last_message: msgData?.lastMessage || undefined,
-          unread_count: msgData?.unreadCount || 0
-        };
-      });
-
-      // 6. Merge and sort by updated_at
-      const allConversations = [...itemConversations, ...pgConversations]
-        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
       
-      setConversations(allConversations);
+      setConversations(conversationsWithData);
     } catch (error) {
       console.error('Error in fetchConversations:', error);
       toast({ title: "Error", description: "Failed to load conversations", variant: "destructive" });
@@ -334,17 +270,13 @@ const MyChats = () => {
   }, [user]);
 
 
-  const handleConversationClick = (conversation: UnifiedConversation) => {
-    if (conversation.type === 'pg') {
-      navigate(`/chat/${conversation.id}?type=pg`);
-    } else {
-      navigate(`/chat/${conversation.id}`);
-    }
+  const handleConversationClick = (conversationId: string) => {
+    navigate(`/chat/${conversationId}`);
   };
 
   // --- RENDER ---
 
-  const renderConversationCard = (conversation: UnifiedConversation) => {
+  const renderConversationCard = (conversation: Conversation) => {
     const otherUser = getOtherUser(conversation);
     const otherUserId = getOtherUserId(conversation);
     const isBuyer = conversation.buyer_id === user?.id;
@@ -365,28 +297,23 @@ const MyChats = () => {
       <Card 
         key={conversation.id} 
         className={`transition-all duration-200 cursor-pointer overflow-hidden group shadow-sm hover:shadow-lg ${cardBorderClass}`}
-        onClick={() => handleConversationClick(conversation)}
+        onClick={() => handleConversationClick(conversation.id)}
       >
         <CardContent className="p-4">
           <div className="flex items-center space-x-4">
             
             {/* Item Image */}
-            <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0 shadow-inner relative">
-              {conversation.images?.length > 0 ? (
+            <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0 shadow-inner">
+              {conversation.items?.images?.length > 0 ? (
                 <img 
-                  src={conversation.images[0]} 
-                  alt={conversation.title}
+                  src={conversation.items.images[0]} 
+                  alt={conversation.items.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <Package className="h-6 w-6 text-muted-foreground/50" />
                 </div>
-              )}
-              {conversation.type === 'pg' && (
-                <Badge className="absolute bottom-1 left-1 text-[10px] px-1 py-0 bg-orange-500 text-white">
-                  PG
-                </Badge>
               )}
             </div>
 
@@ -397,11 +324,11 @@ const MyChats = () => {
               <div className="flex items-start justify-between mb-1">
                 <div className="flex items-center space-x-2">
                     <h3 className="font-semibold text-base truncate text-foreground">
-                        {conversation.title}
+                        {conversation.items?.title || 'Item'}
                     </h3>
                 </div>
                 <span className="text-sm font-semibold text-primary flex-shrink-0">
-                    {conversation.type === 'pg' ? `₹${conversation.price?.toLocaleString()}/mo` : `₹${conversation.price?.toLocaleString()}`}
+                    ₹{conversation.items?.price?.toLocaleString()}
                 </span>
               </div>
 
@@ -460,26 +387,28 @@ const MyChats = () => {
   const sellingConversations = conversations.filter(c => c.seller_id === user?.id);
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background">
       
-      {/* HEADER: Native PWA Style */}
-      <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur-md border-b border-border/50 safe-area-top">
-        <div className="flex items-center h-14 px-4">
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={() => navigate('/dashboard')}
-            className="h-9 w-9 rounded-full hover:bg-muted/80 active:scale-95 transition-all flex-shrink-0"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-lg font-semibold ml-2 text-foreground">
-            Chats
-          </h1>
+      {/* HEADER: Clean and Simple */}
+      <header className="sticky top-0 z-50 w-full border-b bg-background shadow-md">
+        <div className="container mx-auto px-4 py-4 max-w-4xl">
+          <div className="flex items-center">
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/dashboard')}
+              className="hover:bg-primary/10 hover:text-primary transition-colors flex-shrink-0"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              <span className="font-medium">Back</span>
+            </Button>
+            <h1 className="text-2xl font-bold ml-4 text-foreground">
+              Conversations
+            </h1>
+          </div>
         </div>
       </header>
 
-      <div className="px-4 py-4 max-w-4xl mx-auto">
+      <div className="container mx-auto px-4 py-6 max-w-4xl">
         {conversations.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6 shadow-xl">

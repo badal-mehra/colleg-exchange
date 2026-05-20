@@ -1,68 +1,43 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  ArrowLeft,
-  Eye,
-  Trash2,
-  Edit,
-  Calendar,
-  MapPin,
+import { 
+  ArrowLeft, 
+  Eye, 
+  Trash2, 
+  Edit, 
+  DollarSign, 
+  Calendar, 
+  MapPin, 
   Package,
+  TrendingUp,
   CheckCircle,
-  ImageOff,
-  Plus,
-  RotateCcw,
+  XCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { deleteFromCloudinary } from '@/utils/cloudinaryDelete';
+import ImageCarousel from '@/components/ImageCarousel';
 
 interface Item {
   id: string;
   title: string;
   description: string;
   price: number;
-  condition: string | null;
-  images: string[] | null;
-  location: string | null;
-  is_sold: boolean | null;
-  views: number | null;
+  condition: string;
+  images: string[];
+  location: string;
+  is_sold: boolean;
+  views: number;
   created_at: string;
   seller_id: string;
-  ad_type: string | null;
-  is_negotiable: boolean | null;
-  status?: string | null;
+  ad_type: string;
+  is_negotiable: boolean;
+  tags: string[];
+  expires_at: string;
 }
-
-const formatCondition = (condition?: string | null) =>
-  condition ? condition.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase()) : 'Used';
-
-const ListingImage = ({ item }: { item: Item }) => {
-  const [broken, setBroken] = useState(false);
-  const firstImage = item.images?.find(Boolean);
-
-  if (!firstImage || broken) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
-        <ImageOff className="h-8 w-8" />
-      </div>
-    );
-  }
-
-  return (
-    <img
-      src={firstImage}
-      alt={item.title}
-      loading="lazy"
-      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-      onError={() => setBroken(true)}
-    />
-  );
-};
 
 const MyListings = () => {
   const { user } = useAuth();
@@ -70,9 +45,14 @@ const MyListings = () => {
   const navigate = useNavigate();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busyItemId, setBusyItemId] = useState<string | null>(null);
 
-  const fetchMyListings = useCallback(async () => {
+  useEffect(() => {
+    if (user) {
+      fetchMyListings();
+    }
+  }, [user]);
+
+  const fetchMyListings = async () => {
     if (!user) return;
 
     setLoading(true);
@@ -85,202 +65,320 @@ const MyListings = () => {
     if (error) {
       console.error('Error fetching listings:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to load your listings',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to load your listings",
+        variant: "destructive",
       });
     } else {
       setItems(data || []);
     }
     setLoading(false);
-  }, [toast, user]);
-
-  useEffect(() => {
-    fetchMyListings();
-  }, [fetchMyListings]);
+  };
 
   const deleteItem = async (itemId: string) => {
-    if (!user) return;
-    const shouldDelete = window.confirm('Delete this listing permanently?');
-    if (!shouldDelete) return;
-
-    setBusyItemId(itemId);
-    const { data: item, error: fetchError } = await supabase
-      .from('items')
-      .select('images')
-      .eq('id', itemId)
-      .eq('seller_id', user.id)
-      .single();
-
-    if (fetchError) {
-      setBusyItemId(null);
-      toast({ title: 'Error', description: 'Failed to fetch item details', variant: 'destructive' });
-      return;
-    }
-
     const { error } = await supabase
       .from('items')
       .delete()
-      .eq('id', itemId)
-      .eq('seller_id', user.id);
+      .eq('id', itemId);
 
-    setBusyItemId(null);
     if (error) {
-      toast({ title: 'Error', description: 'Failed to delete item', variant: 'destructive' });
-      return;
+      console.error('Error deleting item:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete item",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Item deleted successfully",
+      });
+      fetchMyListings();
     }
-
-    if (item?.images?.length) {
-      try {
-        await Promise.all(item.images.filter(Boolean).map((url: string) => deleteFromCloudinary(url)));
-      } catch (cloudinaryError) {
-        console.error('Error deleting images from Cloudinary:', cloudinaryError);
-      }
-    }
-
-    toast({ title: 'Deleted', description: 'Listing removed successfully' });
-    fetchMyListings();
   };
 
-  const toggleSoldStatus = async (itemId: string, currentStatus: boolean | null) => {
-    if (!user) return;
-    const nextSold = !currentStatus;
-    setBusyItemId(itemId);
+  const toggleSoldStatus = async (itemId: string, currentStatus: boolean) => {
     const { error } = await supabase
       .from('items')
-      .update({ is_sold: nextSold, status: nextSold ? 'sold' : 'available' })
-      .eq('id', itemId)
-      .eq('seller_id', user.id);
+      .update({ is_sold: !currentStatus })
+      .eq('id', itemId);
 
-    setBusyItemId(null);
     if (error) {
-      toast({ title: 'Error', description: 'Failed to update item status', variant: 'destructive' });
-      return;
+      console.error('Error updating item status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update item status",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: `Item marked as ${!currentStatus ? 'sold' : 'available'}`,
+      });
+      fetchMyListings();
     }
-
-    toast({ title: 'Updated', description: `Listing marked as ${nextSold ? 'sold' : 'available'}` });
-    fetchMyListings();
   };
 
-  const stats = useMemo(() => ({
+  const stats = {
     total: items.length,
-    available: items.filter((item) => !item.is_sold).length,
-    sold: items.filter((item) => item.is_sold).length,
-    totalViews: items.reduce((sum, item) => sum + (item.views || 0), 0),
-  }), [items]);
+    available: items.filter(item => !item.is_sold).length,
+    sold: items.filter(item => item.is_sold).length,
+    totalViews: items.reduce((sum, item) => sum + item.views, 0),
+    totalValue: items.reduce((sum, item) => sum + item.price, 0)
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background px-4 py-8">
-        <div className="mx-auto max-w-6xl space-y-4">
-          <div className="h-10 w-48 animate-pulse rounded-md bg-muted" />
-          <div className="grid gap-4 md:grid-cols-2">
-            {[1, 2, 3, 4].map((key) => (
-              <div key={key} className="h-44 animate-pulse rounded-lg bg-muted" />
-            ))}
-          </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse space-y-4 w-full max-w-md">
+          <div className="h-8 bg-muted rounded"></div>
+          <div className="h-32 bg-muted rounded"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-3">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="w-fit px-0 hover:bg-transparent">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-normal">My Listings</h1>
-              <p className="text-sm text-muted-foreground">Edit listings, check views, and update sale status.</p>
-            </div>
-          </div>
-          <Button onClick={() => navigate('/sell')} className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" />
-            Create Listing
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      <div className="container mx-auto px-4 py-6 max-w-7xl">
+        <div className="flex items-center gap-4 mb-8">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="hover-scale">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
           </Button>
         </div>
 
-        <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Total</p><p className="text-2xl font-bold">{stats.total}</p></CardContent></Card>
-          <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Available</p><p className="text-2xl font-bold text-primary">{stats.available}</p></CardContent></Card>
-          <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Sold</p><p className="text-2xl font-bold text-accent">{stats.sold}</p></CardContent></Card>
-          <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Views</p><p className="text-2xl font-bold">{stats.totalViews}</p></CardContent></Card>
-        </div>
-
-        {items.length === 0 ? (
-          <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card px-6 text-center">
-            <Package className="mb-4 h-12 w-12 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">No listings yet</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Create your first listing and manage it here.</p>
-            <Button onClick={() => navigate('/sell')} className="mt-5">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Listing
-            </Button>
+        <div className="space-y-8">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
+              My Listings
+            </h1>
+            <p className="text-muted-foreground mt-2">Manage your items and track your sales</p>
           </div>
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {items.map((item) => {
-              const isBusy = busyItemId === item.id;
-              const isSold = Boolean(item.is_sold);
 
-              return (
-                <Card key={item.id} className="group overflow-hidden">
-                  <CardContent className="grid gap-0 p-0 sm:grid-cols-[180px_1fr]">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/item/${item.id}`)}
-                      className="relative aspect-[4/3] overflow-hidden bg-muted text-left sm:aspect-auto sm:min-h-full"
-                    >
-                      <ListingImage item={item} />
-                      <Badge variant={isSold ? 'destructive' : 'default'} className="absolute left-2 top-2">
-                        {isSold ? 'Sold' : 'Available'}
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <Card className="hover-scale">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Package className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{stats.total}</div>
+                    <div className="text-sm text-muted-foreground">Total Items</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="hover-scale">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-success/10 rounded-lg">
+                    <CheckCircle className="h-5 w-5 text-success" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{stats.available}</div>
+                    <div className="text-sm text-muted-foreground">Available</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="hover-scale">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-warning/10 rounded-lg">
+                    <XCircle className="h-5 w-5 text-warning" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{stats.sold}</div>
+                    <div className="text-sm text-muted-foreground">Sold</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="hover-scale">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-info/10 rounded-lg">
+                    <Eye className="h-5 w-5 text-info" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{stats.totalViews}</div>
+                    <div className="text-sm text-muted-foreground">Total Views</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="hover-scale">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-success/10 rounded-lg">
+                    <DollarSign className="h-5 w-5 text-success" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">₹{stats.totalValue.toLocaleString()}</div>
+                    <div className="text-sm text-muted-foreground">Total Value</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Ad Performance Stats */}
+          <Card className="bg-gradient-to-r from-primary/5 to-primary/10">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Ad Performance Overview
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-lg font-bold">{items.filter(item => item.ad_type === 'basic').length}</div>
+                  <div className="text-xs text-muted-foreground">Basic Ads</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-primary">{items.filter(item => item.ad_type === 'featured').length}</div>
+                  <div className="text-xs text-muted-foreground">Featured</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-warning">{items.filter(item => item.ad_type === 'premium').length}</div>
+                  <div className="text-xs text-muted-foreground">Premium</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-destructive">{items.filter(item => item.ad_type === 'urgent').length}</div>
+                  <div className="text-xs text-muted-foreground">Urgent</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Listings Grid */}
+          {items.length === 0 ? (
+            <div className="text-center py-12">
+              <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No listings yet</h3>
+              <p className="text-muted-foreground mb-4">Start selling by creating your first listing</p>
+              <Button onClick={() => navigate('/sell')} className="bg-gradient-to-r from-primary to-primary/80">
+                Create Listing
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {items.map((item) => (
+                <Card 
+                  key={item.id} 
+                  className="group hover:shadow-xl hover:shadow-primary/10 transition-all duration-500 overflow-hidden bg-card hover-scale"
+                >
+                  <div className="relative">
+                    <ImageCarousel 
+                      images={item.images} 
+                      alt={item.title}
+                      className="h-48"
+                    />
+                      <Badge 
+                        variant={item.is_sold ? 'destructive' : 'default'}
+                        className="absolute top-2 left-2 text-xs"
+                      >
+                        {item.is_sold ? 'Sold' : 'Available'}
                       </Badge>
-                    </button>
+                      
+                      {/* Ad Type Badge */}
+                      {item.ad_type && item.ad_type !== 'basic' && (
+                        <Badge 
+                          variant={
+                            item.ad_type === 'featured' ? 'default' : 
+                            item.ad_type === 'premium' ? 'secondary' : 
+                            'destructive'
+                          }
+                          className="absolute top-2 right-2 text-xs"
+                        >
+                          {item.ad_type}
+                        </Badge>
+                      )}
+                      
+                      {item.condition && item.ad_type === 'basic' && (
+                        <Badge 
+                          variant={item.condition === 'new' ? 'default' : 'secondary'}
+                          className="absolute top-2 right-2 text-xs"
+                        >
+                          {item.condition}
+                        </Badge>
+                      )}
+                  </div>
+                  
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-sm leading-tight line-clamp-2">
+                        {item.title}
+                      </h3>
+                      
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xl font-bold text-primary">₹{item.price.toLocaleString()}</span>
+                      </div>
 
-                    <div className="flex min-w-0 flex-col gap-4 p-4">
-                      <div className="min-w-0 space-y-2">
-                        <div className="flex items-start justify-between gap-3">
-                          <button type="button" onClick={() => navigate(`/item/${item.id}`)} className="min-w-0 text-left">
-                            <h2 className="line-clamp-2 text-base font-semibold leading-snug hover:text-primary">{item.title}</h2>
-                          </button>
-                          <p className="shrink-0 text-lg font-bold text-primary">₹{Number(item.price || 0).toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {item.description}
+                      </p>
+
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Eye className="h-3 w-3" />
+                          <span>{item.views} views</span>
                         </div>
-                        <p className="line-clamp-2 text-sm text-muted-foreground">{item.description}</p>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" />{item.views || 0} views</span>
-                          <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{new Date(item.created_at).toLocaleDateString('en-IN')}</span>
-                          <span>{formatCondition(item.condition)}</span>
-                          {item.location && <span className="flex min-w-0 items-center gap-1"><MapPin className="h-3.5 w-3.5" /><span className="truncate">{item.location}</span></span>}
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>{new Date(item.created_at).toLocaleDateString()}</span>
                         </div>
                       </div>
 
-                      <div className="mt-auto grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        <Button size="sm" variant="outline" onClick={() => navigate(`/item/${item.id}`)} disabled={isBusy}>
-                          <Eye className="mr-1.5 h-4 w-4" /> View
+                      {item.location && (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground truncate">
+                            {item.location}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 pt-2 border-t border-border/50">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="flex-1 h-8 text-xs"
+                          onClick={() => navigate(`/item/${item.id}`)}
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          View
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => navigate(`/edit-item/${item.id}`)} disabled={isBusy}>
-                          <Edit className="mr-1.5 h-4 w-4" /> Edit
+                        <Button 
+                          size="sm" 
+                          variant={item.is_sold ? "secondary" : "default"}
+                          className="flex-1 h-8 text-xs"
+                          onClick={() => toggleSoldStatus(item.id, item.is_sold)}
+                        >
+                          {item.is_sold ? <Package className="h-3 w-3 mr-1" /> : <CheckCircle className="h-3 w-3 mr-1" />}
+                          {item.is_sold ? 'Relist' : 'Sold'}
                         </Button>
-                        <Button size="sm" variant={isSold ? 'secondary' : 'default'} onClick={() => toggleSoldStatus(item.id, isSold)} disabled={isBusy}>
-                          {isSold ? <RotateCcw className="mr-1.5 h-4 w-4" /> : <CheckCircle className="mr-1.5 h-4 w-4" />}
-                          {isSold ? 'Relist' : 'Sold'}
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => deleteItem(item.id)} disabled={isBusy}>
-                          <Trash2 className="mr-1.5 h-4 w-4" /> Delete
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          className="h-8 px-3"
+                          onClick={() => deleteItem(item.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              );
-            })}
-          </div>
-        )}
-      </main>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

@@ -1,23 +1,21 @@
 import { Home, MessageCircle, PlusCircle, ShoppingBag, User } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useNotificationCounts } from "@/hooks/useNotificationCounts";
+
+const navItems = [
+  { to: "/dashboard", icon: Home, label: "Home" },
+  { to: "/my-chats", icon: MessageCircle, label: "Chats" },
+  { to: "/sell", icon: PlusCircle, label: "Sell" },
+  { to: "/my-orders", icon: ShoppingBag, label: "Orders" },
+  { to: "/pwa-profile", icon: User, label: "Me" },
+];
 
 const BottomNavBar = () => {
   const location = useLocation();
-  const { unreadChats, pendingOrders } = useNotificationCounts();
-
-  const navItems = [
-    { to: "/dashboard", icon: Home, label: "Home", badge: 0 },
-    { to: "/my-chats", icon: MessageCircle, label: "Chats", badge: unreadChats },
-    { to: "/sell", icon: PlusCircle, label: "Sell", badge: 0 },
-    { to: "/my-orders", icon: ShoppingBag, label: "Orders", badge: pendingOrders },
-    { to: "/pwa-profile", icon: User, label: "Me", badge: 0 },
-  ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t border-border/50 safe-area-bottom md:hidden">
-      <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t border-border safe-area-bottom">
+      <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
         {navItems.map((item) => {
           const isActive = location.pathname === item.to || 
             (item.to === "/dashboard" && location.pathname === "/");
@@ -49,17 +47,10 @@ const BottomNavBar = () => {
                     <Icon className="h-6 w-6" />
                   </div>
                 ) : (
-                  <>
-                    <Icon className={cn(
-                      "h-6 w-6 transition-all duration-200",
-                      isActive && "scale-110"
-                    )} />
-                    {item.badge > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-                        {item.badge > 99 ? "99+" : item.badge}
-                      </span>
-                    )}
-                  </>
+                  <Icon className={cn(
+                    "h-6 w-6 transition-all duration-200",
+                    isActive && "scale-110"
+                  )} />
                 )}
               </div>
               <span className={cn(

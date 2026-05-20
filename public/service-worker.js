@@ -3,10 +3,10 @@ const CACHE_STATIC = `static-${APP_VERSION}`;
 const CACHE_DYNAMIC = `dynamic-${APP_VERSION}`;
 const MAX_DYNAMIC_ENTRIES = 50;
 
-// Raw SVG for offline placeholder (Direct SVG is better for Response objects than Base64 strings)
-const OFFLINE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="#ccc"/><text x="50" y="50" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#333">Offline</text></svg>`;
+// Base64 placeholder for offline images
+const OFFLINE_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiNjY2MiLz48dGV4dCB4PSI1MCIgeT0iNTAiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSIjMzMzIj5PZmZsaW5lPC90ZXh0Pjwvc3ZnPg==';
 
-// Static Assets
+// CLEAN Static Assets (No '/')
 const STATIC_ASSETS = [
   '/index.html',
   '/offline.html',
@@ -66,7 +66,7 @@ self.addEventListener('fetch', (event) => {
     url.hostname.includes('supabase.co') ||
     url.pathname.includes('/auth')
   ) {
-    return;
+    return; 
   }
 
   // 2. NAVIGATION (HTML) - Network First + Index Freshening
@@ -74,16 +74,16 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
-      .then((networkRes) => {
-        return caches.open(CACHE_STATIC).then((cache) => {
-          // Update the cache with the new index.html (containing new JS hashes)
-          cache.put('/index.html', networkRes.clone());
-          return networkRes;
-        });
-      })
-      .catch(() => {
-        return caches.match('/offline.html');
-      })
+        .then((networkRes) => {
+          return caches.open(CACHE_STATIC).then((cache) => {
+            // Update the cache with the new index.html (containing new JS hashes)
+            cache.put('/index.html', networkRes.clone());
+            return networkRes;
+          });
+        })
+        .catch(() => {
+          return caches.match('/offline.html');
+        })
     );
     return;
   }
@@ -106,86 +106,44 @@ self.addEventListener('fetch', (event) => {
         return cachedRes || fetchPromise;
       }).catch(() => {
         if (request.destination === 'image') {
-          return new Response(OFFLINE_SVG, {
-            headers: {
-              'Content-Type': 'image/svg+xml'
-            }
-          });
+          return new Response(OFFLINE_IMAGE, { headers: { 'Content-Type': 'image/svg+xml' }});
         }
       })
     );
     return;
   }
 });
+// Notification
 
-// --- NOTIFICATIONS ---
-// self.addEventListener("push", (event) => {
-//   let data = {
-//     title: "Notification",
-//     body: "New update",
-//     url: "/"
-//   };
-
-//   if (event.data) {
-//     try {
-//       data = event.data.json(); // real push (JSON)
-//     } catch {
-//       data.body = event.data.text(); // DevTools test push
-//     }
-//   }
-
-//   event.waitUntil(
-//     self.registration.showNotification(data.title, {
-//       body: data.body,
-//       icon: "/icons/icon-192.png",
-//       data: {
-//         url: data.url || "/"
-//       },
-//     })
-//   );
-// });
 self.addEventListener("push", (event) => {
-  let data = {
-    title: "MyCampusKart",
-    body: "New update",
-    url: "/"
+  if (!event.data) return;
+
+  const data = event.data.json();
+
+  const options = {
+    body: data.body,
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    data: {
+      url: data.url || "/"
+    }
   };
 
-  if (event.data) {
-    const text = event.data.text();
-    try {
-      data = JSON.parse(text);   // real backend push
-    } catch {
-      data.body = text;          // DevTools test push
-    }
-  }
-
   event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
-      data: { url: data.url || "/" }
-    })
+    self.registration.showNotification(data.title, options)
   );
 });
-// ---
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
   event.waitUntil(
-    clients.matchAll({
-      type: "window",
-      includeUncontrolled: true
-    }).then((clientList) => {
-      // If a window is open and matching the URL, focus it
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if (client.url === event.notification.data.url && "focus" in client) {
           return client.focus();
         }
       }
-      // Otherwise open a new window
       if (clients.openWindow) {
         return clients.openWindow(event.notification.data.url);
       }

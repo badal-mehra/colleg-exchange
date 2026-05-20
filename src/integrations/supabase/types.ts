@@ -104,312 +104,6 @@ export type Database = {
         }
         Relationships: []
       }
-      blog_authors: {
-        Row: {
-          avatar_url: string | null
-          bio: string | null
-          created_at: string
-          id: string
-          linkedin: string | null
-          name: string
-          role: string | null
-          slug: string
-          twitter: string | null
-          user_id: string | null
-          website: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          bio?: string | null
-          created_at?: string
-          id?: string
-          linkedin?: string | null
-          name: string
-          role?: string | null
-          slug: string
-          twitter?: string | null
-          user_id?: string | null
-          website?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          bio?: string | null
-          created_at?: string
-          id?: string
-          linkedin?: string | null
-          name?: string
-          role?: string | null
-          slug?: string
-          twitter?: string | null
-          user_id?: string | null
-          website?: string | null
-        }
-        Relationships: []
-      }
-      blog_categories: {
-        Row: {
-          created_at: string
-          description: string | null
-          icon: string | null
-          id: string
-          name: string
-          slug: string
-          sort_order: number
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          icon?: string | null
-          id?: string
-          name: string
-          slug: string
-          sort_order?: number
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          icon?: string | null
-          id?: string
-          name?: string
-          slug?: string
-          sort_order?: number
-        }
-        Relationships: []
-      }
-      blog_comments: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          name: string
-          parent_id: string | null
-          post_id: string
-          status: string
-          user_id: string | null
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          name: string
-          parent_id?: string | null
-          post_id: string
-          status?: string
-          user_id?: string | null
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          name?: string
-          parent_id?: string | null
-          post_id?: string
-          status?: string
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "blog_comments_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "blog_comments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "blog_comments_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "blog_posts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      blog_post_tags: {
-        Row: {
-          post_id: string
-          tag_id: string
-        }
-        Insert: {
-          post_id: string
-          tag_id: string
-        }
-        Update: {
-          post_id?: string
-          tag_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "blog_post_tags_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "blog_posts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "blog_post_tags_tag_id_fkey"
-            columns: ["tag_id"]
-            isOneToOne: false
-            referencedRelation: "blog_tags"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      blog_posts: {
-        Row: {
-          author_id: string | null
-          canonical_url: string | null
-          category_id: string | null
-          content: string
-          cover_image: string | null
-          created_at: string
-          excerpt: string | null
-          faq: Json | null
-          featured: boolean
-          id: string
-          meta: Json | null
-          og_image: string | null
-          published_at: string | null
-          reading_time: number | null
-          scheduled_at: string | null
-          seo_description: string | null
-          seo_title: string | null
-          slug: string
-          status: string
-          title: string
-          updated_at: string
-          views: number
-        }
-        Insert: {
-          author_id?: string | null
-          canonical_url?: string | null
-          category_id?: string | null
-          content?: string
-          cover_image?: string | null
-          created_at?: string
-          excerpt?: string | null
-          faq?: Json | null
-          featured?: boolean
-          id?: string
-          meta?: Json | null
-          og_image?: string | null
-          published_at?: string | null
-          reading_time?: number | null
-          scheduled_at?: string | null
-          seo_description?: string | null
-          seo_title?: string | null
-          slug: string
-          status?: string
-          title: string
-          updated_at?: string
-          views?: number
-        }
-        Update: {
-          author_id?: string | null
-          canonical_url?: string | null
-          category_id?: string | null
-          content?: string
-          cover_image?: string | null
-          created_at?: string
-          excerpt?: string | null
-          faq?: Json | null
-          featured?: boolean
-          id?: string
-          meta?: Json | null
-          og_image?: string | null
-          published_at?: string | null
-          reading_time?: number | null
-          scheduled_at?: string | null
-          seo_description?: string | null
-          seo_title?: string | null
-          slug?: string
-          status?: string
-          title?: string
-          updated_at?: string
-          views?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "blog_posts_author_id_fkey"
-            columns: ["author_id"]
-            isOneToOne: false
-            referencedRelation: "blog_authors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "blog_posts_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "blog_categories"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      blog_tags: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          slug: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          slug: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          slug?: string
-        }
-        Relationships: []
-      }
-      campus_pages: {
-        Row: {
-          city: string | null
-          created_at: string
-          hero_image: string | null
-          id: string
-          intro: string | null
-          is_active: boolean
-          name: string
-          sections: Json
-          seo_description: string | null
-          seo_title: string | null
-          slug: string
-          updated_at: string
-        }
-        Insert: {
-          city?: string | null
-          created_at?: string
-          hero_image?: string | null
-          id?: string
-          intro?: string | null
-          is_active?: boolean
-          name: string
-          sections?: Json
-          seo_description?: string | null
-          seo_title?: string | null
-          slug: string
-          updated_at?: string
-        }
-        Update: {
-          city?: string | null
-          created_at?: string
-          hero_image?: string | null
-          id?: string
-          intro?: string | null
-          is_active?: boolean
-          name?: string
-          sections?: Json
-          seo_description?: string | null
-          seo_title?: string | null
-          slug?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       categories: {
         Row: {
           created_at: string
@@ -520,39 +214,6 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
-      }
-      daily_login_rewards: {
-        Row: {
-          bonus_applied: boolean
-          claimed_at: string
-          id: string
-          ip_address: string | null
-          points_awarded: number
-          streak_day: number
-          user_agent: string | null
-          user_id: string
-        }
-        Insert: {
-          bonus_applied?: boolean
-          claimed_at?: string
-          id?: string
-          ip_address?: string | null
-          points_awarded: number
-          streak_day: number
-          user_agent?: string | null
-          user_id: string
-        }
-        Update: {
-          bonus_applied?: boolean
-          claimed_at?: string
-          id?: string
-          ip_address?: string | null
-          points_awarded?: number
-          streak_day?: number
-          user_agent?: string | null
-          user_id?: string
-        }
-        Relationships: []
       }
       favorites: {
         Row: {
@@ -709,9 +370,7 @@ export type Database = {
           location: string | null
           price: number
           promotion_expires_at: string | null
-          rental_available_date: string | null
           rental_metadata: Json | null
-          rental_status: string | null
           seller_id: string
           status: string | null
           tags: string[] | null
@@ -719,7 +378,6 @@ export type Database = {
           updated_at: string
           upgrade_transaction_id: string | null
           views: number | null
-          whatsapp_number: string | null
         }
         Insert: {
           ad_duration_days?: number | null
@@ -743,9 +401,7 @@ export type Database = {
           location?: string | null
           price: number
           promotion_expires_at?: string | null
-          rental_available_date?: string | null
           rental_metadata?: Json | null
-          rental_status?: string | null
           seller_id: string
           status?: string | null
           tags?: string[] | null
@@ -753,7 +409,6 @@ export type Database = {
           updated_at?: string
           upgrade_transaction_id?: string | null
           views?: number | null
-          whatsapp_number?: string | null
         }
         Update: {
           ad_duration_days?: number | null
@@ -777,9 +432,7 @@ export type Database = {
           location?: string | null
           price?: number
           promotion_expires_at?: string | null
-          rental_available_date?: string | null
           rental_metadata?: Json | null
-          rental_status?: string | null
           seller_id?: string
           status?: string | null
           tags?: string[] | null
@@ -787,7 +440,6 @@ export type Database = {
           updated_at?: string
           upgrade_transaction_id?: string | null
           views?: number | null
-          whatsapp_number?: string | null
         }
         Relationships: [
           {
@@ -862,6 +514,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "messages_sender_id_fkey"
             columns: ["sender_id"]
             isOneToOne: false
@@ -869,60 +528,6 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
-      }
-      newsletter_subscribers: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          source: string | null
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: string
-          source?: string | null
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          source?: string | null
-        }
-        Relationships: []
-      }
-      notifications: {
-        Row: {
-          body: string | null
-          created_at: string | null
-          id: string
-          is_read: boolean
-          title: string | null
-          type: string | null
-          url: string | null
-          user_id: string | null
-        }
-        Insert: {
-          body?: string | null
-          created_at?: string | null
-          id?: string
-          is_read?: boolean
-          title?: string | null
-          type?: string | null
-          url?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          body?: string | null
-          created_at?: string | null
-          id?: string
-          is_read?: boolean
-          title?: string | null
-          type?: string | null
-          url?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
       }
       orders: {
         Row: {
@@ -989,144 +594,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
-          },
-        ]
-      }
-      pg_conversations: {
-        Row: {
-          buyer_id: string
-          created_at: string
-          id: string
-          pg_listing_id: string
-          seller_id: string
-          updated_at: string
-        }
-        Insert: {
-          buyer_id: string
-          created_at?: string
-          id?: string
-          pg_listing_id: string
-          seller_id: string
-          updated_at?: string
-        }
-        Update: {
-          buyer_id?: string
-          created_at?: string
-          id?: string
-          pg_listing_id?: string
-          seller_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pg_conversations_buyer_id_fkey"
-            columns: ["buyer_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "pg_conversations_pg_listing_id_fkey"
-            columns: ["pg_listing_id"]
-            isOneToOne: false
-            referencedRelation: "pg_listings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pg_conversations_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-        ]
-      }
-      pg_listings: {
-        Row: {
-          alcohol_allowed: boolean | null
-          amenities: Json | null
-          area_locality: string
-          contact_method: string | null
-          created_at: string
-          distance_from_campus: string | null
-          electricity_included: boolean | null
-          food_included: boolean | null
-          for_gender: string
-          gate_timing: string | null
-          id: string
-          images: string[]
-          is_active: boolean | null
-          landmark: string | null
-          property_type: string
-          rent_per_month: number
-          security_deposit: number | null
-          seller_id: string
-          sharing_type: string
-          smoking_allowed: boolean | null
-          status: string | null
-          updated_at: string
-          views: number | null
-          visitors_allowed: boolean | null
-        }
-        Insert: {
-          alcohol_allowed?: boolean | null
-          amenities?: Json | null
-          area_locality: string
-          contact_method?: string | null
-          created_at?: string
-          distance_from_campus?: string | null
-          electricity_included?: boolean | null
-          food_included?: boolean | null
-          for_gender: string
-          gate_timing?: string | null
-          id?: string
-          images?: string[]
-          is_active?: boolean | null
-          landmark?: string | null
-          property_type: string
-          rent_per_month: number
-          security_deposit?: number | null
-          seller_id: string
-          sharing_type: string
-          smoking_allowed?: boolean | null
-          status?: string | null
-          updated_at?: string
-          views?: number | null
-          visitors_allowed?: boolean | null
-        }
-        Update: {
-          alcohol_allowed?: boolean | null
-          amenities?: Json | null
-          area_locality?: string
-          contact_method?: string | null
-          created_at?: string
-          distance_from_campus?: string | null
-          electricity_included?: boolean | null
-          food_included?: boolean | null
-          for_gender?: string
-          gate_timing?: string | null
-          id?: string
-          images?: string[]
-          is_active?: boolean | null
-          landmark?: string | null
-          property_type?: string
-          rent_per_month?: number
-          security_deposit?: number | null
-          seller_id?: string
-          sharing_type?: string
-          smoking_allowed?: boolean | null
-          status?: string | null
-          updated_at?: string
-          views?: number | null
-          visitors_allowed?: boolean | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pg_listings_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -1252,27 +719,6 @@ export type Database = {
           user_id?: string
           verification_document_url?: string | null
           verification_status?: string | null
-        }
-        Relationships: []
-      }
-      push_subscriptions: {
-        Row: {
-          created_at: string | null
-          id: string
-          subscription: Json
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          subscription: Json
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          subscription?: Json
-          user_id?: string
         }
         Relationships: []
       }
@@ -1488,42 +934,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_login_streaks: {
-        Row: {
-          created_at: string
-          current_streak: number
-          last_claim_at: string | null
-          last_claim_date: string | null
-          longest_streak: number
-          total_claims: number
-          total_points_earned: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          current_streak?: number
-          last_claim_at?: string | null
-          last_claim_date?: string | null
-          longest_streak?: number
-          total_claims?: number
-          total_points_earned?: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          current_streak?: number
-          last_claim_at?: string | null
-          last_claim_date?: string | null
-          longest_streak?: number
-          total_claims?: number
-          total_points_earned?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       user_terms_acceptance: {
         Row: {
           accepted_at: string | null
@@ -1561,15 +971,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      admin_broadcast_notification: {
-        Args: {
-          p_body: string
-          p_target_user_id?: string
-          p_title: string
-          p_url?: string
-        }
-        Returns: Json
-      }
       award_points: {
         Args: {
           p_action: string
@@ -1581,10 +982,6 @@ export type Database = {
       }
       cancel_order: {
         Args: { order_id: string; seller_id: string }
-        Returns: Json
-      }
-      claim_daily_reward: {
-        Args: { p_ip_address?: string; p_user_agent?: string }
         Returns: Json
       }
       complete_order: { Args: { order_id: string }; Returns: Json }
@@ -1619,7 +1016,6 @@ export type Database = {
       delete_old_messages: { Args: never; Returns: undefined }
       generate_mck_id: { Args: never; Returns: string }
       get_admin_role: { Args: { user_id: string }; Returns: string }
-      get_daily_reward_status: { Args: never; Returns: Json }
       get_monthly_leaderboard: {
         Args: never
         Returns: {
@@ -1636,9 +1032,7 @@ export type Database = {
         Args: { conv_id: string; uid: string }
         Returns: number
       }
-      get_vault_secret: { Args: { p_name: string }; Returns: string }
       handle_ad_expiry: { Args: never; Returns: undefined }
-      increment_blog_view: { Args: { p_slug: string }; Returns: undefined }
       is_admin: { Args: { user_id: string }; Returns: boolean }
       mark_messages_read: {
         Args: { conv_id: string; uid: string }
@@ -1651,16 +1045,6 @@ export type Database = {
           p_item_id: string
           p_points_cost: number
           p_user_id: string
-        }
-        Returns: Json
-      }
-      submit_kyc: {
-        Args: {
-          p_college_name: string
-          p_document_path: string
-          p_full_name: string
-          p_phone: string
-          p_student_id: string
         }
         Returns: Json
       }
