@@ -134,6 +134,6 @@ public/sitemap.xml (extended)
 3. Public blog hub + post page + category/tag
 4. Campus pages
 5. Admin CMS
-6. Sitemap + final SEO polish
+6. Sitemap + final SEO polish   
 
 Confirm and I'll run the migration first, then build the rest in one pass.
