@@ -1,39 +1,27 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { Sparkles, Loader2, Check, ChevronDown, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/* ─── Types ──────────────────────────────────────────────── */
+/* ─── Types ───────────────────────────────────────────────── */
 interface RewardStatus {
   can_claim: boolean;
   current_streak: number;
   longest_streak: number;
   total_claims: number;
   total_points_earned: number;
-  next_streak_day: number;
+  next_streak_day: number; // 1-7, the day just claimed (if claimed) or about to be claimed
   next_reward: number;
   last_claim_at: string | null;
   next_claim_at: string | null;
-}
-
-interface Particle {
-  id: number;
-  x: number;
-  y: number;
-  tx: number;
-  ty: number;
-  size: number;
-  color: string;
-  delay: number; // FIX: was missing from interface but used in render
 }
 
 interface Props {
   className?: string;
 }
 
-/* ─── Helpers ────────────────────────────────────────────── */
+/* ─── Helpers ─────────────────────────────────────────────── */
 const fmt = (ms: number) => {
   if (ms <= 0) return "00:00:00";
   const t = Math.floor(ms / 1000);
@@ -42,76 +30,33 @@ const fmt = (ms: number) => {
     .join(":");
 };
 
-const COLORS = ["#ffb300", "#ff8800", "#ffffff", "#ffe066", "#ff6b00", "#ffd700", "#ffaa00"];
-const DAYS = [1, 2, 3, 4, 5, 6, 7];
+// Reward per day (day 1 → index 0 … day 7 → index 6)
+const DAY_REWARDS = [10, 15, 20, 25, 30, 40, 50];
 
-/* ─── Inline SVG icons ──────────────────────────────────── */
-const IconFlame = ({
-  size = 10,
-  color = "#ff8c00",
-}: {
-  size?: number;
-  color?: string;
-}) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
-    <path d="M17.66 11.2c-.23-.3-.51-.56-.77-.82-.67-.6-1.43-1.03-2.07-1.66C13.33 7.26 13 4.85 13.95 3c-.95.23-1.78.75-2.49 1.32C8.07 6.35 6.29 9.16 6.13 12.1a6.4 6.4 0 0 0 .08 2c.09.58.25 1.14.49 1.67C7.5 16.63 8.41 17.5 9.5 18c-.15-.4-.2-.82-.14-1.24.15-.8.7-1.46 1.32-1.87.6-.41 1.25-.63 1.94-.79.7-.17 1.4-.5 1.94-1.03.29-.27.52-.6.64-.97.12-.36.15-.76.06-1.14-.09-.37-.28-.72-.5-1.03.38.2.74.48 1.04.8.3.31.54.67.67 1.07.22.68.16 1.43-.07 2.1-.23.67-.62 1.27-1.1 1.77a6.05 6.05 0 0 1-1.83 1.2c-.73.32-1.54.48-2.35.46a4.12 4.12 0 0 1-2.13-.72 4.06 4.06 0 0 1-1.36-1.76 4.76 4.76 0 0 1-.24-2.1c.08-.76.31-1.5.67-2.17.36-.66.83-1.25 1.37-1.76.27-.25.54-.49.83-.71" />
-  </svg>
-);
+// CSS-only confetti colours — no React state, no RAF loops
+const CONFETTI_COLORS = [
+  "#ffb300", "#ff6b00", "#ffffff", "#ffd700",
+  "#ff8800", "#ffaa00", "#ffe066", "#ff9500",
+  "#ffd000", "#ffbc00", "#ff7700", "#ffdf00",
+];
 
-const IconGift = ({
-  size = 18,
-  color = "#ffb300",
-  strokeWidth = 2,
-}: {
-  size?: number;
-  color?: string;
-  strokeWidth?: number;
-}) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke={color}
-    strokeWidth={strokeWidth}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <polyline points="20 12 20 22 4 22 4 12" />
-    <rect x="2" y="7" width="20" height="5" />
-    <line x1="12" y1="22" x2="12" y2="7" />
-    <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
-    <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-  </svg>
-);
-
-/* ─── Component ─────────────────────────────────────────── */
+/* ─── Component ───────────────────────────────────────────── */
 const DailyLoginReward: React.FC<Props> = ({ className }) => {
   const { user } = useAuth();
   const [status, setStatus] = useState<RewardStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
   const [claimed, setClaimed] = useState(false);
-  // FIX: track fresh claim separately for celebration animation
-  const [justClaimed, setJustClaimed] = useState(false);
   const [countdown, setCountdown] = useState("");
-  const [open, setOpen] = useState(false);
-  const [daysVisible, setDaysVisible] = useState<boolean[]>(Array(7).fill(false));
-  const [particles, setParticles] = useState<Particle[]>([]);
-  const [showSuccessRing, setShowSuccessRing] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const pidRef = useRef(0);
-  // FIX: store stagger timer IDs so they can be cleared on unmount / close
-  const staggerTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [celebrate, setCelebrate] = useState(false);
 
+  /* ── Data fetching ── */
   const fetchStatus = useCallback(async () => {
     if (!user) return;
     const { data, error } = await supabase.rpc("get_daily_reward_status");
     if (!error && data && (data as any).success) {
       const s = data as unknown as RewardStatus;
       setStatus(s);
-      // FIX: single source of truth — derive claimed from server response
       setClaimed(!s.can_claim);
     }
     setLoading(false);
@@ -121,6 +66,7 @@ const DailyLoginReward: React.FC<Props> = ({ className }) => {
     fetchStatus();
   }, [fetchStatus]);
 
+  /* ── Countdown timer ── */
   useEffect(() => {
     if (!status?.next_claim_at || status.can_claim) {
       setCountdown("");
@@ -135,62 +81,7 @@ const DailyLoginReward: React.FC<Props> = ({ className }) => {
     return () => clearInterval(id);
   }, [status, fetchStatus]);
 
-  // FIX: stagger with proper cleanup to prevent state updates on unmounted component
-  useEffect(() => {
-    staggerTimers.current.forEach(clearTimeout);
-    staggerTimers.current = [];
-
-    if (!open) {
-      setDaysVisible(Array(7).fill(false));
-      return;
-    }
-
-    DAYS.forEach((_, i) => {
-      const t = setTimeout(() => {
-        setDaysVisible((p) => {
-          const n = [...p];
-          n[i] = true;
-          return n;
-        });
-      }, 60 + i * 65);
-      staggerTimers.current.push(t);
-    });
-
-    return () => {
-      staggerTimers.current.forEach(clearTimeout);
-    };
-  }, [open]);
-
-  const spawnParticles = useCallback(() => {
-    if (!btnRef.current || !cardRef.current) return;
-    const br = btnRef.current.getBoundingClientRect();
-    const cr = cardRef.current.getBoundingClientRect();
-    const cx = br.left + br.width / 2 - cr.left;
-    const cy = br.top + br.height / 2 - cr.top;
-
-    // FIX: more particles with randomised delay for organic burst feel
-    const list: Particle[] = Array.from({ length: 36 }, (_, i) => {
-      const a = (Math.PI * 2 * i) / 36 + Math.random() * 0.5;
-      const d = 40 + Math.random() * 110;
-      return {
-        id: ++pidRef.current,
-        x: cx,
-        y: cy,
-        tx: Math.cos(a) * d,
-        ty: Math.sin(a) * d,
-        size: 3 + Math.random() * 7,
-        color: COLORS[Math.floor(Math.random() * COLORS.length)],
-        delay: Math.random() * 0.12,
-      };
-    });
-
-    setParticles((p) => [...p, ...list]);
-    setTimeout(
-      () => setParticles((p) => p.filter((x) => !list.some((l) => l.id === x.id))),
-      1300
-    );
-  }, []);
-
+  /* ── Claim handler ── */
   const handleClaim = async () => {
     if (!user || claiming || claimed) return;
     setClaiming(true);
@@ -208,23 +99,14 @@ const DailyLoginReward: React.FC<Props> = ({ className }) => {
           variant: "destructive",
         });
       } else {
-        spawnParticles();
-
-        // Success ring animation
-        setShowSuccessRing(true);
-        setTimeout(() => setShowSuccessRing(false), 900);
-
-        // Number pop on reward display
-        setJustClaimed(true);
-        setTimeout(() => setJustClaimed(false), 700);
-
+        // CSS-only celebration — just flip a boolean for 2 s, zero DOM churn
+        setCelebrate(true);
+        setTimeout(() => setCelebrate(false), 2000);
         toast({
           title: `+${res.points_awarded} MCK Points! 🎉`,
           description: res.message,
         });
-
-        // FIX: fetch FIRST — let server be the source of truth for claimed state
-        await fetchStatus();
+        await fetchStatus(); // server is source of truth
       }
     } catch (e: any) {
       toast({
@@ -237,618 +119,630 @@ const DailyLoginReward: React.FC<Props> = ({ className }) => {
     }
   };
 
+  /* ── Guard: no user ── */
   if (!user) return null;
 
+  /* ── Loading skeleton ── */
   if (loading) {
     return (
       <div
-        className={cn("rounded-3xl flex items-center justify-center h-16", className)}
-        style={{ background: "#0c0c0e", border: "1px solid rgba(255,179,0,0.13)" }}
+        className={cn("rounded-2xl overflow-hidden", className)}
+        style={{
+          background: "linear-gradient(145deg, #1c1203 0%, #0e0e0e 60%, #140e00 100%)",
+          border: "1px solid rgba(255,179,0,0.1)",
+          height: 200,
+        }}
       >
-        <Loader2
-          className="h-4 w-4 animate-spin"
-          style={{ color: "rgba(255,179,0,0.5)" }}
-        />
+        <div className="animate-pulse h-full" style={{ background: "rgba(255,179,0,0.03)" }} />
       </div>
     );
   }
 
   if (!status) return null;
 
-  // FIX: removed `status.can_claim &&` — bonus badge should show on day 7
-  // regardless of whether the reward is claimable or already claimed
-  const isBonus7 = status.next_streak_day === 7;
+  /* ── Derived values ── */
+  const {
+    current_streak,
+    next_streak_day,
+    next_reward,
+    total_claims,
+    total_points_earned,
+    longest_streak,
+    can_claim,
+  } = status;
 
-  /* ── Day tile styles ── */
-  const dayStyle = (day: number, idx: number): React.CSSProperties => {
-    const isPast = claimed
-      ? day <= status.next_streak_day
-      : day < status.next_streak_day;
-    const isActive = !claimed && status.can_claim && day === status.next_streak_day;
-    const isBonus = day === 7;
-    const vis = daysVisible[idx];
+  // "Tomorrow" reward: after claiming day N (1-7), tomorrow = day N+1 (wraps to 1 at 8)
+  // next_streak_day % 7 gives 0-based index → next day index
+  const tomorrowReward = DAY_REWARDS[next_streak_day % 7] ?? DAY_REWARDS[0];
 
-    const base: React.CSSProperties = {
-      aspectRatio: "1",
-      borderRadius: 12,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      opacity: vis ? 1 : 0,
-      transform: vis
-        ? `scale(${isActive ? 1.1 : 1})`
-        : "translateY(12px) scale(.82)",
-      transition: `opacity .4s ${idx * 0.05}s, transform .5s ${idx * 0.05}s cubic-bezier(.34,1.56,.64,1)`,
-    };
+  const streakMessage =
+    current_streak === 0
+      ? "Start your winning streak today!"
+      : current_streak >= 7
+      ? "🏆 Max streak! You're legendary!"
+      : current_streak >= 5
+      ? `🔥 ${current_streak} days strong — incredible!`
+      : current_streak >= 3
+      ? `⚡ ${current_streak}-day streak! Keep it up!`
+      : `Day ${current_streak} — don't stop now!`;
 
-    if (isActive)
-      return {
-        ...base,
-        background: "linear-gradient(135deg, #ffb300, #ff6b00)",
-        border: "1px solid rgba(255,200,0,0.5)",
-        color: "#0c0c0e",
-        boxShadow: "0 0 20px rgba(255,179,0,.55), 0 0 40px rgba(255,130,0,.2)",
-        animation: "dlrActivePulse 2s ease-in-out infinite",
-      };
-    if (isPast)
-      return {
-        ...base,
-        background: isBonus ? "rgba(255,100,0,.12)" : "rgba(255,179,0,.1)",
-        border: `1px solid ${isBonus ? "rgba(255,100,0,.3)" : "rgba(255,179,0,.25)"}`,
-        color: isBonus ? "#ff8800" : "#ffb300",
-      };
-    if (isBonus)
-      return {
-        ...base,
-        background: "rgba(255,100,0,.06)",
-        border: "1px solid rgba(255,100,0,.14)",
-        color: "rgba(255,140,0,.4)",
-      };
-    return {
-      ...base,
-      background: "rgba(255,255,255,.04)",
-      border: "1px solid rgba(255,255,255,.07)",
-      color: "rgba(255,255,255,.22)",
-    };
-  };
-
-  // FIX: wrapped JSX fragments in proper flex containers so +50 label aligns correctly
-  const dayContent = (day: number) => {
-    const isPast = claimed
-      ? day <= status!.next_streak_day
-      : day < status!.next_streak_day;
-    const isActive = !claimed && status!.can_claim && day === status!.next_streak_day;
-    const isBonus = day === 7;
-
-    if (isActive) return <IconGift size={14} color="#0c0c0e" />;
-
-    if (isPast && isBonus)
-      return (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-          <Star className="h-[11px] w-[11px]" />
-          <span style={{ fontSize: 7, fontWeight: 700, lineHeight: 1 }}>+50</span>
-        </div>
-      );
-
-    if (isPast) return <Check className="h-3 w-3" />;
-
-    if (isBonus)
-      return (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 1,
-            opacity: 0.45,
-          }}
-        >
-          <Star className="h-[10px] w-[10px]" />
-          <span style={{ fontSize: 7, fontWeight: 700, lineHeight: 1 }}>+50</span>
-        </div>
-      );
-
-    return (
-      <span
-        style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fontWeight: 700 }}
-      >
-        {day}
-      </span>
-    );
-  };
+  const claimedMessage =
+    current_streak >= 7
+      ? "Perfect week! Come back tomorrow 🎯"
+      : `${current_streak} day streak! Don't break it 🔥`;
 
   return (
     <div
-      ref={cardRef}
-      className={cn("relative overflow-hidden rounded-3xl", className)}
+      className={cn("relative overflow-hidden rounded-2xl", className)}
       style={{
-        background: "#0c0c0e",
-        border: "1px solid rgba(255,179,0,0.13)",
-        fontFamily: "'Syne','Inter',sans-serif",
+        background: "linear-gradient(145deg, #1c1203 0%, #0e0e0e 55%, #140e00 100%)",
+        border: "1px solid rgba(255,179,0,0.15)",
+        fontFamily: "'DM Sans','Inter',sans-serif",
       }}
     >
-      {/* Success ring */}
-      {showSuccessRing && (
+      {/* ── CSS-only confetti (no JS particle state) ── */}
+      {celebrate && (
         <div
-          className="pointer-events-none absolute inset-0 rounded-3xl"
-          style={{
-            animation: "dlrSuccessRing .85s cubic-bezier(.4,0,.2,1) forwards",
-            border: "2px solid rgba(255,179,0,.85)",
-            zIndex: 20,
-          }}
-        />
+          className="pointer-events-none absolute inset-0 overflow-hidden"
+          style={{ zIndex: 30 }}
+        >
+          {CONFETTI_COLORS.map((color, i) => (
+            <span
+              key={i}
+              style={{
+                position: "absolute",
+                width: 5 + (i % 5),
+                height: 5 + (i % 5),
+                borderRadius: i % 3 === 0 ? "50%" : 2,
+                background: color,
+                left: `${15 + (i % 12) * 6}%`,
+                top: "50%",
+                // rotate between 4 CSS keyframes to vary trajectories
+                animation: `dlrCf${i % 4} ${0.7 + (i % 4) * 0.2}s ${i * 0.045}s cubic-bezier(.2,1,.3,1) both`,
+              }}
+            />
+          ))}
+        </div>
       )}
 
-      {/* Ambient top-right glow */}
+      {/* ── Ambient glow ── */}
       <div
-        className="pointer-events-none absolute"
+        className="pointer-events-none absolute inset-0"
         style={{
-          top: -80,
-          right: -80,
-          width: 220,
-          height: 220,
-          borderRadius: "50%",
-          background: "radial-gradient(circle,rgba(255,179,0,.14) 0%,transparent 70%)",
-          opacity: open ? 1 : 0.5,
-          transform: open ? "scale(1.25)" : "scale(1)",
-          transition: "opacity .45s, transform .45s",
-        }}
-      />
-      {/* Ambient bottom-left glow */}
-      <div
-        className="pointer-events-none absolute"
-        style={{
-          bottom: -80,
-          left: -60,
-          width: 180,
-          height: 180,
-          borderRadius: "50%",
-          background: "radial-gradient(circle,rgba(130,80,255,.1) 0%,transparent 70%)",
-          animation: "dlrGlowDrift 5s ease-in-out infinite",
+          background:
+            "radial-gradient(ellipse 65% 45% at 85% 10%, rgba(255,179,0,0.08) 0%, transparent 60%)",
         }}
       />
 
-      {/* Particles */}
-      {particles.map((p) => (
-        <div
-          key={p.id}
-          className="pointer-events-none absolute rounded-full"
-          style={{
-            left: p.x,
-            top: p.y,
-            width: p.size,
-            height: p.size,
-            background: p.color,
-            animation: `dlrFly ${0.75 + p.delay * 2}s ${p.delay}s cubic-bezier(.2,1,.3,1) forwards`,
-            ["--tx" as any]: `${p.tx}px`,
-            ["--ty" as any]: `${p.ty}px`,
-          }}
-        />
-      ))}
+      <div className="relative" style={{ padding: "20px 18px 22px" }}>
 
-      {/* ── Collapsed header ── */}
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="relative z-10 w-full flex items-center gap-3 text-left"
-        style={{
-          padding: "14px 18px",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          transition: "background .2s",
-        }}
-        onMouseEnter={(e) =>
-          (e.currentTarget.style.background = "rgba(255,255,255,.025)")
-        }
-        onMouseLeave={(e) =>
-          (e.currentTarget.style.background = "transparent")
-        }
-      >
-        {/* Gift icon with idle bob */}
-        <div
-          className="flex-shrink-0 flex items-center justify-center rounded-2xl"
-          style={{
-            width: 42,
-            height: 42,
-            background: "rgba(255,179,0,.1)",
-            border: "1px solid rgba(255,179,0,.18)",
-            animation: claimed ? undefined : "dlrIconBob 3.2s ease-in-out infinite",
-            transition: "box-shadow .3s",
-          }}
-        >
-          <IconGift />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <p
-            className="font-extrabold leading-tight"
-            style={{ fontSize: 15, color: "#f0f0f0" }}
-          >
-            Daily Reward
-          </p>
-          <p
-            style={{
-              fontSize: 11,
-              marginTop: 2,
-              color: claimed ? "#ffb300" : "rgba(255,255,255,.35)",
-              transition: "color .35s",
-            }}
-          >
-            {claimed
-              ? "Claimed! See you tomorrow ✨"
-              : status.can_claim
-              ? "Tap to claim today's reward"
-              : countdown
-              ? `Next in ${countdown}`
-              : "Come back tomorrow"}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {status.current_streak > 0 && (
-            <div
-              className="flex items-center gap-1 rounded-full"
+        {/* ═══════════════════════════════════════
+            HEADER
+        ════════════════════════════════════════ */}
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span style={{ fontSize: 20 }}>🎁</span>
+              <span
+                style={{ fontSize: 15, fontWeight: 700, color: "#f0f0f0", letterSpacing: "-0.015em" }}
+              >
+                Daily Reward
+              </span>
+            </div>
+            <p
               style={{
-                background: "rgba(255,100,0,.1)",
-                border: "1px solid rgba(255,100,0,.2)",
-                padding: "4px 9px",
+                fontSize: 12,
+                color: claimed ? "#ffb300" : "rgba(255,255,255,0.38)",
+                transition: "color 0.4s",
+                lineHeight: 1.4,
               }}
             >
-              <IconFlame size={10} color="#ff8c00" />
+              {claimed ? claimedMessage : streakMessage}
+            </p>
+          </div>
+
+          {/* Streak badge — only show if streak is active */}
+          {current_streak > 0 && (
+            <div
+              className="flex flex-col items-center justify-center rounded-xl flex-shrink-0"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(255,100,0,0.18), rgba(255,179,0,0.09))",
+                border: "1px solid rgba(255,130,0,0.28)",
+                padding: "8px 13px",
+                minWidth: 52,
+              }}
+            >
+              <span style={{ fontSize: 17, lineHeight: 1, marginBottom: 2 }}>🔥</span>
               <span
                 style={{
                   fontFamily: "'JetBrains Mono',monospace",
-                  fontSize: 11,
-                  fontWeight: 700,
+                  fontSize: 18,
+                  fontWeight: 800,
                   color: "#ff8c00",
+                  lineHeight: 1,
                 }}
               >
-                {status.current_streak}
+                {current_streak}
+              </span>
+              <span
+                style={{
+                  fontSize: 8,
+                  color: "rgba(255,140,0,0.55)",
+                  letterSpacing: "0.09em",
+                  textTransform: "uppercase",
+                  marginTop: 3,
+                }}
+              >
+                streak
               </span>
             </div>
           )}
-
-          {!claimed && (
-            <div
-              className="rounded-full font-bold"
-              style={{
-                fontFamily: "'JetBrains Mono',monospace",
-                fontSize: 12,
-                padding: "4px 10px",
-                background: "rgba(255,179,0,.12)",
-                border: "1px solid rgba(255,179,0,.22)",
-                color: "#ffb300",
-              }}
-            >
-              +{status.next_reward}
-            </div>
-          )}
-
-          <ChevronDown
-            className="h-[18px] w-[18px] flex-shrink-0"
-            style={{
-              color: "rgba(255,255,255,.32)",
-              transform: open ? "rotate(180deg)" : "rotate(0deg)",
-              transition: "transform .38s cubic-bezier(.34,1.56,.64,1)",
-            }}
-          />
         </div>
-      </button>
 
-      {/* ── Expanded body ── */}
-      <div
-        className="overflow-hidden"
-        style={{
-          maxHeight: open ? 620 : 0,
-          transition: "max-height .55s cubic-bezier(.4,0,.2,1)",
-        }}
-      >
+        {/* ═══════════════════════════════════════
+            7-DAY GRID
+        ════════════════════════════════════════ */}
         <div
-          style={{
-            padding: "0 18px 20px",
-            opacity: open ? 1 : 0,
-            transform: open ? "translateY(0)" : "translateY(-10px)",
-            transition: "opacity .35s .08s, transform .35s .08s cubic-bezier(.4,0,.2,1)",
-          }}
+          className="grid mb-5"
+          style={{ gridTemplateColumns: "repeat(7,1fr)", gap: 5 }}
         >
-          <div
-            style={{
-              height: 1,
-              background: "rgba(255,255,255,.06)",
-              marginBottom: 18,
-            }}
-          />
+          {DAY_REWARDS.map((pts, idx) => {
+            const dayNum = idx + 1;
+            const isPast  = claimed ? dayNum <= next_streak_day : dayNum < next_streak_day;
+            const isToday = !claimed && can_claim && dayNum === next_streak_day;
+            const isBonus = dayNum === 7;
 
-          {/* ── Streak day grid ── */}
-          <div
-            className="grid mb-5"
-            style={{ gridTemplateColumns: "repeat(7,1fr)", gap: 8 }}
-          >
-            {DAYS.map((day, idx) => (
+            return (
               <div
-                key={day}
-                className="flex flex-col items-center justify-center"
-                style={dayStyle(day, idx)}
-              >
-                {dayContent(day)}
-              </div>
-            ))}
-          </div>
-
-          {/* ── Reward display + CTA ── */}
-          <div className="flex items-end justify-between gap-4 mb-5">
-            <div>
-              <p
+                key={dayNum}
+                className="flex flex-col items-center gap-1"
                 style={{
-                  fontSize: 10,
-                  letterSpacing: ".08em",
-                  textTransform: "uppercase",
-                  color: "rgba(255,255,255,.3)",
-                  marginBottom: 4,
-                }}
-              >
-                Today's Reward
-              </p>
-
-              <div
-                className="font-extrabold leading-none"
-                style={{
-                  fontSize: 50,
-                  background: "linear-gradient(135deg,#ffb300 30%,#ff6b00 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                  // FIX: animation only runs after a fresh claim, not permanently
-                  animation: justClaimed
-                    ? "dlrNumberPop .55s cubic-bezier(.34,1.56,.64,1) forwards"
+                  padding: "8px 3px",
+                  borderRadius: 10,
+                  background: isToday
+                    ? "linear-gradient(135deg, #ffb300, #ff6b00)"
+                    : isPast
+                    ? isBonus
+                      ? "rgba(255,100,0,0.16)"
+                      : "rgba(255,179,0,0.11)"
+                    : "rgba(255,255,255,0.04)",
+                  border: `1px solid ${
+                    isToday
+                      ? "rgba(255,220,0,0.55)"
+                      : isPast
+                      ? isBonus
+                        ? "rgba(255,100,0,0.28)"
+                        : "rgba(255,179,0,0.22)"
+                      : "rgba(255,255,255,0.06)"
+                  }`,
+                  boxShadow: isToday
+                    ? "0 0 14px rgba(255,160,0,0.42), 0 0 28px rgba(255,100,0,0.14)"
                     : undefined,
                 }}
               >
-                +{status.next_reward}
-              </div>
-              <p
-                style={{ fontSize: 11, color: "rgba(255,255,255,.28)", marginTop: 3 }}
-              >
-                MCK Points
-              </p>
-
-              {/* FIX: isBonus7 now correctly reflects day 7 regardless of claim state */}
-              {isBonus7 && (
-                <div
-                  className="inline-flex items-center gap-1 rounded-full mt-2"
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: "#ff8800",
-                    background: "rgba(255,100,0,.1)",
-                    border: "1px solid rgba(255,100,0,.2)",
-                    padding: "3px 10px",
-                    animation: "dlrBonusBadge 2.5s ease-in-out infinite",
-                  }}
-                >
-                  <Sparkles className="h-3 w-3" /> 7-day bonus!
-                </div>
-              )}
-
-              {claimed && countdown && (
-                <div
-                  className="flex items-center gap-2 mt-2"
+                <span style={{ fontSize: 10, lineHeight: 1, userSelect: "none" }}>
+                  {isPast ? "✓" : isToday ? "🎁" : isBonus ? "⭐" : dayNum}
+                </span>
+                <span
                   style={{
                     fontFamily: "'JetBrains Mono',monospace",
+                    fontSize: 8,
+                    fontWeight: 700,
+                    color: isToday
+                      ? "#0c0c0e"
+                      : isPast
+                      ? isBonus
+                        ? "#ff8800"
+                        : "#ffb300"
+                      : "rgba(255,255,255,0.22)",
+                    lineHeight: 1,
+                  }}
+                >
+                  +{pts}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ═══════════════════════════════════════
+            BOTTOM SECTION  (claimed vs claimable)
+        ════════════════════════════════════════ */}
+        {claimed ? (
+          /* ── CLAIMED: show what was earned + "come back tomorrow" teaser ── */
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+
+            {/* Earned today */}
+            <div
+              className="flex items-center justify-between rounded-xl"
+              style={{
+                background: "rgba(255,179,0,0.06)",
+                border: "1px solid rgba(255,179,0,0.13)",
+                padding: "13px 15px",
+              }}
+            >
+              <div>
+                <p
+                  style={{
+                    fontSize: 10,
+                    color: "rgba(255,255,255,0.33)",
+                    letterSpacing: "0.07em",
+                    textTransform: "uppercase",
+                    marginBottom: 4,
+                  }}
+                >
+                  Claimed today
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span
+                    style={{
+                      fontFamily: "'JetBrains Mono',monospace",
+                      fontSize: 26,
+                      fontWeight: 800,
+                      color: "#ffb300",
+                      lineHeight: 1,
+                      animation: "dlrPop .5s cubic-bezier(.34,1.56,.64,1) both",
+                    }}
+                  >
+                    +{next_reward}
+                  </span>
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                    MCK Points
+                  </span>
+                </div>
+              </div>
+              <div
+                className="flex items-center justify-center rounded-full"
+                style={{
+                  width: 40,
+                  height: 40,
+                  background: "rgba(255,179,0,0.12)",
+                  border: "1px solid rgba(255,179,0,0.22)",
+                  fontSize: 18,
+                }}
+              >
+                ✅
+              </div>
+            </div>
+
+            {/* Tomorrow teaser — this is the "hook" to come back */}
+            <div
+              className="flex items-center gap-3 rounded-xl"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(255,100,0,0.09), rgba(255,179,0,0.05))",
+                border: "1px solid rgba(255,100,0,0.17)",
+                padding: "12px 15px",
+              }}
+            >
+              <span style={{ fontSize: 22, flexShrink: 0 }}>🌅</span>
+              <div className="flex-1 min-w-0">
+                <p
+                  style={{
                     fontSize: 12,
-                    color: "rgba(255,255,255,.32)",
+                    fontWeight: 700,
+                    color: "#ff9d00",
+                    marginBottom: 3,
+                    lineHeight: 1.3,
+                  }}
+                >
+                  Come back tomorrow for&nbsp;
+                  <span style={{ color: "#ffcc00" }}>+{tomorrowReward} MCK!</span>
+                </p>
+                {countdown ? (
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background: "#ff6b00",
+                        animation: "dlrDot 1.5s ease-in-out infinite",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontFamily: "'JetBrains Mono',monospace",
+                        fontSize: 11,
+                        color: "rgba(255,255,255,0.32)",
+                      }}
+                    >
+                      {countdown}
+                    </span>
+                  </div>
+                ) : (
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
+                    Almost time — stay ready!
+                  </p>
+                )}
+              </div>
+              {/* Next day badge */}
+              {next_streak_day < 7 && (
+                <div
+                  className="flex flex-col items-center rounded-lg flex-shrink-0"
+                  style={{
+                    padding: "6px 10px",
+                    background: "rgba(255,100,0,0.12)",
+                    border: "1px solid rgba(255,100,0,0.22)",
                   }}
                 >
                   <span
-                    className="rounded-full flex-shrink-0"
                     style={{
-                      width: 5,
-                      height: 5,
-                      background: "#ff8800",
-                      animation: "dlrDotPulse 1.5s ease-in-out infinite",
+                      fontSize: 8,
+                      color: "rgba(255,140,0,0.65)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
                     }}
-                  />
-                  Next in {countdown}
+                  >
+                    Day
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: "'JetBrains Mono',monospace",
+                      fontSize: 18,
+                      fontWeight: 800,
+                      color: "#ff8800",
+                      lineHeight: 1.1,
+                    }}
+                  >
+                    {next_streak_day + 1}
+                  </span>
                 </div>
               )}
             </div>
-
-            {/* ── Claim button ── */}
-            <button
-              ref={btnRef}
-              onClick={handleClaim}
-              disabled={claiming || claimed}
-              className="relative overflow-hidden flex items-center gap-2 rounded-2xl font-extrabold"
-              style={{
-                fontFamily: "'Syne','Inter',sans-serif",
-                fontSize: 14,
-                padding: "15px 26px",
-                minWidth: 120,
-                transition: "transform .15s cubic-bezier(.34,1.56,.64,1), box-shadow .2s, opacity .2s",
-                cursor: claiming || claimed ? "not-allowed" : "pointer",
-                ...(claimed
-                  ? {
-                      background: "rgba(255,255,255,.05)",
-                      border: "1px solid rgba(255,255,255,.08)",
-                      color: "rgba(255,255,255,.28)",
-                    }
-                  : {
-                      background: "linear-gradient(135deg,#ffb300,#ff6b00)",
-                      border: "none",
-                      color: "#0c0c0e",
-                      boxShadow: "0 4px 24px rgba(255,179,0,.4)",
-                      animation: "dlrBtnPulse 2.5s ease-in-out infinite",
-                    }),
-              }}
-              onMouseEnter={(e) => {
-                if (!claimed && !claiming)
-                  e.currentTarget.style.transform = "scale(1.04)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "scale(1)";
-              }}
-              onMouseDown={(e) => {
-                if (!claimed && !claiming)
-                  e.currentTarget.style.transform = "scale(0.96)";
-              }}
-              onMouseUp={(e) => {
-                if (!claimed && !claiming)
-                  e.currentTarget.style.transform = "scale(1.04)";
-              }}
-            >
-              {/* Shimmer sweep — only on idle claimable state */}
-              {!claimed && !claiming && (
-                <div
-                  className="pointer-events-none absolute inset-0"
-                  style={{
-                    background:
-                      "linear-gradient(105deg,transparent 35%,rgba(255,255,255,.28) 50%,transparent 65%)",
-                    backgroundSize: "250% 100%",
-                    animation: "dlrShimmer 2.8s ease-in-out infinite",
-                  }}
-                />
-              )}
-
-              {claiming ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : claimed ? (
-                <>
-                  <Check className="h-4 w-4" /> Claimed
-                </>
-              ) : (
-                <>
-                  <IconGift size={15} color="#0c0c0e" strokeWidth={2.5} /> Claim
-                </>
-              )}
-            </button>
           </div>
+        ) : (
+          /* ── CLAIMABLE: reward display + big claim button ── */
+          <div>
+            <div className="flex items-end justify-between gap-4 mb-4">
 
-          {/* ── Stats row ── */}
-          {status.total_claims > 0 && (
-            <>
-              <div
-                style={{
-                  height: 1,
-                  background: "rgba(255,255,255,.06)",
-                  marginBottom: 14,
-                }}
-              />
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  {
-                    val: status.longest_streak,
-                    label: "Best Streak",
-                    icon: <IconFlame size={11} color="#ff8c00" />,
-                  },
-                  {
-                    val: status.total_claims,
-                    label: "Total Claims",
-                    icon: (
-                      <Check
-                        className="h-[11px] w-[11px]"
-                        style={{ color: "#ffb300" }}
-                      />
-                    ),
-                  },
-                  {
-                    val: status.total_points_earned,
-                    label: "MCK Points",
-                    icon: (
-                      <Star
-                        className="h-[11px] w-[11px]"
-                        style={{ color: "#ffb300" }}
-                      />
-                    ),
-                  },
-                ].map(({ val, label, icon }, i) => (
-                  <div
-                    key={label}
-                    className="flex flex-col items-center rounded-2xl py-3"
+              {/* Reward amount */}
+              <div>
+                <p
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: "0.09em",
+                    textTransform: "uppercase",
+                    color: "rgba(255,255,255,0.27)",
+                    marginBottom: 5,
+                  }}
+                >
+                  Today's Reward
+                </p>
+                <div
+                  style={{
+                    fontFamily: "'JetBrains Mono',monospace",
+                    fontSize: 48,
+                    fontWeight: 800,
+                    lineHeight: 1,
+                    background: "linear-gradient(135deg, #ffb300 25%, #ff6b00 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }}
+                >
+                  +{next_reward}
+                </div>
+                <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", marginTop: 4 }}>
+                  MCK Points
+                </p>
+                {next_streak_day === 7 && (
+                  <span
                     style={{
-                      background: "rgba(255,255,255,.028)",
-                      border: "1px solid rgba(255,255,255,.06)",
-                      // FIX: stat cards now animate in with the rest of the tiles
-                      opacity: daysVisible[6] ? 1 : 0,
-                      transform: daysVisible[6] ? "translateY(0)" : "translateY(10px)",
-                      transition: `opacity .4s ${0.42 + i * 0.07}s, transform .45s ${0.42 + i * 0.07}s cubic-bezier(.34,1.56,.64,1)`,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: "#ff8800",
+                      background: "rgba(255,100,0,0.1)",
+                      border: "1px solid rgba(255,100,0,0.22)",
+                      borderRadius: 20,
+                      padding: "3px 10px",
+                      marginTop: 8,
+                      animation: "dlrBadgePulse 2.5s ease-in-out infinite",
                     }}
                   >
-                    <div
-                      className="flex items-center gap-1"
-                      style={{
-                        fontFamily: "'JetBrains Mono',monospace",
-                        fontSize: 17,
-                        fontWeight: 800,
-                        color: "#f0f0f0",
-                      }}
-                    >
-                      {icon}
-                      {val}
-                    </div>
-                    <p
-                      style={{
-                        fontSize: 9,
-                        letterSpacing: ".09em",
-                        textTransform: "uppercase",
-                        color: "rgba(255,255,255,.26)",
-                        marginTop: 3,
-                      }}
-                    >
-                      {label}
-                    </p>
-                  </div>
-                ))}
+                    ⭐ 7-day bonus!
+                  </span>
+                )}
               </div>
-            </>
-          )}
-        </div>
+
+              {/* ── Claim button ── */}
+              <button
+                onClick={handleClaim}
+                disabled={claiming}
+                style={{
+                  position: "relative",
+                  overflow: "hidden",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  padding: "15px 26px",
+                  minWidth: 110,
+                  borderRadius: 14,
+                  background: "linear-gradient(135deg, #ffb300, #ff6b00)",
+                  border: "none",
+                  color: "#0c0c0e",
+                  fontSize: 14,
+                  fontWeight: 800,
+                  fontFamily: "'DM Sans','Inter',sans-serif",
+                  cursor: claiming ? "not-allowed" : "pointer",
+                  opacity: claiming ? 0.75 : 1,
+                  boxShadow: "0 4px 22px rgba(255,160,0,0.42)",
+                  transition: "transform 0.15s cubic-bezier(.34,1.56,.64,1), box-shadow 0.2s, opacity 0.2s",
+                  animation: !claiming ? "dlrBtnPulse 2.6s ease-in-out infinite" : undefined,
+                }}
+                onMouseEnter={(e) => {
+                  if (!claiming) {
+                    e.currentTarget.style.transform = "scale(1.05)";
+                    e.currentTarget.style.boxShadow = "0 6px 30px rgba(255,160,0,0.6)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                  e.currentTarget.style.boxShadow = "0 4px 22px rgba(255,160,0,0.42)";
+                }}
+                onMouseDown={(e) => {
+                  if (!claiming) e.currentTarget.style.transform = "scale(0.96)";
+                }}
+                onMouseUp={(e) => {
+                  if (!claiming) e.currentTarget.style.transform = "scale(1.04)";
+                }}
+              >
+                {/* Shimmer sweep */}
+                {!claiming && (
+                  <span
+                    style={{
+                      pointerEvents: "none",
+                      position: "absolute",
+                      inset: 0,
+                      background:
+                        "linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.3) 50%, transparent 65%)",
+                      backgroundSize: "250% 100%",
+                      animation: "dlrShimmer 2.8s ease-in-out infinite",
+                    }}
+                  />
+                )}
+                {claiming ? (
+                  <span style={{ animation: "dlrSpin 0.9s linear infinite", fontSize: 16 }}>
+                    ◌
+                  </span>
+                ) : (
+                  <>
+                    <span style={{ fontSize: 15 }}>🎁</span> Claim
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Tomorrow teaser (even before claiming — motivates action) */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                borderRadius: 10,
+                padding: "9px 13px",
+                fontSize: 11,
+                color: "rgba(255,255,255,0.28)",
+              }}
+            >
+              <span>💡</span>
+              <span>
+                Claim daily to keep your streak · Tomorrow:&nbsp;
+                <strong style={{ color: "rgba(255,179,0,0.65)" }}>+{tomorrowReward} MCK</strong>
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════
+            STATS ROW
+        ════════════════════════════════════════ */}
+        {total_claims > 0 && (
+          <>
+            <div
+              style={{
+                height: 1,
+                background: "rgba(255,255,255,0.05)",
+                margin: "16px 0 14px",
+              }}
+            />
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { val: longest_streak, label: "Best Streak", icon: "🏆" },
+                { val: total_claims, label: "Total Claims", icon: "✅" },
+                { val: total_points_earned, label: "MCK Points", icon: "⭐" },
+              ].map(({ val, label, icon }) => (
+                <div
+                  key={label}
+                  className="flex flex-col items-center rounded-xl"
+                  style={{
+                    padding: "10px 4px",
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.055)",
+                  }}
+                >
+                  <span style={{ fontSize: 13, marginBottom: 3 }}>{icon}</span>
+                  <span
+                    style={{
+                      fontFamily: "'JetBrains Mono',monospace",
+                      fontSize: 16,
+                      fontWeight: 800,
+                      color: "#f0f0f0",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {val}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 8,
+                      letterSpacing: "0.09em",
+                      textTransform: "uppercase",
+                      color: "rgba(255,255,255,0.24)",
+                      marginTop: 4,
+                      textAlign: "center",
+                    }}
+                  >
+                    {label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
-      {/* ── Keyframes ── */}
+      {/* ── Keyframes — kept minimal, CSS-only ── */}
       <style>{`
-        @keyframes dlrFly {
-          0%   { opacity: 1; transform: translate(0, 0) scale(1); }
-          80%  { opacity: 0.6; }
-          100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.2); }
-        }
         @keyframes dlrBtnPulse {
-          0%, 100% { box-shadow: 0 4px 20px rgba(255,179,0,.35); }
-          50%       { box-shadow: 0 4px 36px rgba(255,179,0,.7); }
+          0%, 100% { box-shadow: 0 4px 22px rgba(255,160,0,0.38); }
+          50%       { box-shadow: 0 4px 34px rgba(255,160,0,0.65); }
         }
         @keyframes dlrShimmer {
           0%   { background-position: 250% center; }
           100% { background-position: -250% center; }
         }
-        @keyframes dlrActivePulse {
-          0%, 100% { box-shadow: 0 0 18px rgba(255,179,0,.5), 0 0 36px rgba(255,130,0,.18); }
-          50%       { box-shadow: 0 0 26px rgba(255,179,0,.8), 0 0 52px rgba(255,130,0,.35); }
-        }
-        @keyframes dlrIconBob {
-          0%, 100% { transform: translateY(0px); }
-          50%       { transform: translateY(-3px); }
-        }
-        @keyframes dlrGlowDrift {
-          0%, 100% { transform: translate(0, 0); }
-          50%       { transform: translate(12px, -12px); }
-        }
-        @keyframes dlrSuccessRing {
-          0%   { opacity: 1;   transform: scale(1); }
-          100% { opacity: 0;   transform: scale(1.05); }
-        }
-        @keyframes dlrNumberPop {
-          0%   { transform: scale(0.75); }
-          60%  { transform: scale(1.18); }
-          100% { transform: scale(1); }
-        }
-        @keyframes dlrBonusBadge {
+        @keyframes dlrBadgePulse {
           0%, 100% { opacity: 1;   transform: scale(1); }
           50%       { opacity: .75; transform: scale(1.03); }
         }
-        @keyframes dlrDotPulse {
-          0%, 100% { opacity: 1;  transform: scale(1); }
-          50%       { opacity: .3; transform: scale(0.65); }
+        @keyframes dlrDot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%       { opacity: .28; transform: scale(0.6); }
+        }
+        @keyframes dlrPop {
+          0%   { transform: scale(0.75); }
+          60%  { transform: scale(1.12); }
+          100% { transform: scale(1); }
+        }
+        @keyframes dlrSpin {
+          to { transform: rotate(360deg); }
+        }
+        /* 4 confetti trajectories — randomised by particle index */
+        @keyframes dlrCf0 {
+          0%   { opacity:1; transform:translate(0,0) scale(1) rotate(0deg); }
+          100% { opacity:0; transform:translate(-70px,-110px) scale(0.15) rotate(200deg); }
+        }
+        @keyframes dlrCf1 {
+          0%   { opacity:1; transform:translate(0,0) scale(1) rotate(0deg); }
+          100% { opacity:0; transform:translate(70px,-120px) scale(0.15) rotate(-160deg); }
+        }
+        @keyframes dlrCf2 {
+          0%   { opacity:1; transform:translate(0,0) scale(1) rotate(0deg); }
+          100% { opacity:0; transform:translate(-30px,-140px) scale(0.15) rotate(110deg); }
+        }
+        @keyframes dlrCf3 {
+          0%   { opacity:1; transform:translate(0,0) scale(1) rotate(0deg); }
+          100% { opacity:0; transform:translate(40px,-100px) scale(0.15) rotate(-240deg); }
         }
       `}</style>
     </div>
