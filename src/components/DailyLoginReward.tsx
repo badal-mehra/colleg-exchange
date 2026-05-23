@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, memo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -33,13 +33,37 @@ const fmtCountdown = (ms: number) => {
 
 const DAYS = [1, 2, 3, 4, 5, 6, 7];
 
+/* ─── Sub-Components ─────────────────────────────────────── */
+// Isolated to prevent the main parent from re-rendering every second
+const CountdownText = memo(({ targetDate, onZero }: { targetDate: string; onZero: () => void }) => {
+  const [text, setText] = useState("");
+
+  useEffect(() => {
+    if (!targetDate) return;
+    const tick = () => {
+      const rem = new Date(targetDate).getTime() - Date.now();
+      if (rem <= 0) {
+        setText("");
+        onZero();
+      } else {
+        setText(`Next drop in ${fmtCountdown(rem)}`);
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [targetDate, onZero]);
+
+  return <>{text || "Streak saved for today ✨"}</>;
+});
+CountdownText.displayName = "CountdownText";
+
 /* ─── Component ─────────────────────────────────────────── */
 const DailyLoginReward: React.FC<Props> = ({ className }) => {
   const { user } = useAuth();
   const [status, setStatus] = useState<RewardStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
-  const [countdown, setCountdown] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [showBurst, setShowBurst] = useState(false);
   const [floatingPoints, setFloatingPoints] = useState<number | null>(null);
@@ -55,20 +79,6 @@ const DailyLoginReward: React.FC<Props> = ({ className }) => {
 
   useEffect(() => { fetchStatus(); }, [fetchStatus]);
 
-  useEffect(() => {
-    if (!status?.next_claim_at || status.can_claim) {
-      setCountdown("");
-      return;
-    }
-    const tick = () => {
-      const rem = new Date(status.next_claim_at!).getTime() - Date.now();
-      rem <= 0 ? (setCountdown(""), fetchStatus()) : setCountdown(fmtCountdown(rem));
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [status, fetchStatus]);
-
   const handleClaim = async () => {
     if (!user || claiming || !status?.can_claim) return;
     setClaiming(true);
@@ -83,6 +93,8 @@ const DailyLoginReward: React.FC<Props> = ({ className }) => {
       const res = data as any;
       
       if (res?.success) {
+        // Optimistic UI lock to prevent laggy double-clicks or UI flickers
+        setStatus(prev => prev ? { ...prev, can_claim: false } : null);
         setFloatingPoints(res.points_awarded);
         setShowBurst(true);
         
@@ -91,15 +103,18 @@ const DailyLoginReward: React.FC<Props> = ({ className }) => {
           description: `+${res.points_awarded} MCK Points added. You're closer to your next reward!`,
         });
 
-        setTimeout(() => {
+        // Wait for animations before fetching real status & unlocking button
+        setTimeout(async () => {
           setShowBurst(false);
           setFloatingPoints(null);
-          fetchStatus(); 
+          await fetchStatus(); 
+          setClaiming(false); 
         }, 2000);
+      } else {
+        setClaiming(false);
       }
     } catch (e: any) {
       toast({ variant: "destructive", title: "Network Error", description: "Could not claim right now. Try again." });
-    } finally {
       setClaiming(false);
     }
   };
@@ -108,7 +123,13 @@ const DailyLoginReward: React.FC<Props> = ({ className }) => {
   if (loading) return <div className="h-20 flex items-center justify-center rounded-[2rem] bg-[#0a0a0c] border border-white/5"><Loader2 className="animate-spin text-amber-500" /></div>;
   if (!status) return null;
 
-  const claimedCount = status.can_claim ? status.next_streak_day - 1 : status.next_streak_day;
+  // Fix logic: Accurately find claimed days without bleeding into tomorrow.
+  let claimedCount = Math.max(0, status.next_streak_day - 1);
+  // Edge case: If they claimed Day 7 today, next_streak_day resets to 1 for tomorrow. Maintain UI visually full for today.
+  if (!status.can_claim && status.next_streak_day === 1 && status.current_streak > 0) {
+    claimedCount = 7; 
+  }
+  
   const progressPct = (claimedCount / 7) * 100;
 
   // Next milestone calculation (Psychological hook)
@@ -161,8 +182,8 @@ const DailyLoginReward: React.FC<Props> = ({ className }) => {
           <p className="text-xs text-slate-400 font-medium truncate">
             {status.can_claim 
               ? `Only ${pointsNeeded} pts away from your next unlock!` 
-              : countdown 
-                ? `Next drop in ${countdown}` 
+              : status.next_claim_at 
+                ? <CountdownText targetDate={status.next_claim_at} onZero={fetchStatus} />
                 : "Streak saved for today ✨"}
           </p>
         </div>
