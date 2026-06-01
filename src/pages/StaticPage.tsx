@@ -4,7 +4,9 @@ import { useParams, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import { Footer } from '@/components/Footer'; // Footer for layout consistency
+import { Footer } from '@/components/Footer';
+import { SEOHead } from '@/components/seo/SEOHead';
+import { canonical } from '@/lib/seo';
 
 interface StaticPageContent {
   title: string;
@@ -48,6 +50,11 @@ const StaticPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead
+        title={`${displayTitle} | MyCampusKart`}
+        description={`${displayTitle} — official MyCampusKart page. Learn more about our verified student marketplace, policies and support.`}
+        canonical={canonical(`/${slug}`)}
+      />
       <div className="container mx-auto px-4 py-12">
         <Card className="max-w-4xl mx-auto min-h-[400px]">
           <CardHeader>

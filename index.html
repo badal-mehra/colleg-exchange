@@ -1,21 +1,29 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-IN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" href="/favicon.png" type="image/png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>MyCampusKart - Verified Student Marketplace</title>
-    <meta name="description" content="MyCampusKart - Verified Student Marketplace for buying and selling within your campus community. Verified students only.">
+    <title>MyCampusKart — Verified Student Marketplace to Buy & Sell on Campus</title>
+    <meta name="description" content="MyCampusKart is India's verified student marketplace. Buy & sell textbooks, electronics, cycles, lab coats and PG rooms with seniors and juniors on your campus.">
+    <meta name="keywords" content="student marketplace India, college buy sell, MyCampusKart, used books, hostel essentials, PG rooms near college, LPU marketplace, secondhand calculator, campus app">
+    <meta name="author" content="MyCampusKart" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+
+    <!-- Performance: preconnect to critical origins -->
+    <link rel="preconnect" href="https://mtaeqtmcixlrudjsxcew.supabase.co" crossorigin />
+    <link rel="preconnect" href="https://res.cloudinary.com" crossorigin />
+    <link rel="dns-prefetch" href="https://res.cloudinary.com" />
 
     <!-- Favicons -->
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link rel="shortcut icon" href="/favicon.ico">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
-    
+
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
-    
+
     <!-- Theme & Status Bar -->
     <meta name="theme-color" content="#4F46E5" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -27,23 +35,54 @@
     <meta name="msapplication-tap-highlight" content="no" />
     <meta name="format-detection" content="telephone=no" />
 
-    <!-- Open Graph -->
-    <meta property="og:title" content="MyCampusKart - Verified Student Marketplace">
+    <!-- Open Graph (sitewide fallback — per-page Helmet overrides for JS crawlers) -->
+    <meta property="og:site_name" content="MyCampusKart" />
+    <meta property="og:title" content="MyCampusKart — Verified Student Marketplace">
     <meta property="og:description" content="Buy and sell items securely within your campus community. Verified students only.">
     <meta property="og:image" content="https://www.mycampuskart.com/mycampuskart-logo.png">
+    <meta property="og:url" content="https://www.mycampuskart.com/">
     <meta property="og:type" content="website">
+    <meta property="og:locale" content="en_IN" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="MyCampusKart — Verified Student Marketplace">
+    <meta name="twitter:description" content="Buy and sell items securely within your campus community. Verified students only.">
     <meta name="twitter:image" content="https://www.mycampuskart.com/mycampuskart-logo.png">
 
-    <!-- Splash Screen for iOS -->
+    <!-- Sitewide JSON-LD: Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "MyCampusKart",
+      "url": "https://www.mycampuskart.com",
+      "logo": "https://www.mycampuskart.com/mycampuskart-logo.png",
+      "description": "India's verified student marketplace to buy and sell textbooks, electronics, hostel essentials and PG rooms inside campuses.",
+      "sameAs": []
+    }
+    </script>
+
+    <!-- Sitewide JSON-LD: WebSite + SearchAction -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "MyCampusKart",
+      "url": "https://www.mycampuskart.com",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://www.mycampuskart.com/browse?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
     <style>
       html, body {
         overscroll-behavior: none;
         -webkit-overflow-scrolling: touch;
       }
-      /* Safe area padding for notched devices */
       body {
         padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
       }

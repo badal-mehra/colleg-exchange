@@ -1,139 +1,115 @@
-## MyCampusKart Blog Ecosystem — Build Plan
+## Goal
+Make MyCampusKart fully SEO-optimized: every public page indexable, with unique meta/OG/canonical, JSON-LD, clean slugged URLs, and a self-updating sitemap.
 
-A full content platform: public blog hub, article pages, campus SEO pages, and an admin CMS — all DB-backed, SEO-perfect, premium UI.
+## 1. SEO-friendly URL structure (backward-compatible)
+Add a `slug` column to `items` and `pg_listings` (generated from title + short id suffix, unique). Backfill via migration. Keep old `/item/:id` working via redirect.
 
-### 1. Database (Supabase migration)
+New routes (added alongside old):
+- `/item/:slug-:id` → ItemDetail (e.g. `/item/iphone-13-pro-mint-condition-ab12cd`)
+- `/pg/:slug-:id` → PGDetail
+- `/u/:mckId` → PublicProfile (cleaner than `/profile/:mckId`; both kept)
+- `/category/:slug` → Browse filtered by category
+- `/campus-marketplace/:city` → Browse filtered by city
 
-New tables (all with RLS, public read for published rows, admin-only write):
+ItemDetail parses id from end of param; if visited via legacy `/item/:id`, 301-style redirect (Navigate replace) to the slugged URL.
 
-- `blog_categories` — name, slug, description, icon, sort_order
-- `blog_tags` — name, slug
-- `blog_authors` — user_id (nullable), name, slug, avatar_url, bio, role, social links
-- `blog_posts` — title, slug (unique), excerpt, content (markdown), cover_image, author_id, category_id, status (draft/scheduled/published), published_at, scheduled_at, reading_time, views, featured, seo_title, seo_description, og_image, canonical_url, faq (jsonb), meta (jsonb)
-- `blog_post_tags` — post_id, tag_id (junction)
-- `blog_comments` — post_id, user_id, name, content, status (approved/pending), parent_id
-- `campus_pages` — slug, name, city, hero_image, intro, sections (jsonb: trends, hostels, popular_categories, tips), seo_title, seo_description, is_active
+## 2. Per-page SEO via react-helmet-async (already installed)
+Wrap every public page in `<SEOHead>` with: title, description, canonical, OG/Twitter, robots. Pages to cover:
+- Home/Browse — "Buy & Sell on Your Campus | MyCampusKart"
+- ItemDetail — `${title} for ₹${price} in ${location} | MyCampusKart`, OG image = first item image, JSON-LD `Product` with `offers`, `AggregateRating` if reviews
+- PGDetail — JSON-LD `Accommodation` / `LodgingBusiness`
+- PublicProfile — JSON-LD `Person`, noindex if profile has no listings
+- Auth/Reset/Dashboard/Chat/Cart/Orders/KYC/Admin — `noindex,nofollow`
+- DownloadApp — `MobileApplication` JSON-LD
+- Static pages (about/terms/privacy/help/shipping/report) — proper titles
+- Blog hub/post/taxonomy + Campus pages already have SEOHead; add `BreadcrumbList` everywhere
 
-Helper RPC: `increment_blog_view(post_slug)`, `get_published_post(slug)`.
+Add sitewide JSON-LD (`Organization` + `WebSite` with `SearchAction` to `/browse?q=`) to `index.html`.
 
-Seed: 7 realistic articles, 6 categories, ~12 tags, 3 campus pages (LPU, IIT Delhi, Chandigarh University), 1 author profile.
+## 3. Dynamic sitemap generation
+Replace static `public/sitemap.xml` with `scripts/generate-sitemap.ts` run via `predev`/`prebuild` (`bunx tsx`). Pulls from Supabase using anon key (env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`):
+- Static routes (home, browse, blog, campuses, download, static pages)
+- All published `blog_posts` (slug + updated_at)
+- All active `campus_pages`
+- All active `blog_categories` and `blog_tags`
+- All non-sold `items` (slugged URL + updated_at)
+- All active `pg_listings`
+- All public `profiles` with ≥1 listing
 
-### 2. Routes (React Router in `src/App.tsx`)
+Also emit `sitemap-index.xml` if >5k URLs (split items into pages).
 
-Public:
-- `/blog` — Hub: hero search, featured post, category chips, latest grid, popular sidebar, newsletter CTA
-- `/blog/category/:slug` — Filtered listing
-- `/blog/tag/:slug` — Tag listing
-- `/blog/:slug` — Single article
-- `/campus/:slug` — Campus SEO landing
-- `/campuses` — Index of all campus pages
-
-Admin (protected, admin-only via `is_admin`):
-- `/admin/blog` — Posts list + filters
-- `/admin/blog/new` — Editor
-- `/admin/blog/:id/edit` — Editor
-- `/admin/blog/categories` — CRUD
-- `/admin/blog/tags` — CRUD
-- `/admin/blog/authors` — CRUD
-- `/admin/campus` — Campus pages CRUD
-
-### 3. Components (`src/components/blog/`)
-
-- `BlogHero`, `BlogSearchBar`, `FeaturedPostCard`, `BlogCard`, `BlogGrid`
-- `CategoryChips`, `TagPill`, `AuthorBadge`, `AuthorCard`
-- `ReadingProgressBar`, `TableOfContents` (auto-generated from markdown headings)
-- `StickyShareButtons` (Twitter/WhatsApp/LinkedIn/Copy link)
-- `FAQAccordion`, `RelatedArticles`, `CTABlock`, `NewsletterCapture`
-- `Breadcrumbs`, `MarkdownRenderer` (react-markdown + remark-gfm + rehype-slug)
-- `BlogPostEditor` (admin: title, slug auto-gen, markdown editor, SEO fields, FAQ builder, schedule, draft toggle, cover upload via Cloudinary)
-- `SEOHead` — reusable Helmet wrapper for meta + JSON-LD
-
-### 4. SEO Layer
-
-- Install `react-helmet-async` and wrap app with `HelmetProvider`
-- Per-page: dynamic `<title>`, meta description, canonical, OG, Twitter card
-- JSON-LD blocks: `Article`, `BreadcrumbList`, `FAQPage`, `Organization` (site-wide), `WebSite` with SearchAction
-- Update `public/sitemap.xml` to include `/blog`, `/campus/*` patterns; add `Sitemap` notes in robots
-- Semantic HTML: `<article>`, `<header>`, `<nav aria-label="breadcrumb">`, single `<h1>` per page, proper heading order
-
-### 5. Design System
-
-Reuse existing tokens (`index.css`, `tailwind.config.ts`). Add blog-specific tokens if needed:
-- Soft shadows, large rounded cards (`rounded-2xl`), generous spacing
-- Sticky translucent navbar with backdrop-blur
-- Smooth Framer-style transitions via Tailwind `transition-all`
-- Dark/light mode already supported — verify contrast
-- Mobile-first grid: 1 col → 2 col (md) → 3 col (lg)
-- Gen-Z touches: gradient accents, emoji-friendly headings, pill tags
-
-### 6. Conversion Hooks
-
-Embedded throughout:
-- Inline "Start Selling" CTA in articles
-- "Explore Marketplace" banner after intro
-- Newsletter capture before related posts (stored in new `newsletter_subscribers` table)
-- Trust badges on hub page (active students, listings count)
-
-### 7. Demo Content (seeded SQL)
-
-7 articles with full markdown bodies, FAQ sections, cover images (Unsplash URLs), tags, categories, author = "MyCampusKart Team":
-- Best Calculators for Engineering Students
-- Hostel Room Essentials Checklist
-- How Students Can Save Money in College
-- Top Things Seniors Sell Before Graduation
-- Best Budget Gadgets for Students 2026
-- Freshers Hostel Checklist
-- Safe Ways to Buy Second-Hand Electronics
-
-3 campus pages with sections, trends, popular categories.
-
-### 8. Technical details
-
-- Markdown rendering: `react-markdown`, `remark-gfm`, `rehype-slug`, `rehype-autolink-headings`
-- Reading time: simple word-count / 200 wpm util
-- TOC: parse headings client-side from rendered DOM, IntersectionObserver for active state
-- Reading progress: scroll listener with rAF
-- Image uploads in admin: reuse existing Cloudinary signing edge function
-- Newsletter subscribe: insert into `newsletter_subscribers` table (RLS: anon insert allowed)
-- Comments: authenticated insert, public read of approved
-
-### 9. Files to create (high level)
-
+## 4. robots.txt
+Allow all, block admin/auth/private routes:
 ```
-supabase/migrations/<ts>_blog_ecosystem.sql
-src/pages/blog/BlogHub.tsx
-src/pages/blog/BlogPost.tsx
-src/pages/blog/BlogCategory.tsx
-src/pages/blog/BlogTag.tsx
-src/pages/campus/CampusPage.tsx
-src/pages/campus/CampusIndex.tsx
-src/pages/admin/blog/BlogAdmin.tsx
-src/pages/admin/blog/BlogEditor.tsx
-src/pages/admin/blog/CategoryAdmin.tsx
-src/pages/admin/blog/TagAdmin.tsx
-src/pages/admin/blog/AuthorAdmin.tsx
-src/pages/admin/campus/CampusAdmin.tsx
-src/components/blog/* (all components above)
-src/components/seo/SEOHead.tsx
-src/lib/blog.ts (queries, slug, reading-time utils)
-src/App.tsx (routes)
-src/main.tsx (HelmetProvider wrap)
-public/sitemap.xml (extended)
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /auth
+Disallow: /reset-password
+Disallow: /chat
+Disallow: /my-
+Disallow: /kyc
+Disallow: /notifications
+Disallow: /scan-qr
+Sitemap: https://www.mycampuskart.com/sitemap.xml
 ```
 
-### 10. Out of scope (kept separate)
+## 5. index.html cleanup
+- Remove duplicate canonical (move per-route)
+- Add sitewide `Organization` + `WebSite` JSON-LD
+- Add `<link rel="preconnect">` for Supabase + Cloudinary
+- Set `lang="en-IN"`
+- Add hreflang `en-IN`
 
-- Server-side rendering / prerendering — this is a Vite SPA; meta tags will be set client-side via Helmet (Google does render JS, but if you later want true SSR we can move to a prerender step)
-- Rich-text WYSIWYG editor — using markdown for cleanliness and SEO; can swap to Tiptap later
-- Email delivery for newsletter — only collecting addresses now
+## 6. Image SEO & performance
+- Add `loading="lazy"` and descriptive `alt` to all `<img>` in listing cards, item detail thumbnails, PG cards, blog cards, avatars
+- Use `width`/`height` attrs to prevent CLS
+- Cloudinary: serve `f_auto,q_auto`, responsive `srcset` for item detail hero
 
-### Build order
+## 7. Semantic HTML & accessibility
+- Single `<h1>` per page (item title, blog title, etc.)
+- Convert section wrappers to `<main>`, `<article>`, `<aside>`, `<nav>`
+- ARIA labels on icon-only buttons
 
-1. Migration + seed (request approval)
-2. SEOHead + Helmet provider + utils
-3. Public blog hub + post page + category/tag
-4. Campus pages
-5. Admin CMS
-6. Sitemap + final SEO polish   
+## 8. Breadcrumbs (visible + JSON-LD)
+Add `<Breadcrumbs>` component (already exists in `components/blog/`) to ItemDetail, PGDetail, PublicProfile, Browse-by-category. Emit matching `BreadcrumbList` JSON-LD.
 
-Confirm and I'll run the migration first, then build the rest in one pass.
+## 9. 404 handling
+NotFound page sets `noindex` and HTTP-equivalent meta. ItemDetail/PGDetail: when row missing, render `<SEOHead noindex />` + NotFound layout (not a soft 200 with empty content).
+
+## 10. Internal linking
+- Item cards link to slugged URLs
+- ItemDetail "More from this seller" block (already-fetched) using slug links
+- Blog posts → CTA linking to relevant category/campus
+- Footer: links to blog, campuses, popular categories
+
+## 11. Supabase migration
+- `ALTER TABLE items ADD COLUMN slug text`
+- `ALTER TABLE pg_listings ADD COLUMN slug text`
+- Backfill: `update items set slug = lower(regexp_replace(title,'[^a-zA-Z0-9]+','-','g'))`
+- Trigger on insert/update to auto-generate slug
+- Index on slug
+
+## Technical notes
+- `react-helmet-async` already installed and provider mounted
+- New `SEOHead` props already supports `noindex`, `jsonLd[]`
+- Sitemap generator uses Supabase REST (no service role needed)
+- All canonical URLs use `https://www.mycampuskart.com`
+- No SSR — social preview crawlers still see sitewide OG from `index.html`; per-route Helmet covers Googlebot
+
+## Out of scope
+- SSR / prerendering (would require Vercel adapter rewrite)
+- Programmatic SEO landing pages beyond categories/cities
+- Schema for chat/messages
+
+## Files to create/edit
+- Migration: add slug to items + pg_listings + trigger
+- `scripts/generate-sitemap.ts` + `package.json` scripts
+- `public/robots.txt` (update)
+- `index.html` (sitewide JSON-LD, preconnects)
+- `src/App.tsx` (new slugged routes + redirects)
+- `src/components/seo/SEOHead.tsx` (already exists, minor tweaks)
+- `src/components/seo/BreadcrumbsJsonLd.tsx` (new helper)
+- Add `<SEOHead>` to: ItemDetail, PGDetail, PublicProfile, Browse, Home, DownloadApp, StaticPage, Auth, Dashboard, Chat, NotFound, Leaderboard, MyListings/Orders/Cart/Reports/Chats/Notifications/KYC/Profile/SellItem/EditItem/AdminDashboard/ScanQR (noindex for private)
+- Listing/PG card components: lazy images, alt text, slug links
+- `src/lib/seo.ts` (new — slug helper, JSON-LD builders for Product/Accommodation/Person/Breadcrumb)

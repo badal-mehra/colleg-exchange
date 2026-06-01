@@ -14,6 +14,8 @@ import { 
 import { useToast } from '@/hooks/use-toast';
 import { ReportModal } from '@/components/ReportModal';
 import { Separator } from '@/components/ui/separator';
+import { SEOHead } from '@/components/seo/SEOHead';
+import { canonical, personJsonLd, breadcrumbJsonLd } from '@/lib/seo';
 
 // --- Interfaces ---
 interface Profile {
@@ -168,10 +170,28 @@ const PublicProfile = () => {
   const activeListings = listings.filter(item => !item.is_sold);
   const activePGListings = pgListings.filter(pg => pg.is_active && pg.status !== 'rented');
 
-  return (
-    <div className="min-h-screen bg-background pb-12">
-      {/* 1. Gradient Banner */}
-      <div className="h-48 md:h-64 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 w-full relative">
+  const profileUrl = canonical(`/profile/${profile.mck_id}`);
+  const hasListings = listings.length > 0 || pgListings.length > 0;
+
+  return (
+    <div className="min-h-screen bg-background pb-12">
+      <SEOHead
+        title={`${profile.full_name} (@${profile.mck_id}) — Verified Seller on MyCampusKart`}
+        description={`${profile.full_name} is a verified student seller on MyCampusKart${profile.university ? ` at ${profile.university}` : ''}. ${listings.length} items & ${pgListings.length} PG listings. ${profile.deals_completed} successful deals.`}
+        canonical={profileUrl}
+        image={avatarUrl || undefined}
+        noindex={!hasListings}
+        jsonLd={[
+          personJsonLd({ name: profile.full_name, url: profileUrl, image: avatarUrl, mckId: profile.mck_id }),
+          breadcrumbJsonLd([
+            { name: 'Home', path: '/' },
+            { name: 'Sellers', path: '/browse' },
+            { name: profile.full_name, path: `/profile/${profile.mck_id}` },
+          ]),
+        ]}
+      />
+      {/* 1. Gradient Banner */}
+      <div className="h-48 md:h-64 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 w-full relative">
         <div className="container mx-auto px-4 py-6">
           <Button 
             variant="secondary" 

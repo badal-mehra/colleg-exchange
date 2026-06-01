@@ -12,6 +12,7 @@ import { Eye, EyeOff, Loader2, Quote, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import logo from '@/assets/mycampuskart-logo.png';
+import { SEOHead } from '@/components/seo/SEOHead';
 
 // --- CONFIG ---
 const UNIVERSITY_OPTIONS = [
@@ -215,6 +216,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gray-50 p-4 font-sans selection:bg-primary/20">
+      <SEOHead title="Sign in to MyCampusKart" description="Login or sign up to MyCampusKart — verified student marketplace." noindex />
       
       {isLoading && <LoadingOverlay />}
 

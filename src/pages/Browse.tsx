@@ -23,6 +23,8 @@ import logo from '@/assets/mycampuskart-logo.png';
 import { getSliderImageUrl } from '@/utils/cloudinaryUpload';
 import SliderSidePanels from '@/components/SliderSidePanels';
 import InstallAppPopup from '@/components/InstallAppPopup';
+import { SEOHead } from '@/components/seo/SEOHead';
+import { canonical } from '@/lib/seo';
 
 // --- INTERFACES ---
 interface MinimalCategory {
@@ -255,7 +257,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, isLoggedIn, navigate, on
   return (
     <div
       className="group bg-card border border-border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-primary/30"
-      onClick={() => navigate(`/item/${item.id}`)}
+      onClick={() => navigate(`/item/${(item.title || 'item').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0,80) || 'item'}-${item.id}`)}
     >
       {/* Image Container */}
       <div className="relative aspect-[4/3] bg-muted overflow-hidden">
@@ -521,6 +523,11 @@ const Browse = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <SEOHead
+        title="MyCampusKart — Buy & Sell on Your Campus | Verified Student Marketplace"
+        description="Browse verified student listings on MyCampusKart. Buy & sell textbooks, electronics, cycles, lab coats and PG rooms inside Indian campuses. Free, secure, student-only."
+        canonical={canonical('/')}
+      />
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-3">

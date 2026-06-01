@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
+import { SEOHead } from '@/components/seo/SEOHead';
+import { buildPGPath, canonical, accommodationJsonLd, breadcrumbJsonLd, extractIdFromSlug } from '@/lib/seo';
 
 interface Profile {
   user_id: string;
@@ -86,7 +88,8 @@ const amenityLabels: Record<string, string> = {
 };
 
 const PGDetail = () => {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ slugId?: string; id?: string }>();
+  const id = extractIdFromSlug(params.slugId || params.id);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -239,12 +242,16 @@ const PGDetail = () => {
 
   if (!listing) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
-        <p className="text-muted-foreground">PG listing not found</p>
-        <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
-      </div>
+      <>
+        <SEOHead title="PG Listing Not Found | MyCampusKart" noindex />
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+          <p className="text-muted-foreground">PG listing not found</p>
+          <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
+        </div>
+      </>
     );
   }
+
 
   const propertyLabel = { pg: 'PG', room: 'Room', hostel: 'Hostel', flat: 'Flat' }[listing.property_type] || listing.property_type;
   const genderLabel = { boys: 'Boys Only', girls: 'Girls Only', both: 'Co-ed' }[listing.for_gender] || listing.for_gender;
@@ -252,8 +259,34 @@ const PGDetail = () => {
   const seller = listing.profiles;
   const isOwner = user?.id === listing.seller_id;
 
+  const pgTitle = `${propertyLabel} in ${listing.area_locality} — ₹${listing.rent_per_month}/month`;
+  const pgUrl = canonical(buildPGPath(listing.id, `${propertyLabel}-${listing.area_locality}`));
+
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead
+        title={`${pgTitle} | MyCampusKart`}
+        description={`${propertyLabel} for ${genderLabel.toLowerCase()} in ${listing.area_locality}. ${sharingLabel}, rent ₹${listing.rent_per_month}/month. Verified PG listing on MyCampusKart.`}
+        canonical={pgUrl}
+        image={listing.images?.[0]}
+        type="article"
+        jsonLd={[
+          accommodationJsonLd({
+            id: listing.id,
+            name: pgTitle,
+            description: `${sharingLabel}, ${genderLabel}, ${listing.area_locality}`,
+            rent: listing.rent_per_month,
+            images: listing.images,
+            locality: listing.area_locality,
+            url: pgUrl,
+          }),
+          breadcrumbJsonLd([
+            { name: 'Home', path: '/' },
+            { name: 'PG & Rooms', path: '/browse' },
+            { name: pgTitle, path: buildPGPath(listing.id, `${propertyLabel}-${listing.area_locality}`) },
+          ]),
+        ]}
+      />
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
         <div className="container mx-auto px-4 h-14 flex items-center justify-between">
