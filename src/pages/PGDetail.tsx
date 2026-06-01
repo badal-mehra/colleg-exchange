@@ -259,8 +259,6 @@ const PGDetail = () => {
   const seller = listing.profiles;
   const isOwner = user?.id === listing.seller_id;
 
-  return (
-    <div className="min-h-screen bg-background">
   const pgTitle = `${propertyLabel} in ${listing.area_locality} — ₹${listing.rent_per_month}/month`;
   const pgUrl = canonical(buildPGPath(listing.id, `${propertyLabel}-${listing.area_locality}`));
 
