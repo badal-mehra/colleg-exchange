@@ -17,6 +17,8 @@ import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
 import { ReportModal } from '@/components/ReportModal';
 import { BargainingDialog } from '@/components/BargainingDialog';
+import { SEOHead } from '@/components/seo/SEOHead';
+import { buildItemPath, canonical, productJsonLd, breadcrumbJsonLd } from '@/lib/seo';
 
 /* ─── WhatsApp SVG Icon ─────────────────────────────────────────────────── */
 const WhatsAppIcon = ({ className }: { className?: string }) => (
@@ -344,17 +346,21 @@ const ItemDetail = () => {
   if (loading) return <ItemDetailSkeleton />;
 
   if (!item) return (
-    <div className="min-h-screen bg-[#F3F4F6] flex flex-col items-center justify-center p-6 text-center">
-      <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center mb-4 shadow-sm">
-        <Package className="h-10 w-10 text-gray-300" />
+    <>
+      <SEOHead title="Item Not Found | MyCampusKart" description="This listing may have been removed from MyCampusKart." noindex />
+      <div className="min-h-screen bg-[#F3F4F6] flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center mb-4 shadow-sm">
+          <Package className="h-10 w-10 text-gray-300" />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Item Not Found</h1>
+        <p className="text-gray-500 mb-6">This listing may have been removed.</p>
+        <Button onClick={() => navigate('/')} className="rounded-full px-8 bg-gray-900 hover:bg-gray-800">
+          Back to Home
+        </Button>
       </div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Item Not Found</h1>
-      <p className="text-gray-500 mb-6">This listing may have been removed.</p>
-      <Button onClick={() => navigate('/')} className="rounded-full px-8 bg-gray-900 hover:bg-gray-800">
-        Back to Home
-      </Button>
-    </div>
+    </>
   );
+
 
   /* ── Derived state ───────────────────────────────────────────────────────── */
   const isOwner   = user?.id === item.seller_id;
@@ -378,6 +384,34 @@ const ItemDetail = () => {
   ───────────────────────────────────────────────────────────────────────── */
   return (
     <>
+      <SEOHead
+        title={`${item.title} for ₹${item.price.toLocaleString('en-IN')}${item.location ? ` in ${item.location}` : ''} | MyCampusKart`}
+        description={(item.description || `Buy ${item.title} on MyCampusKart — verified student marketplace.`).slice(0, 158)}
+        canonical={canonical(buildItemPath(item.id, item.title))}
+        image={item.images?.[0]}
+        type="article"
+        noindex={item.is_sold}
+        jsonLd={[
+          productJsonLd({
+            id: item.id,
+            title: item.title,
+            description: item.description,
+            price: item.price,
+            images: item.images,
+            condition: item.condition,
+            isSold: item.is_sold,
+            sellerName: item.profiles?.full_name,
+            location: item.location,
+            url: canonical(buildItemPath(item.id, item.title)),
+          }),
+          breadcrumbJsonLd([
+            { name: 'Home', path: '/' },
+            { name: 'Browse', path: '/browse' },
+            ...(item.categories?.slug ? [{ name: item.categories.name, path: `/category/${item.categories.slug}` }] : []),
+            { name: item.title, path: buildItemPath(item.id, item.title) },
+          ]),
+        ]}
+      />
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
