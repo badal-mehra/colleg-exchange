@@ -257,7 +257,7 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, isLoggedIn, navigate, on
   return (
     <div
       className="group bg-card border border-border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-primary/30"
-      onClick={() => navigate(`/item/${item.id}`)}
+      onClick={() => navigate(`/item/${(item.title || 'item').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0,80) || 'item'}-${item.id}`)}
     >
       {/* Image Container */}
       <div className="relative aspect-[4/3] bg-muted overflow-hidden">
