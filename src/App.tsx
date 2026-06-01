@@ -115,14 +115,14 @@ const App = () => (
     <Route path="/help" element={<StaticPage />} />
     <Route path="/report" element={<StaticPage />} />
 
-    {/** PUBLIC NO-LAYOUT PAGES - SEO-friendly slugged URLs */}
+    {/** PUBLIC NO-LAYOUT PAGES - SEO-friendly slugged URLs (also matches legacy /item/:id) */}
     <Route path="/item/:slugId" element={<ItemDetail />} />
-    <Route path="/item/:slugId/:legacy" element={<ItemDetail />} />
     <Route path="/pg/:slugId" element={<PGDetail />} />
     <Route path="/profile/:mckId" element={<PublicProfile />} />
     <Route path="/u/:mckId" element={<PublicProfile />} />
     <Route path="/category/:slug" element={<Browse />} />
     <Route path="/campus-marketplace/:city" element={<Browse />} />
+
 
 
     {/** PROTECTED NO-LAYOUT PAGES */}
