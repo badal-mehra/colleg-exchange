@@ -21,6 +21,7 @@ import { getSliderImageUrl } from '@/utils/cloudinaryUpload';
 import SliderSidePanels from '@/components/SliderSidePanels';
 import DailyLoginReward from '@/components/DailyLoginReward';
 import InstallAppPopup from '@/components/InstallAppPopup';
+import { SEOHead } from '@/components/seo/SEOHead';
 
 
 // --- INTERFACES (Unchanged) ---
@@ -673,6 +674,7 @@ const Dashboard = () => {
 
   return (
     <div className="flex-1 bg-gray-50">
+      <SEOHead title="Dashboard | MyCampusKart" noindex />
 
       {/* Verification Alert */}
       {!isVerified && (

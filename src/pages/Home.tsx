@@ -27,6 +27,8 @@ import { useNavigate } from 'react-router-dom';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Tooltip is now unused
 import { Footer } from '@/components/Footer';
 import InstallAppPopup from '@/components/InstallAppPopup';
+import { SEOHead } from '@/components/seo/SEOHead';
+import { canonical } from '@/lib/seo';
 
 interface Category {
   id: string;
@@ -274,6 +276,11 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead
+        title="MyCampusKart — India's Verified Student Marketplace"
+        description="The #1 student marketplace in India. Buy & sell books, electronics, cycles and find PG rooms with verified seniors and juniors at your campus."
+        canonical={canonical('/home')}
+      />
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-4">

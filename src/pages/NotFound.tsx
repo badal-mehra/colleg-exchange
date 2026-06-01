@@ -1,5 +1,6 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { SEOHead } from "@/components/seo/SEOHead";
 
 const NotFound = () => {
   const location = useLocation();
@@ -49,6 +50,8 @@ const NotFound = () => {
 
   return (
     <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-purple-50 text-gray-800">
+      <SEOHead title="404 — Page Not Found | MyCampusKart" description="The page you're looking for doesn't exist on MyCampusKart." noindex />
+      
       
       {/* --- Background Floating Blobs Animation --- */}
       <div className="absolute top-0 left-0 -ml-20 -mt-20 h-72 w-72 animate-blob rounded-full bg-purple-300 opacity-30 mix-blend-multiply blur-xl filter"></div>
