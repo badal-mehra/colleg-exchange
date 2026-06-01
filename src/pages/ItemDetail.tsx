@@ -99,7 +99,16 @@ const ItemDetailSkeleton = () => (
 
 /* ─── Main Component ─────────────────────────────────────────────────────── */
 const ItemDetail = () => {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ slugId?: string; id?: string }>();
+  // Lazy import to avoid changing the top import list
+  // (extracts UUID from `slug-uuid` or accepts bare UUID for legacy URLs)
+  const rawParam = params.slugId || params.id || '';
+  const id = (() => {
+    const uuidMatch = rawParam.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/);
+    if (uuidMatch) return uuidMatch[0];
+    const segs = rawParam.split('-');
+    return segs[segs.length - 1];
+  })();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -128,6 +137,7 @@ const ItemDetail = () => {
     window.scrollTo({ top: 0, behavior: 'instant' });
     if (id) fetchItem();
   }, [id]);
+
 
   useEffect(() => {
     if (user && id) { fetchUserProfile(); checkIfFavorited(); }
