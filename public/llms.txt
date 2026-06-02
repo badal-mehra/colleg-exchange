@@ -1,0 +1,30 @@
+# MyCampusKart
+
+> India's verified student marketplace — buy, sell, exchange, and rent items inside your campus. Includes PG/room listings, student blog, and per-campus marketplace pages.
+
+MyCampusKart is a Gen-Z friendly campus marketplace for Indian college students. Listings cover textbooks, electronics, bicycles, hostel essentials, and PG/hostel rentals. The platform also publishes a content hub with student-focused guides and per-campus landing pages.
+
+## Pages
+
+- [Home](/): Featured listings and category entry points.
+- [Browse Marketplace](/browse): Full marketplace grid with category, price, and PG filters.
+- [Blog Hub](/blog): Student guides, campus tips, marketplace tutorials.
+- [Campuses](/campuses): Index of per-campus marketplace landing pages.
+- [Leaderboard](/leaderboard): Top student sellers and trust badges.
+- [Download App](/downloadmycampuskartapp): Install the MyCampusKart PWA.
+- [About](/about): What MyCampusKart is and who it's for.
+- [Help](/help): Buyer and seller help center.
+- [Shipping & Meetup](/shipping): How campus meetups and handoffs work.
+- [Report](/report): Report a listing or user.
+
+## Content
+
+- [Blog post template](/blog/): Dynamic — see /sitemap.xml for the full list of published posts.
+- [Campus pages](/campus/): Dynamic — per-college marketplace pages indexed in the sitemap.
+- [Item listings](/item/): Dynamic product detail pages, one per active listing.
+- [PG listings](/pg/): Dynamic accommodation detail pages.
+
+## Optional
+
+- [Terms](/terms): Terms of service.
+- [Privacy](/privacy): Privacy policy.
