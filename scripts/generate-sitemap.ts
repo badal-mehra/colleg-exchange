@@ -123,8 +123,8 @@ async function main() {
   for (const c of campuses) entries.push({ path: `/campus/${c.slug}`, changefreq: "weekly", priority: "0.8" });
 
   // Listings (items)
-  const items = await rest<{ id: string; title: string; updated_at?: string; created_at: string }>(
-    "items?select=id,title,updated_at,created_at&is_sold=eq.false&order=created_at.desc&limit=5000",
+  const items = await rest<{ id: string; title: string; updated_at?: string; created_at: string; seller_id?: string }>(
+    "items?select=id,title,updated_at,created_at,seller_id&is_sold=eq.false&order=created_at.desc&limit=10000",
   );
   for (const it of items) {
     entries.push({
@@ -136,8 +136,8 @@ async function main() {
   }
 
   // PG listings
-  const pgs = await rest<{ id: string; area_locality?: string; property_type?: string; updated_at?: string; created_at: string }>(
-    "pg_listings?select=id,area_locality,property_type,updated_at,created_at&is_active=eq.true&order=created_at.desc&limit=2000",
+  const pgs = await rest<{ id: string; area_locality?: string; property_type?: string; updated_at?: string; created_at: string; seller_id?: string }>(
+    "pg_listings?select=id,area_locality,property_type,updated_at,created_at,seller_id&is_active=eq.true&order=created_at.desc&limit=5000",
   );
   for (const pg of pgs) {
     const title = `${pg.property_type || "PG"} ${pg.area_locality || ""}`.trim();
