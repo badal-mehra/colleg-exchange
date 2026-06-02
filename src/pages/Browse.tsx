@@ -401,7 +401,7 @@ const Browse = () => {
       .eq('status', 'available')
       .order('ad_priority', { ascending: false })
       .order('created_at', { ascending: false })
-      .limit(30);
+      .limit(100);
 
     if (selectedCategory !== 'all') {
       query = query.eq('category_id', selectedCategory);
@@ -432,7 +432,7 @@ const Browse = () => {
       .eq('is_active', true)
       .neq('status', 'rented')
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(60);
 
     if (pgFilters.propertyType !== 'all') {
       query = query.eq('property_type', pgFilters.propertyType);
