@@ -149,19 +149,32 @@ async function main() {
     });
   }
 
-  // Public profiles (only those with mck_id)
-  const profiles = await rest<{ mck_id: string; updated_at?: string }>(
-    "profiles?select=mck_id,updated_at&mck_id=not.is.null&limit=5000",
-  );
-  for (const p of profiles) {
-    if (!p.mck_id) continue;
-    entries.push({
-      path: `/profile/${p.mck_id}`,
-      lastmod: p.updated_at?.slice(0, 10),
-      changefreq: "weekly",
-      priority: "0.5",
-    });
+  // Public profiles — ONLY those with active listings (avoids polluting sitemap
+  // with hundreds of empty/incomplete profiles).
+  const sellerIds = new Set<string>();
+  for (const it of items) if ((it as any).seller_id) sellerIds.add((it as any).seller_id);
+  for (const pg of pgs) if ((pg as any).seller_id) sellerIds.add((pg as any).seller_id);
+
+  if (sellerIds.size > 0) {
+    const ids = Array.from(sellerIds);
+    for (let i = 0; i < ids.length; i += 200) {
+      const chunk = ids.slice(i, i + 200);
+      const inList = chunk.map((x) => `"${x}"`).join(",");
+      const profiles = await rest<{ mck_id: string; full_name: string | null; updated_at?: string }>(
+        `profiles?select=mck_id,full_name,updated_at&user_id=in.(${inList})&mck_id=not.is.null&full_name=not.is.null`,
+      );
+      for (const p of profiles) {
+        if (!p.mck_id) continue;
+        entries.push({
+          path: `/profile/${p.mck_id}`,
+          lastmod: p.updated_at?.slice(0, 10),
+          changefreq: "weekly",
+          priority: "0.4",
+        });
+      }
+    }
   }
+
 
   const xml = generate(entries);
   writeFileSync(resolve("public/sitemap.xml"), xml);
