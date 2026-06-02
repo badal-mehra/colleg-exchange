@@ -447,14 +447,14 @@ const Dashboard = () => {
 
     setLoading(true);
     
-    // ✅ STEP 2 FIX: Implement Pagination (Limit to first 20 items for the initial load)
-    const PAGE_LIMIT = 20;
+    // Increased limit so all active listings render across devices
+    const PAGE_LIMIT = 100;
 
     let query = supabase.from('items').select(`*`)
       .eq('is_sold', false)
       .order('ad_priority', { ascending: false })
       .order('created_at', { ascending: false })
-      .range(0, PAGE_LIMIT - 1); // Only fetch 20 items (0 to 19)
+      .range(0, PAGE_LIMIT - 1);
 
     if (selectedCategory !== 'all') {
       query = query.eq('category_id', selectedCategory);
