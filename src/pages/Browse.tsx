@@ -25,6 +25,7 @@ import SliderSidePanels from '@/components/SliderSidePanels';
 import InstallAppPopup from '@/components/InstallAppPopup';
 import { SEOHead } from '@/components/seo/SEOHead';
 import { canonical } from '@/lib/seo';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 // --- INTERFACES ---
 interface MinimalCategory {
