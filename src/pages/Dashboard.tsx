@@ -22,6 +22,7 @@ import SliderSidePanels from '@/components/SliderSidePanels';
 import DailyLoginReward from '@/components/DailyLoginReward';
 import InstallAppPopup from '@/components/InstallAppPopup';
 import { SEOHead } from '@/components/seo/SEOHead';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 
 // --- INTERFACES (Unchanged) ---
@@ -671,6 +672,19 @@ const Dashboard = () => {
     }
   }, [user, isVerified, navigate, toast]);
 
+  // Infinite scroll sentinels
+  const itemsSentinelRef = useInfiniteScroll<HTMLDivElement>({
+    hasMore: itemsHasMore,
+    loading: loadingMore || loading,
+    onLoadMore: loadMoreItems,
+  });
+  const pgSentinelRef = useInfiniteScroll<HTMLDivElement>({
+    hasMore: pgHasMore,
+    loading: loadingMore || loading,
+    onLoadMore: loadMorePg,
+  });
+
+
 
   const PriceRangeSelect = ({ className }: { className?: string }) => (
     <Select value={priceRange} onValueChange={(val) => handleFilterChange('priceRange', val)}>
@@ -880,13 +894,13 @@ const Dashboard = () => {
                   />
                 ))}
               </div>
+              <div ref={itemsSentinelRef} className="h-10" aria-hidden="true" />
               {itemsHasMore && (
                 <div className="flex justify-center mt-8">
-                  <Button onClick={loadMoreItems} disabled={loadingMore} variant="outline" size="lg">
-                    {loadingMore ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Loading…</>) : 'Load more listings'}
-                  </Button>
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               )}
+
             </TooltipProvider>
           )}
           </>
@@ -981,11 +995,10 @@ const Dashboard = () => {
                     />
                   ))}
                 </div>
+                <div ref={pgSentinelRef} className="h-10" aria-hidden="true" />
                 {pgHasMore && (
                   <div className="flex justify-center mt-8">
-                    <Button onClick={loadMorePg} disabled={loadingMore} variant="outline" size="lg">
-                      {loadingMore ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Loading…</>) : 'Load more PG/Rooms'}
-                    </Button>
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 )}
               </>
