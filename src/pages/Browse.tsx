@@ -840,15 +840,23 @@ const Browse = () => {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {pgListings.map((listing) => (
-                  <PGListingCard
-                    key={listing.id}
-                    listing={listing}
-                    onClick={() => navigate(`/pg/${listing.id}`)}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {pgListings.map((listing) => (
+                    <PGListingCard
+                      key={listing.id}
+                      listing={listing}
+                      onClick={() => navigate(`/pg/${listing.id}`)}
+                    />
+                  ))}
+                </div>
+                <div ref={pgSentinelRef} className="h-10" aria-hidden="true" />
+                {pgHasMore && (
+                  <div className="flex justify-center mt-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
