@@ -22,6 +22,7 @@ import SliderSidePanels from '@/components/SliderSidePanels';
 import DailyLoginReward from '@/components/DailyLoginReward';
 import InstallAppPopup from '@/components/InstallAppPopup';
 import { SEOHead } from '@/components/seo/SEOHead';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 
 // --- INTERFACES (Unchanged) ---
