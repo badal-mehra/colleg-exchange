@@ -971,15 +971,24 @@ const Dashboard = () => {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {pgListings.map((listing) => (
-                  <PGListingCard
-                    key={listing.id}
-                    listing={listing}
-                    onClick={() => navigate(`/pg/${listing.id}`)}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {pgListings.map((listing) => (
+                    <PGListingCard
+                      key={listing.id}
+                      listing={listing}
+                      onClick={() => navigate(`/pg/${listing.id}`)}
+                    />
+                  ))}
+                </div>
+                {pgHasMore && (
+                  <div className="flex justify-center mt-8">
+                    <Button onClick={loadMorePg} disabled={loadingMore} variant="outline" size="lg">
+                      {loadingMore ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Loading…</>) : 'Load more PG/Rooms'}
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
