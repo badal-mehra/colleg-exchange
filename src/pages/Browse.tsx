@@ -359,6 +359,10 @@ const Browse = () => {
   const [pgListings, setPgListings] = useState<any[]>([]);
   const [allCategories, setAllCategories] = useState<MinimalCategory[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [itemsHasMore, setItemsHasMore] = useState(true);
+  const [pgHasMore, setPgHasMore] = useState(true);
+  const PAGE_SIZE = 60;
   const [filters, setFilters] = useState<FilterState>({
     searchTerm: '',
     selectedCategory: 'all',
