@@ -396,17 +396,14 @@ const Browse = () => {
     }
   }, []);
 
-  // Fetch Items
-  const fetchItems = useCallback(async () => {
-    if (!categoriesLoaded) return;
-    setLoading(true);
-
+  // Query builders
+  const buildItemsQuery = useCallback((from: number, to: number) => {
     let query = supabase.from('items').select('*')
       .eq('is_sold', false)
       .eq('status', 'available')
       .order('ad_priority', { ascending: false })
       .order('created_at', { ascending: false })
-      .limit(100);
+      .range(from, to);
 
     if (selectedCategory !== 'all') {
       query = query.eq('category_id', selectedCategory);
@@ -418,26 +415,46 @@ const Browse = () => {
       const [min, max] = priceRange.split('-').map(Number);
       query = max ? query.gte('price', min).lte('price', max) : query.gte('price', min);
     }
+    return query;
+  }, [selectedCategory, searchTerm, priceRange]);
 
-    const { data: rawItems, error } = await query;
+  const fetchItems = useCallback(async () => {
+    if (!categoriesLoaded) return;
+    setLoading(true);
+    const { data: rawItems, error } = await buildItemsQuery(0, PAGE_SIZE - 1);
     if (error) {
       console.error('Error fetching items:', error);
     } else {
-      setItems(rawItems as RawItem[] || []);
+      setItems((rawItems as RawItem[]) || []);
+      setItemsHasMore((rawItems?.length ?? 0) === PAGE_SIZE);
     }
     setLoading(false);
-  }, [searchTerm, selectedCategory, priceRange, categoriesLoaded]);
+  }, [buildItemsQuery, categoriesLoaded]);
 
-  // Fetch PG Listings
-  const fetchPGListings = useCallback(async () => {
-    setLoading(true);
+  const loadMoreItems = useCallback(async () => {
+    if (loadingMore || !itemsHasMore) return;
+    setLoadingMore(true);
+    const from = items.length;
+    const { data: rawItems, error } = await buildItemsQuery(from, from + PAGE_SIZE - 1);
+    if (!error && rawItems) {
+      setItems(prev => {
+        const seen = new Set(prev.map(p => p.id));
+        return [...prev, ...(rawItems as RawItem[]).filter(r => !seen.has(r.id))];
+      });
+      setItemsHasMore(rawItems.length === PAGE_SIZE);
+    }
+    setLoadingMore(false);
+  }, [items.length, loadingMore, itemsHasMore, buildItemsQuery]);
+
+  // PG query builder
+  const buildPgQuery = useCallback((from: number, to: number) => {
     let query = supabase
       .from('pg_listings')
       .select('*')
       .eq('is_active', true)
       .neq('status', 'rented')
       .order('created_at', { ascending: false })
-      .limit(60);
+      .range(from, to);
 
     if (pgFilters.propertyType !== 'all') {
       query = query.eq('property_type', pgFilters.propertyType);
@@ -451,13 +468,33 @@ const Browse = () => {
         `area_locality.ilike.%${escaped}%,landmark.ilike.%${escaped}%,property_type.ilike.%${escaped}%`
       );
     }
+    return query;
+  }, [pgFilters, searchTerm]);
 
-    const { data, error } = await query;
+  const fetchPGListings = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await buildPgQuery(0, PAGE_SIZE - 1);
     if (!error) {
       setPgListings(data || []);
+      setPgHasMore((data?.length ?? 0) === PAGE_SIZE);
     }
     setLoading(false);
-  }, [pgFilters, searchTerm]);
+  }, [buildPgQuery]);
+
+  const loadMorePg = useCallback(async () => {
+    if (loadingMore || !pgHasMore) return;
+    setLoadingMore(true);
+    const from = pgListings.length;
+    const { data, error } = await buildPgQuery(from, from + PAGE_SIZE - 1);
+    if (!error && data) {
+      setPgListings(prev => {
+        const seen = new Set(prev.map((p: any) => p.id));
+        return [...prev, ...data.filter((d: any) => !seen.has(d.id))];
+      });
+      setPgHasMore(data.length === PAGE_SIZE);
+    }
+    setLoadingMore(false);
+  }, [pgListings.length, loadingMore, pgHasMore, buildPgQuery]);
 
   // Initial Load
   useEffect(() => {
@@ -490,6 +527,19 @@ const Browse = () => {
   const handleFilterChange = useCallback((key: keyof FilterState, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   }, []);
+
+  // Infinite scroll sentinels
+  const itemsSentinelRef = useInfiniteScroll<HTMLDivElement>({
+    hasMore: itemsHasMore,
+    loading: loading || loadingMore,
+    onLoadMore: loadMoreItems,
+  });
+  const pgSentinelRef = useInfiniteScroll<HTMLDivElement>({
+    hasMore: pgHasMore,
+    loading: loading || loadingMore,
+    onLoadMore: loadMorePg,
+  });
+
 
   const PriceRangeSelect = ({ className }: { className?: string }) => (
     <Select value={priceRange} onValueChange={(val) => handleFilterChange('priceRange', val)}>
