@@ -746,6 +746,12 @@ const Browse = () => {
                     />
                   ))}
                 </div>
+                <div ref={itemsSentinelRef} className="h-10" aria-hidden="true" />
+                {itemsHasMore && (
+                  <div className="flex justify-center mt-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                )}
               </TooltipProvider>
             )}
           </>
