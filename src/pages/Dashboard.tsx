@@ -880,6 +880,13 @@ const Dashboard = () => {
                   />
                 ))}
               </div>
+              {itemsHasMore && (
+                <div className="flex justify-center mt-8">
+                  <Button onClick={loadMoreItems} disabled={loadingMore} variant="outline" size="lg">
+                    {loadingMore ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Loading…</>) : 'Load more listings'}
+                  </Button>
+                </div>
+              )}
             </TooltipProvider>
           )}
           </>
