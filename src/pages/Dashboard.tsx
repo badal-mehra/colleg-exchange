@@ -995,11 +995,10 @@ const Dashboard = () => {
                     />
                   ))}
                 </div>
+                <div ref={pgSentinelRef} className="h-10" aria-hidden="true" />
                 {pgHasMore && (
                   <div className="flex justify-center mt-8">
-                    <Button onClick={loadMorePg} disabled={loadingMore} variant="outline" size="lg">
-                      {loadingMore ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Loading…</>) : 'Load more PG/Rooms'}
-                    </Button>
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 )}
               </>
