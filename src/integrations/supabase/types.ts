@@ -1587,6 +1587,7 @@ export type Database = {
         Args: { p_ip_address?: string; p_user_agent?: string }
         Returns: Json
       }
+      cleanup_old_notifications: { Args: never; Returns: undefined }
       complete_order: { Args: { order_id: string }; Returns: Json }
       complete_order_with_confirmation: {
         Args: {

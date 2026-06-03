@@ -385,6 +385,9 @@ const Dashboard = () => {
   const [pgListings, setPgListings] = useState<any[]>([]);
   const [allCategories, setAllCategories] = useState<MinimalCategory[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [itemsHasMore, setItemsHasMore] = useState(true);
+  const [pgHasMore, setPgHasMore] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
     searchTerm: '',
     selectedCategory: 'all',
@@ -397,6 +400,8 @@ const Dashboard = () => {
     sharingType: 'all',
     rentRange: 'all',
   });
+
+  const PAGE_SIZE = 60;
 
   const { searchTerm, selectedCategory, priceRange } = filters;
   const isVerified = useMemo(() => profile?.is_verified && profile?.verification_status === 'approved', [profile]);
@@ -439,22 +444,12 @@ const Dashboard = () => {
   }, [allCategories, categoryMap]);
 
 
-  const fetchItems = useCallback(async () => {
-    if (!categoriesLoaded) {
-      setLoading(true);
-      return;
-    }
-
-    setLoading(true);
-    
-    // Increased limit so all active listings render across devices
-    const PAGE_LIMIT = 100;
-
+  const buildItemsQuery = useCallback((from: number, to: number) => {
     let query = supabase.from('items').select(`*`)
       .eq('is_sold', false)
       .order('ad_priority', { ascending: false })
       .order('created_at', { ascending: false })
-      .range(0, PAGE_LIMIT - 1);
+      .range(from, to);
 
     if (selectedCategory !== 'all') {
       query = query.eq('category_id', selectedCategory);
@@ -466,28 +461,51 @@ const Dashboard = () => {
       const [min, max] = priceRange.split('-').map(Number);
       query = max ? query.gte('price', min).lte('price', max) : query.gte('price', min);
     }
+    return query;
+  }, [selectedCategory, searchTerm, priceRange]);
 
-    const { data: rawItems, error } = await query;
+  const fetchItems = useCallback(async () => {
+    if (!categoriesLoaded) {
+      setLoading(true);
+      return;
+    }
+    setLoading(true);
+    const { data: rawItems, error } = await buildItemsQuery(0, PAGE_SIZE - 1);
     if (error) {
       console.error('Error fetching raw items:', error);
       toast({ title: "Error", description: "Failed to load items", variant: "destructive" });
     } else {
       const enrichedItems = await enrichItemsWithDetails(rawItems as RawItem[]);
       setItems(enrichedItems);
+      setItemsHasMore((rawItems?.length ?? 0) === PAGE_SIZE);
     }
     setLoading(false);
-  }, [searchTerm, selectedCategory, priceRange, enrichItemsWithDetails, toast, categoriesLoaded]);
+  }, [buildItemsQuery, enrichItemsWithDetails, toast, categoriesLoaded]);
 
-  // Fetch PG Listings
-  const fetchPGListings = useCallback(async () => {
-    setLoading(true);
+  const loadMoreItems = useCallback(async () => {
+    if (loadingMore || !itemsHasMore) return;
+    setLoadingMore(true);
+    const from = items.length;
+    const { data: rawItems, error } = await buildItemsQuery(from, from + PAGE_SIZE - 1);
+    if (!error && rawItems) {
+      const enriched = await enrichItemsWithDetails(rawItems as RawItem[]);
+      setItems(prev => {
+        const seen = new Set(prev.map(p => p.id));
+        return [...prev, ...enriched.filter(e => !seen.has(e.id))];
+      });
+      setItemsHasMore(rawItems.length === PAGE_SIZE);
+    }
+    setLoadingMore(false);
+  }, [items.length, loadingMore, itemsHasMore, buildItemsQuery, enrichItemsWithDetails]);
+
+  const buildPgQuery = useCallback((from: number, to: number) => {
     let query = supabase
       .from('pg_listings')
       .select('*')
       .eq('is_active', true)
       .neq('status', 'rented')
       .order('created_at', { ascending: false })
-      .limit(60);
+      .range(from, to);
 
     if (pgFilters.propertyType !== 'all') {
       query = query.eq('property_type', pgFilters.propertyType);
@@ -499,15 +517,35 @@ const Dashboard = () => {
       const [min, max] = pgFilters.rentRange.split('-').map(Number);
       query = max ? query.gte('rent_per_month', min).lte('rent_per_month', max) : query.gte('rent_per_month', min);
     }
+    return query;
+  }, [pgFilters]);
 
-    const { data, error } = await query;
+  const fetchPGListings = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await buildPgQuery(0, PAGE_SIZE - 1);
     if (error) {
       console.error('Error fetching PG listings:', error);
     } else {
       setPgListings(data || []);
+      setPgHasMore((data?.length ?? 0) === PAGE_SIZE);
     }
     setLoading(false);
-  }, [pgFilters]);
+  }, [buildPgQuery]);
+
+  const loadMorePg = useCallback(async () => {
+    if (loadingMore || !pgHasMore) return;
+    setLoadingMore(true);
+    const from = pgListings.length;
+    const { data, error } = await buildPgQuery(from, from + PAGE_SIZE - 1);
+    if (!error && data) {
+      setPgListings(prev => {
+        const seen = new Set(prev.map((p: any) => p.id));
+        return [...prev, ...data.filter((d: any) => !seen.has(d.id))];
+      });
+      setPgHasMore(data.length === PAGE_SIZE);
+    }
+    setLoadingMore(false);
+  }, [pgListings.length, loadingMore, pgHasMore, buildPgQuery]);
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase.from('profiles').select('*').eq('user_id', userId).single();
@@ -842,6 +880,13 @@ const Dashboard = () => {
                   />
                 ))}
               </div>
+              {itemsHasMore && (
+                <div className="flex justify-center mt-8">
+                  <Button onClick={loadMoreItems} disabled={loadingMore} variant="outline" size="lg">
+                    {loadingMore ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Loading…</>) : 'Load more listings'}
+                  </Button>
+                </div>
+              )}
             </TooltipProvider>
           )}
           </>
@@ -926,15 +971,24 @@ const Dashboard = () => {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {pgListings.map((listing) => (
-                  <PGListingCard
-                    key={listing.id}
-                    listing={listing}
-                    onClick={() => navigate(`/pg/${listing.id}`)}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {pgListings.map((listing) => (
+                    <PGListingCard
+                      key={listing.id}
+                      listing={listing}
+                      onClick={() => navigate(`/pg/${listing.id}`)}
+                    />
+                  ))}
+                </div>
+                {pgHasMore && (
+                  <div className="flex justify-center mt-8">
+                    <Button onClick={loadMorePg} disabled={loadingMore} variant="outline" size="lg">
+                      {loadingMore ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Loading…</>) : 'Load more PG/Rooms'}
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
