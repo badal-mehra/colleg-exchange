@@ -672,6 +672,19 @@ const Dashboard = () => {
     }
   }, [user, isVerified, navigate, toast]);
 
+  // Infinite scroll sentinels
+  const itemsSentinelRef = useInfiniteScroll<HTMLDivElement>({
+    hasMore: itemsHasMore,
+    loading: loadingMore || loading,
+    onLoadMore: loadMoreItems,
+  });
+  const pgSentinelRef = useInfiniteScroll<HTMLDivElement>({
+    hasMore: pgHasMore,
+    loading: loadingMore || loading,
+    onLoadMore: loadMorePg,
+  });
+
+
 
   const PriceRangeSelect = ({ className }: { className?: string }) => (
     <Select value={priceRange} onValueChange={(val) => handleFilterChange('priceRange', val)}>
