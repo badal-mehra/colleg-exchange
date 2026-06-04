@@ -1,3 +1,4 @@
+// PWADashboard.tsx — with category cards, URL‑driven filters, condition/sort, dynamic SEO
 import React, {
   useEffect,
   useState,
@@ -5,7 +6,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -45,6 +46,8 @@ import PWAListingCard from "@/components/PWAListingCard";
 import PGListingCard from "@/components/PGListingCard";
 import PWAImageSlider from "@/components/PWAImageSlider";
 import DailyLoginReward from "@/components/DailyLoginReward";
+import { SEOHead } from "@/components/seo/SEOHead";
+import { canonical } from "@/lib/seo";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -57,10 +60,12 @@ interface Profile {
   verification_status: string;
 }
 
-interface Category {
+interface MinimalCategory {
   id: string;
   name: string;
+  slug: string;
   icon: string | null;
+  count?: number;
 }
 
 interface RentalMetadata {
@@ -104,7 +109,7 @@ const SORT_LABELS: Record<SortOption, string> = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Skeleton loader card
+// Skeleton & Empty states (unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SkeletonCard = ({ variant = "product" }: { variant?: "product" | "pg" }) => (
@@ -121,10 +126,6 @@ const SkeletonCard = ({ variant = "product" }: { variant?: "product" | "pg" }) =
     </div>
   </div>
 );
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Empty state
-// ─────────────────────────────────────────────────────────────────────────────
 
 const EmptyState = ({
   icon: Icon,
@@ -165,23 +166,23 @@ const PWADashboard = () => {
   const { toast } = useToast();
   const { unreadChats } = useNotificationCounts();
 
+  // URL params for category pages (e.g. /categories/:slug)
+  const params = useParams<{ slug?: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   // ── Data state ──────────────────────────────────────────────────────────────
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<MinimalCategory[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [pgListings, setPgListings] = useState<PGListing[]>([]);
   const [loading, setLoading] = useState(true);
 
   // ── UI state ────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<TabType>("products");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [priceRange, setPriceRange] = useState("all");
-  const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
 
-  // ── PG filters ──────────────────────────────────────────────────────────────
+  // ── PG filters (still local, not URL‑driven) ────────────────────────────────
   const [pgPropertyType, setPgPropertyType] = useState("all");
   const [pgSharingType, setPgSharingType] = useState("all");
   const [pgGender, setPgGender] = useState("all");
@@ -189,6 +190,27 @@ const PWADashboard = () => {
   // ── Pull-to-refresh ─────────────────────────────────────────────────────────
   const touchStartY = useRef(0);
   const [pullIndicator, setPullIndicator] = useState(false);
+
+  // ─── Derive filters from URL (mirrors Browse.tsx logic) ─────────────────────
+
+  const activeCategorySlug = (params.slug || searchParams.get("category") || "").toLowerCase();
+  const activeCategory = useMemo(
+    () => categories.find((c) => c.slug === activeCategorySlug) || null,
+    [categories, activeCategorySlug]
+  );
+
+  const filters = useMemo(
+    () => ({
+      searchTerm: searchParams.get("q") || "",
+      selectedCategory: activeCategory?.id || "all",
+      priceRange: searchParams.get("price") || "all",
+      condition: searchParams.get("condition") || "all",
+      sort: (searchParams.get("sort") as SortOption) || "newest",
+    }),
+    [searchParams, activeCategory]
+  );
+
+  const { searchTerm, selectedCategory, priceRange, condition, sort } = filters;
 
   // ─── Derived values ─────────────────────────────────────────────────────────
 
@@ -199,21 +221,60 @@ const PWADashboard = () => {
 
   const activeFilterCount = useMemo(() => {
     if (activeTab === "products") {
-      return (priceRange !== "all" ? 1 : 0) + (selectedCategory !== "all" ? 1 : 0);
+      return (
+        (priceRange !== "all" ? 1 : 0) +
+        (selectedCategory !== "all" ? 1 : 0) +
+        (condition !== "all" ? 1 : 0)
+      );
     }
     return (
       (pgPropertyType !== "all" ? 1 : 0) +
       (pgSharingType !== "all" ? 1 : 0) +
       (pgGender !== "all" ? 1 : 0)
     );
-  }, [activeTab, priceRange, selectedCategory, pgPropertyType, pgSharingType, pgGender]);
+  }, [activeTab, priceRange, selectedCategory, condition, pgPropertyType, pgSharingType, pgGender]);
 
   const sortedItems = useMemo(() => {
+    if (sort === "newest") return items; // already sorted by backend
     const arr = [...items];
-    if (sortBy === "price_asc") return arr.sort((a, b) => a.price - b.price);
-    if (sortBy === "price_desc") return arr.sort((a, b) => b.price - a.price);
+    if (sort === "price_asc") return arr.sort((a, b) => a.price - b.price);
+    if (sort === "price_desc") return arr.sort((a, b) => b.price - a.price);
     return arr;
-  }, [items, sortBy]);
+  }, [items, sort]);
+
+  // ─── URL update helper ──────────────────────────────────────────────────────
+
+  const updateFilters = useCallback(
+    (patch: Partial<typeof filters & { categorySlug: string | null }>) => {
+      const next = new URLSearchParams(searchParams);
+      if ("searchTerm" in patch) patch.searchTerm ? next.set("q", patch.searchTerm) : next.delete("q");
+      if ("priceRange" in patch) patch.priceRange && patch.priceRange !== "all" ? next.set("price", patch.priceRange) : next.delete("price");
+      if ("condition" in patch) patch.condition && patch.condition !== "all" ? next.set("condition", patch.condition) : next.delete("condition");
+      if ("sort" in patch) patch.sort && patch.sort !== "newest" ? next.set("sort", patch.sort) : next.delete("sort");
+
+      if ("categorySlug" in patch) {
+        const slug = patch.categorySlug;
+        const qs = next.toString();
+        const base = slug ? `/categories/${slug}` : "/pwa-dashboard"; // or just "/"
+        navigate(qs ? `${base}?${qs}` : base);
+        return;
+      }
+      setSearchParams(next, { replace: false });
+    },
+    [searchParams, setSearchParams, navigate]
+  );
+
+  const handleFilterChange = useCallback(
+    (key: keyof typeof filters, value: string) => {
+      if (key === "selectedCategory") {
+        const cat = categories.find((c) => c.id === value);
+        updateFilters({ categorySlug: value === "all" ? null : cat?.slug || null });
+      } else {
+        updateFilters({ [key]: value });
+      }
+    },
+    [categories, updateFilters]
+  );
 
   // ─── Fetchers ────────────────────────────────────────────────────────────────
 
@@ -229,14 +290,34 @@ const PWADashboard = () => {
       });
   }, [user]);
 
+  // Fetch categories with product counts
   useEffect(() => {
-    supabase
-      .from("categories")
-      .select("id, name, icon")
-      .order("name")
-      .then(({ data }) => {
-        if (data) setCategories(data);
-      });
+    (async () => {
+      const { data: cats } = await supabase
+        .from("categories")
+        .select("id, name, slug, icon")
+        .order("name");
+      if (!cats) return;
+
+      const { data: counts } = await supabase
+        .from("items")
+        .select("category_id")
+        .eq("is_sold", false)
+        .eq("status", "available")
+        .limit(10000);
+
+      const countMap = new Map<string, number>();
+      for (const row of counts || []) {
+        if (!row.category_id) continue;
+        countMap.set(row.category_id, (countMap.get(row.category_id) || 0) + 1);
+      }
+
+      const withCounts: MinimalCategory[] = cats.map((c: any) => ({
+        ...c,
+        count: countMap.get(c.id) || 0,
+      }));
+      setCategories(withCounts);
+    })();
   }, []);
 
   const fetchItems = useCallback(async () => {
@@ -246,20 +327,29 @@ const PWADashboard = () => {
         "id, title, price, images, location, condition, is_negotiable, created_at, ad_type, seller_id, rental_metadata"
       )
       .eq("is_sold", false)
-      .order("ad_priority", { ascending: false })
-      .order("created_at", { ascending: false })
+      .eq("status", "available")
       .limit(60);
+
+    // Sorting
+    if (sort === "price_asc") {
+      query = query.order("price", { ascending: true });
+    } else if (sort === "price_desc") {
+      query = query.order("price", { ascending: false });
+    } else {
+      query = query.order("ad_priority", { ascending: false }).order("created_at", { ascending: false });
+    }
 
     if (selectedCategory !== "all") query = query.eq("category_id", selectedCategory);
     if (searchTerm)
-      query = query.or(
-        `title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`
-      );
+      query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
     if (priceRange !== "all") {
       const [min, max] = priceRange.split("-").map(Number);
       query = max
         ? query.gte("price", min).lte("price", max)
         : query.gte("price", min);
+    }
+    if (condition !== "all") {
+      query = query.eq("condition", condition);
     }
 
     const { data: itemsData, error } = await query;
@@ -294,7 +384,7 @@ const PWADashboard = () => {
         }))
         .slice(0, 40)
     );
-  }, [searchTerm, selectedCategory, priceRange, toast, user?.id]);
+  }, [searchTerm, selectedCategory, priceRange, condition, sort, toast, user?.id]);
 
   const fetchPGListings = useCallback(async () => {
     let query = supabase
@@ -337,7 +427,6 @@ const PWADashboard = () => {
     await Promise.all([fetchItems(), fetchPGListings()]);
   }, [fetchItems, fetchPGListings]);
 
-  // Native pull-to-refresh (swipe down from top)
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartY.current = e.touches[0].clientY;
   };
@@ -359,14 +448,11 @@ const PWADashboard = () => {
       toast({ title: "Verification required", description: "Verify your account to save favourites", variant: "destructive" });
       return;
     }
-
-    // Check current favourite status
     const { data: existing } = await supabase
       .from("favorites")
       .select("item_id")
       .match({ user_id: user.id, item_id: itemId })
       .maybeSingle();
-
     if (existing) {
       await supabase.from("favorites").delete().match({ user_id: user.id, item_id: itemId });
       toast({ title: "Removed from favourites" });
@@ -378,14 +464,18 @@ const PWADashboard = () => {
 
   const switchTab = (tab: TabType) => {
     setActiveTab(tab);
-    setSearchTerm("");
+    // Clear only the search term when switching tabs (keep other filters in URL)
+    updateFilters({ searchTerm: "" });
   };
 
   const clearProductFilters = () => {
-    setSearchTerm("");
-    setSelectedCategory("all");
-    setPriceRange("all");
-    setSortBy("newest");
+    updateFilters({
+      searchTerm: "",
+      selectedCategory: "all",
+      priceRange: "all",
+      condition: "all",
+      sort: "newest",
+    });
   };
 
   const clearPGFilters = () => {
@@ -393,6 +483,23 @@ const PWADashboard = () => {
     setPgSharingType("all");
     setPgGender("all");
   };
+
+  // ─── Dynamic SEO ────────────────────────────────────────────────────────────
+
+  const seoTitle = activeCategory
+    ? `${activeCategory.name} for Sale on Campus | MyCampusKart`
+    : "MyCampusKart — Buy & Sell on Your Campus | Verified Student Marketplace";
+  const seoDesc = activeCategory
+    ? `Shop verified student listings in ${activeCategory.name}. Browse, filter by price & condition, and buy directly from peers.`
+    : "Browse verified student listings on MyCampusKart. Buy & sell textbooks, electronics, cycles, lab coats and PG rooms inside Indian campuses. Free, secure, student-only.";
+  const seoPath = activeCategory ? `/categories/${activeCategory.slug}` : "/pwa-dashboard";
+
+  // Active filter chips
+  const activeFilterChips: { label: string; onClear: () => void }[] = [];
+  if (activeCategory) activeFilterChips.push({ label: activeCategory.name, onClear: () => handleFilterChange("selectedCategory", "all") });
+  if (priceRange !== "all") activeFilterChips.push({ label: `₹${priceRange.replace("-", " - ₹")}`, onClear: () => handleFilterChange("priceRange", "all") });
+  if (condition !== "all") activeFilterChips.push({ label: condition.replace("_", " "), onClear: () => handleFilterChange("condition", "all") });
+  if (searchTerm) activeFilterChips.push({ label: `"${searchTerm}"`, onClear: () => handleFilterChange("searchTerm", "") });
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
@@ -405,6 +512,11 @@ const PWADashboard = () => {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
+      <SEOHead
+        title={seoTitle}
+        description={seoDesc}
+        canonical={canonical(seoPath)}
+      />
 
       {/* Pull-to-refresh indicator */}
       {pullIndicator && (
@@ -414,9 +526,7 @@ const PWADashboard = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════
-          HEADER
-      ══════════════════════════════════════════════════ */}
+      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-background/96 backdrop-blur-xl border-b border-border/50">
 
         {/* Row 1 — Avatar + name | Bell */}
@@ -454,7 +564,7 @@ const PWADashboard = () => {
           <div className="flex-1">
             <PWASearchBar
               value={searchTerm}
-              onChange={setSearchTerm}
+              onChange={(val) => handleFilterChange("searchTerm", val)}
               placeholder={
                 activeTab === "products"
                   ? "Search products, brands…"
@@ -495,7 +605,6 @@ const PWADashboard = () => {
         {/* Row 3 — Products / PG tab switcher (sliding pill) */}
         <div className="px-4 pb-3">
           <div className="relative flex bg-muted/50 rounded-2xl p-1">
-            {/* Animated sliding background */}
             <span
               className="absolute top-1 bottom-1 rounded-xl bg-background shadow-sm transition-all duration-300 ease-out"
               style={{
@@ -521,7 +630,7 @@ const PWADashboard = () => {
           </div>
         </div>
 
-        {/* Row 4 — Category / property-type chips */}
+        {/* Row 4 — Category chips (horizontal) */}
         <div className="overflow-x-auto scrollbar-hide pb-3">
           <div className="flex gap-2 px-4 w-max">
             {activeTab === "products" ? (
@@ -529,7 +638,7 @@ const PWADashboard = () => {
                 <PWACategoryChip
                   label="All"
                   isActive={selectedCategory === "all"}
-                  onClick={() => setSelectedCategory("all")}
+                  onClick={() => handleFilterChange("selectedCategory", "all")}
                 />
                 {categories.map((cat) => (
                   <PWACategoryChip
@@ -537,18 +646,18 @@ const PWADashboard = () => {
                     icon={cat.icon ?? undefined}
                     label={cat.name}
                     isActive={selectedCategory === cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
+                    onClick={() => handleFilterChange("selectedCategory", cat.id)}
                   />
                 ))}
               </>
             ) : (
               <>
                 {[
-                  { value: "all",    label: "All"    },
-                  { value: "pg",     label: "PG",      icon: "🏠" },
-                  { value: "hostel", label: "Hostel",   icon: "🏢" },
-                  { value: "flat",   label: "Flat",     icon: "🛋️" },
-                  { value: "room",   label: "Room",     icon: "🚪" },
+                  { value: "all", label: "All" },
+                  { value: "pg", label: "PG", icon: "🏠" },
+                  { value: "hostel", label: "Hostel", icon: "🏢" },
+                  { value: "flat", label: "Flat", icon: "🛋️" },
+                  { value: "room", label: "Room", icon: "🚪" },
                 ].map(({ value, label, icon }) => (
                   <PWACategoryChip
                     key={value}
@@ -564,9 +673,7 @@ const PWADashboard = () => {
         </div>
       </header>
 
-      {/* ══════════════════════════════════════════════════
-          MAIN CONTENT
-      ══════════════════════════════════════════════════ */}
+      {/* MAIN CONTENT */}
       <main className="px-4 pt-4 space-y-4 max-w-7xl mx-auto">
 
         {/* Hero banner slider */}
@@ -574,6 +681,75 @@ const PWADashboard = () => {
 
         {/* Daily Login Reward */}
         {user && <DailyLoginReward />}
+
+        {/* ══════════════════════════════════════════════════
+            SHOP BY CATEGORY CARDS (Products tab only)
+        ══════════════════════════════════════════════════ */}
+        {activeTab === "products" && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base sm:text-lg font-bold text-foreground">Shop by Category</h2>
+              {activeCategory && (
+                <Link to="/pwa-dashboard" className="text-xs text-primary font-medium hover:underline">
+                  View all →
+                </Link>
+              )}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <Link
+                to="/pwa-dashboard"
+                className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border bg-card hover:border-primary/50 hover:shadow-sm transition-all ${
+                  !activeCategory ? "border-primary bg-primary/5" : "border-border"
+                }`}
+              >
+                <span className="text-xl">🛍️</span>
+                <span className="text-[11px] font-semibold text-foreground text-center line-clamp-1">All</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {categories.reduce((a, c) => a + (c.count || 0), 0)} items
+                </span>
+              </Link>
+              {categories.map((cat) => {
+                const isActive = activeCategory?.id === cat.id;
+                return (
+                  <Link
+                    key={cat.id}
+                    to={`/categories/${cat.slug}`}
+                    className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border bg-card hover:border-primary/50 hover:shadow-sm transition-all ${
+                      isActive ? "border-primary bg-primary/5" : "border-border"
+                    }`}
+                  >
+                    <span className="text-xl">{cat.icon ?? "📦"}</span>
+                    <span className="text-[11px] font-semibold text-foreground text-center line-clamp-1">{cat.name}</span>
+                    <span className="text-[10px] text-muted-foreground">{cat.count ?? 0} items</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Active filter chips */}
+        {activeFilterChips.length > 0 && activeTab === "products" && (
+          <div className="flex flex-wrap gap-2 pb-1">
+            <span className="text-xs text-muted-foreground self-center">Filters:</span>
+            {activeFilterChips.map((chip, i) => (
+              <button
+                key={i}
+                onClick={chip.onClear}
+                className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-1 rounded-full hover:bg-primary/20 transition-colors capitalize"
+              >
+                {chip.label}
+                <span className="text-sm leading-none">×</span>
+              </button>
+            ))}
+            <button
+              onClick={clearProductFilters}
+              className="text-xs text-muted-foreground hover:text-foreground underline self-center"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
 
         {/* Results meta row */}
         {!loading && (
@@ -589,19 +765,19 @@ const PWADashboard = () => {
                 <Badge
                   variant="secondary"
                   className="text-xs flex items-center gap-1 cursor-pointer"
-                  onClick={() => setSearchTerm("")}
+                  onClick={() => handleFilterChange("searchTerm", "")}
                 >
                   "{searchTerm}"&nbsp;<X className="h-3 w-3" />
                 </Badge>
               )}
             </div>
 
-            {activeTab === "products" && sortBy !== "newest" && (
+            {activeTab === "products" && sort !== "newest" && (
               <button
-                onClick={() => setSortBy("newest")}
+                onClick={() => handleFilterChange("sort", "newest")}
                 className="flex items-center gap-1 text-xs font-medium text-primary"
               >
-                {sortBy === "price_asc" ? "Price ↑" : "Price ↓"}
+                {sort === "price_asc" ? "Price ↑" : "Price ↓"}
                 <X className="h-3 w-3" />
               </button>
             )}
@@ -693,21 +869,11 @@ const PWADashboard = () => {
         <div className="h-4" />
       </main>
 
-      {/* ══════════════════════════════════════════════════
-          FLOATING ACTION BUTTON — Sell
-          Sits above the BottomNavBar (h-16 = 64px)
-      ══════════════════════════════════════════════════ */}
+      {/* FLOATING ACTION BUTTON — Sell */}
       <button
         onClick={() => navigate("/sell")}
         aria-label="Sell an item"
-        className="
-          fixed bottom-20 right-4 z-50
-          h-14 w-14 rounded-2xl
-          bg-primary text-primary-foreground
-          flex items-center justify-center
-          shadow-lg shadow-primary/40
-          active:scale-90 transition-transform duration-150
-        "
+        className="fixed bottom-20 right-4 z-50 h-14 w-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg shadow-primary/40 active:scale-90 transition-transform duration-150"
       >
         <Plus className="h-6 w-6 stroke-[2.5]" />
       </button>
@@ -727,15 +893,18 @@ const PWADashboard = () => {
             {(Object.entries(SORT_LABELS) as [SortOption, string][]).map(([key, label]) => (
               <button
                 key={key}
-                onClick={() => { setSortBy(key); setSortOpen(false); }}
+                onClick={() => {
+                  handleFilterChange("sort", key);
+                  setSortOpen(false);
+                }}
                 className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl text-sm transition-colors ${
-                  sortBy === key
+                  sort === key
                     ? "bg-primary/10 text-primary font-semibold"
                     : "hover:bg-muted text-foreground font-medium"
                 }`}
               >
                 {label}
-                {sortBy === key && <CheckCheck className="h-4 w-4 text-primary" />}
+                {sort === key && <CheckCheck className="h-4 w-4 text-primary" />}
               </button>
             ))}
           </div>
@@ -743,7 +912,7 @@ const PWADashboard = () => {
       </Sheet>
 
       {/* ══════════════════════════════════════════════════
-          FILTER SHEET
+          FILTER SHEET (now includes condition for products)
       ══════════════════════════════════════════════════ */}
       <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
         <SheetContent side="bottom" className="rounded-t-3xl">
@@ -766,22 +935,40 @@ const PWADashboard = () => {
 
           <div className="pt-5 pb-6 space-y-5">
             {activeTab === "products" ? (
-              <div>
-                <p className="text-sm font-semibold mb-3">Price Range</p>
-                <Select value={priceRange} onValueChange={setPriceRange}>
-                  <SelectTrigger className="w-full h-12 rounded-xl">
-                    <SelectValue placeholder="All prices" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Prices</SelectItem>
-                    <SelectItem value="0-500">Under ₹500</SelectItem>
-                    <SelectItem value="500-2000">₹500 – ₹2,000</SelectItem>
-                    <SelectItem value="2000-5000">₹2,000 – ₹5,000</SelectItem>
-                    <SelectItem value="5000-10000">₹5,000 – ₹10,000</SelectItem>
-                    <SelectItem value="10000-">Above ₹10,000</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <>
+                <div>
+                  <p className="text-sm font-semibold mb-3">Price Range</p>
+                  <Select value={priceRange} onValueChange={(val) => handleFilterChange("priceRange", val)}>
+                    <SelectTrigger className="w-full h-12 rounded-xl">
+                      <SelectValue placeholder="All prices" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Prices</SelectItem>
+                      <SelectItem value="0-500">Under ₹500</SelectItem>
+                      <SelectItem value="500-2000">₹500 – ₹2,000</SelectItem>
+                      <SelectItem value="2000-5000">₹2,000 – ₹5,000</SelectItem>
+                      <SelectItem value="5000-10000">₹5,000 – ₹10,000</SelectItem>
+                      <SelectItem value="10000-">Above ₹10,000</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <p className="text-sm font-semibold mb-3">Condition</p>
+                  <Select value={condition} onValueChange={(val) => handleFilterChange("condition", val)}>
+                    <SelectTrigger className="w-full h-12 rounded-xl">
+                      <SelectValue placeholder="Any condition" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Any Condition</SelectItem>
+                      <SelectItem value="new">Brand New</SelectItem>
+                      <SelectItem value="like_new">Like New</SelectItem>
+                      <SelectItem value="good">Good</SelectItem>
+                      <SelectItem value="fair">Fair</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
             ) : (
               <>
                 <div>
@@ -804,8 +991,8 @@ const PWADashboard = () => {
                   <p className="text-sm font-semibold mb-3">Gender Preference</p>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { value: "all",   label: "Any"   },
-                      { value: "boys",  label: "Boys"  },
+                      { value: "all", label: "Any" },
+                      { value: "boys", label: "Boys" },
                       { value: "girls", label: "Girls" },
                     ].map(({ value, label }) => (
                       <button
