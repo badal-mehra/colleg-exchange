@@ -687,9 +687,17 @@ const Browse = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <SEOHead
-        title="MyCampusKart — Buy & Sell on Your Campus | Verified Student Marketplace"
-        description="Browse verified student listings on MyCampusKart. Buy & sell textbooks, electronics, cycles, lab coats and PG rooms inside Indian campuses. Free, secure, student-only."
-        canonical={canonical('/')}
+        title={seoTitle}
+        description={seoDesc}
+        canonical={canonical(seoPath)}
+        jsonLd={activeCategory ? {
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: `${activeCategory.name} on MyCampusKart`,
+          url: `${canonical(seoPath)}`,
+          isPartOf: { "@type": "WebSite", name: "MyCampusKart", url: canonical('/') },
+          about: { "@type": "Thing", name: activeCategory.name },
+        } : undefined}
       />
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
