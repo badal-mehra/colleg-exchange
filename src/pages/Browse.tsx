@@ -66,8 +66,10 @@ interface SliderImage {
 
 interface FilterState {
   searchTerm: string;
-  selectedCategory: string;
+  selectedCategory: string; // category id or 'all'
   priceRange: string;
+  condition: string; // 'all' | new | like_new | good | fair
+  sort: string; // 'recent' | 'price_asc' | 'price_desc'
 }
 
 // --- UTILITY FUNCTIONS ---
