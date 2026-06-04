@@ -1,4 +1,4 @@
-// Dashboard.tsx - ✅ FINAL, BUILD-SAFE (NO VIRTUALIZATION), & OPTIMIZED
+// Dashboard.tsx — UPDATED with URL-driven filters, category cards, condition/sort, dynamic SEO
 
 import React, { useEffect, useState, memo, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,7 +12,7 @@ import {
   Upload, Star, MapPin, ChevronLeft, ChevronRight, Crown, Zap, Clock, Loader2, Home
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,8 +24,7 @@ import InstallAppPopup from '@/components/InstallAppPopup';
 import { SEOHead } from '@/components/seo/SEOHead';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
-
-// --- INTERFACES (Unchanged) ---
+// --- INTERFACES ---
 interface Profile {
   id: string;
   user_id: string;
@@ -48,7 +47,9 @@ interface MinimalProfile {
 interface MinimalCategory {
   id: string;
   name: string;
+  slug: string;
   icon: string;
+  count?: number;
 }
 
 interface RawItem {
@@ -85,20 +86,20 @@ interface SliderImage {
 
 interface FilterState {
   searchTerm: string;
-  selectedCategory: string;
+  selectedCategory: string; // category id or 'all'
   priceRange: string;
+  condition: string; // 'all' | new | like_new | good | fair
+  sort: string; // 'recent' | 'price_asc' | 'price_desc'
 }
 
 // --- UTILITY FUNCTIONS ---
 const unique = (arr: (string | null | undefined)[]) => Array.from(new Set(arr)).filter((i): i is string => !!i);
 
-// ✅ STEP 4 FIX: Cloudinary Thumbnail Helper (w_300 for grid view efficiency)
 const getThumb = (url: string) => {
   if (url.includes('cloudinary.com')) {
-    // f_auto,q_auto for optimization, w_300,h_300,c_fill for small square thumbnail
     return url.replace('/upload/', '/upload/f_auto,q_auto,w_300,h_300,c_fill/');
   }
-  return url; // Return original URL if it's not a Cloudinary link (e.g., local mock)
+  return url;
 };
 
 const getAdTypeBenefits = (adType: string) => {
@@ -129,10 +130,7 @@ const getAdTypeBenefits = (adType: string) => {
   }
 };
 
-// ❌ VIRTUALIZATION WRAPPERS REMOVED (ItemWrapper, ItemListWrapper)
-
-
-// --- IMAGE SLIDER (Kept) ---
+// --- IMAGE SLIDER (unchanged) ---
 const ImageSliderSectionComponent = () => {
   const [sliderImages, setSliderImages] = useState<SliderImage[] | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -201,12 +199,6 @@ const ImageSliderSectionComponent = () => {
               className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-[1.02]"
               loading="lazy"
             />
-            {/* <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-8 sm:pb-12">
-              <div className="text-center text-white space-y-2 max-w-3xl px-4">
-                {currentImage.title && <h2 className="text-xl sm:text-3xl lg:text-5xl font-extrabold drop-shadow-lg">{currentImage.title}</h2>}
-                {currentImage.link_url && <Button variant="secondary" className="mt-4 animate-bounce-slow">Explore Now</Button>}
-              </div>
-            </div> */}
           </div>
           {sliderImages.length > 1 && (
             <>
@@ -244,14 +236,12 @@ const ImageSliderSectionComponent = () => {
 };
 const ImageSliderSection = memo(ImageSliderSectionComponent);
 
-
-// --- ITEM CARD (Memoized) ---
+// --- ITEM CARD (Memoized, same as before but uses condition tag) ---
 interface ItemCardProps {
   item: EnrichedItem;
   user: any;
   isVerified: boolean;
   navigate: (path: string) => void;
-  // Passing stable functions (useCallback) is vital for memo not to bust
   handleStartConversation: (item: EnrichedItem) => Promise<void>;
   handleFavoriteToggle: (e: React.MouseEvent, item: EnrichedItem) => Promise<void>;
 }
@@ -260,7 +250,6 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
   const adBenefits = getAdTypeBenefits(item.ad_type);
   const [isFavoriting, setIsFavoriting] = useState(false);
 
-  // Get first thumbnail image
   const thumbnailImage = useMemo(() => {
     return item.images[0] ? getThumb(item.images[0]) : '/placeholder.svg';
   }, [item.images]);
@@ -272,7 +261,6 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
     setIsFavoriting(false);
   };
 
-  // Time ago helper
   const timeAgo = useMemo(() => {
     const now = new Date();
     const created = new Date(item.created_at);
@@ -292,7 +280,6 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
       className="group bg-card border border-border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-primary/30"
       onClick={() => navigate(`/item/${item.id}`)}
     >
-      {/* Image Container - 4:3 aspect ratio like OLX */}
       <div className="relative aspect-[4/3] bg-muted overflow-hidden">
         <img
           src={thumbnailImage}
@@ -301,7 +288,6 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
           loading="lazy"
         />
         
-        {/* Ad Type Badge - Top Left */}
         {adBenefits && (
           <Badge className={`absolute top-2 left-2 text-[10px] px-1.5 py-0.5 flex items-center gap-0.5 shadow-sm font-semibold ${adBenefits.color}`}>
             {adBenefits.icon}
@@ -309,7 +295,6 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
           </Badge>
         )}
 
-        {/* Favorite Button - Top Right */}
         <button
           onClick={onFavorite}
           disabled={isFavoriting || !user || !isVerified}
@@ -322,7 +307,6 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
           )}
         </button>
 
-        {/* Views Badge - Bottom Right */}
         {(item.views ?? 0) > 0 && (
           <div className="absolute bottom-2 right-2 bg-foreground/80 text-background text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5">
             <Eye className="h-3 w-3" />
@@ -331,19 +315,13 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
         )}
       </div>
 
-      {/* Content */}
       <div className="p-3 space-y-1.5">
-        {/* Price */}
         <p className="text-lg sm:text-xl font-bold text-foreground">
           ₹{item.price.toLocaleString()}
         </p>
-
-        {/* Title */}
         <h3 className="text-sm text-foreground/90 line-clamp-2 leading-snug min-h-[2.5rem]">
           {item.title}
         </h3>
-
-        {/* Location & Time Row */}
         <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1.5 border-t border-border/50">
           <div className="flex items-center gap-1 truncate max-w-[60%]">
             <MapPin className="h-3 w-3 flex-shrink-0" />
@@ -354,8 +332,6 @@ const ItemCard: React.FC<ItemCardProps> = memo(({ item, user, isVerified, naviga
             <span>{timeAgo}</span>
           </div>
         </div>
-
-        {/* Condition & Negotiable Tags */}
         <div className="flex items-center gap-1.5 flex-wrap">
           <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
             {item.condition === 'new' ? 'New' : item.condition === 'like_new' ? 'Like New' : item.condition}
@@ -376,8 +352,9 @@ const Dashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const params = useParams<{ slug?: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Tab state for Products vs PG/Rooms
   const [activeTab, setActiveTab] = useState<'products' | 'pg'>('products');
 
   // States
@@ -389,24 +366,34 @@ const Dashboard = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [itemsHasMore, setItemsHasMore] = useState(true);
   const [pgHasMore, setPgHasMore] = useState(true);
-  const [filters, setFilters] = useState<FilterState>({
-    searchTerm: '',
-    selectedCategory: 'all',
-    priceRange: 'all',
-  });
 
-  // PG Filters
+  const PAGE_SIZE = 60;
+
+  // PG Filters (unchanged)
   const [pgFilters, setPgFilters] = useState({
     propertyType: 'all',
     sharingType: 'all',
     rentRange: 'all',
   });
 
-  const PAGE_SIZE = 60;
+  // Derive filters from URL (URL is source of truth — e‑commerce style)
+  const activeCategorySlug = (params.slug || searchParams.get('category') || '').toLowerCase();
+  const activeCategory = useMemo(
+    () => allCategories?.find(c => c.slug === activeCategorySlug) || null,
+    [allCategories, activeCategorySlug]
+  );
 
-  const { searchTerm, selectedCategory, priceRange } = filters;
+  const filters: FilterState = useMemo(() => ({
+    searchTerm: searchParams.get('q') || '',
+    selectedCategory: activeCategory?.id || 'all',
+    priceRange: searchParams.get('price') || 'all',
+    condition: searchParams.get('condition') || 'all',
+    sort: searchParams.get('sort') || 'recent',
+  }), [searchParams, activeCategory]);
+
+  const { searchTerm, selectedCategory, priceRange, condition, sort } = filters;
+
   const isVerified = useMemo(() => profile?.is_verified && profile?.verification_status === 'approved', [profile]);
-
 
   const categoriesLoaded = allCategories !== null;
   const categoryMap = useMemo(() => {
@@ -414,26 +401,22 @@ const Dashboard = () => {
     return new Map(allCategories.map(c => [c.id, c]));
   }, [allCategories]);
 
-
-  // Data Enrichment Function
+  // Data Enrichment Function (unchanged)
   const enrichItemsWithDetails = useCallback(async (rawItems: RawItem[]): Promise<EnrichedItem[]> => {
-    if (rawItems.length === 0 || !allCategories) return []; // Guard against race condition
+    if (rawItems.length === 0 || !allCategories) return [];
 
     const sellerIds = unique(rawItems.map(i => i.seller_id));
 
-    // Batch Fetch Profiles
     const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, trust_seller_badge, avatar_url')
-        .in('user_id', sellerIds);
+      .from('profiles')
+      .select('user_id, full_name, trust_seller_badge, avatar_url')
+      .in('user_id', sellerIds);
 
     const profileMap = new Map(profilesData?.map(p => [p.user_id, p as MinimalProfile]));
 
     return rawItems.map(item => {
       const safeCategoryId = item.category_id || 'unassigned';
-
       const profileDetails = profileMap.get(item.seller_id) || { user_id: item.seller_id, full_name: 'Unknown Seller', trust_seller_badge: false, avatar_url: null };
-
       const categoryDetails = categoryMap.get(safeCategoryId) || { id: safeCategoryId, name: 'Other', icon: '❓' };
 
       return {
@@ -444,13 +427,22 @@ const Dashboard = () => {
     });
   }, [allCategories, categoryMap]);
 
-
+  // Query builder with condition and sort
   const buildItemsQuery = useCallback((from: number, to: number) => {
-    let query = supabase.from('items').select(`*`)
+    let query = supabase.from('items').select('*')
       .eq('is_sold', false)
-      .order('ad_priority', { ascending: false })
-      .order('created_at', { ascending: false })
-      .range(from, to);
+      .eq('status', 'available');
+
+    // Sorting
+    if (sort === 'price_asc') {
+      query = query.order('price', { ascending: true });
+    } else if (sort === 'price_desc') {
+      query = query.order('price', { ascending: false });
+    } else {
+      query = query.order('ad_priority', { ascending: false }).order('created_at', { ascending: false });
+    }
+
+    query = query.range(from, to);
 
     if (selectedCategory !== 'all') {
       query = query.eq('category_id', selectedCategory);
@@ -462,9 +454,13 @@ const Dashboard = () => {
       const [min, max] = priceRange.split('-').map(Number);
       query = max ? query.gte('price', min).lte('price', max) : query.gte('price', min);
     }
+    if (condition !== 'all') {
+      query = query.eq('condition', condition);
+    }
     return query;
-  }, [selectedCategory, searchTerm, priceRange]);
+  }, [selectedCategory, searchTerm, priceRange, condition, sort]);
 
+  // Fetch Items
   const fetchItems = useCallback(async () => {
     if (!categoriesLoaded) {
       setLoading(true);
@@ -499,6 +495,7 @@ const Dashboard = () => {
     setLoadingMore(false);
   }, [items.length, loadingMore, itemsHasMore, buildItemsQuery, enrichItemsWithDetails]);
 
+  // PG query builder (unchanged)
   const buildPgQuery = useCallback((from: number, to: number) => {
     let query = supabase
       .from('pg_listings')
@@ -554,65 +551,65 @@ const Dashboard = () => {
     else console.error('Error fetching profile:', error);
   }, []);
 
-  // Single Category Fetch
+  // Fetch Categories (with product counts)
   const fetchAllCategories = useCallback(async () => {
-    const { data, error } = await supabase.from('categories').select('id, name, icon').order('name');
-    if (!error) {
-      const defaultCategory = { id: 'unassigned', name: 'Unassigned', icon: '❓' };
-      setAllCategories([...data as MinimalCategory[], defaultCategory]);
+    const { data: cats } = await supabase
+      .from('categories')
+      .select('id, name, slug, icon')
+      .order('name');
+    if (!cats) { setAllCategories([]); return; }
+
+    const { data: counts } = await supabase
+      .from('items')
+      .select('category_id')
+      .eq('is_sold', false)
+      .eq('status', 'available')
+      .limit(10000);
+    const countMap = new Map<string, number>();
+    for (const row of counts || []) {
+      if (!row.category_id) continue;
+      countMap.set(row.category_id, (countMap.get(row.category_id) || 0) + 1);
     }
-    else console.error('Error fetching categories:', error);
+    setAllCategories(
+      (cats as any[]).map(c => ({ ...c, count: countMap.get(c.id) || 0 })) as MinimalCategory[]
+    );
   }, []);
 
+  // URL update helper — merges filter values into the URL
+  const updateFilters = useCallback((patch: Partial<FilterState & { categorySlug: string | null }>) => {
+    const next = new URLSearchParams(searchParams);
+    if ('searchTerm' in patch) patch.searchTerm ? next.set('q', patch.searchTerm) : next.delete('q');
+    if ('priceRange' in patch) patch.priceRange && patch.priceRange !== 'all' ? next.set('price', patch.priceRange) : next.delete('price');
+    if ('condition' in patch) patch.condition && patch.condition !== 'all' ? next.set('condition', patch.condition) : next.delete('condition');
+    if ('sort' in patch) patch.sort && patch.sort !== 'recent' ? next.set('sort', patch.sort) : next.delete('sort');
 
-  // --- EFFECTS ---
-
-  // Initial Data Load (Profile and Categories)
-  useEffect(() => {
-    if (!user) return;
-    fetchProfile(user.id);
-    fetchAllCategories();
-  }, [user, fetchProfile, fetchAllCategories]);
-
-  // Debounced Item Fetch on Filter/Search Change (Waits for categories to load)
-  useEffect(() => {
-    if (!categoriesLoaded) return;
-    if (activeTab !== 'products') return;
-
-    const debounceTimer = setTimeout(() => {
-      fetchItems();
-    }, 300);
-
-    return () => clearTimeout(debounceTimer);
-  }, [searchTerm, selectedCategory, priceRange, fetchItems, categoriesLoaded, activeTab]);
-
-  // Fetch PG listings when tab changes or filters change
-  useEffect(() => {
-    if (activeTab !== 'pg') return;
-
-    const debounceTimer = setTimeout(() => {
-      fetchPGListings();
-    }, 300);
-
-    return () => clearTimeout(debounceTimer);
-  }, [activeTab, pgFilters, fetchPGListings]);
-
-
-  // --- HANDLERS (Wrapped in useCallback for memoization stability) ---
+    if ('categorySlug' in patch) {
+      const slug = patch.categorySlug;
+      const qs = next.toString();
+      const base = slug ? `/categories/${slug}` : '/dashboard';
+      navigate(qs ? `${base}?${qs}` : base);
+      return;
+    }
+    setSearchParams(next, { replace: false });
+  }, [searchParams, setSearchParams, navigate]);
 
   const handleFilterChange = useCallback((key: keyof FilterState, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  }, []);
+    if (key === 'selectedCategory') {
+      const cat = allCategories?.find(c => c.id === value);
+      updateFilters({ categorySlug: value === 'all' ? null : (cat?.slug || null) });
+    } else {
+      updateFilters({ [key]: value } as any);
+    }
+  }, [allCategories, updateFilters]);
 
+  // Handlers (unchanged, but wrapped)
   const handleStartConversation = useCallback(async (item: EnrichedItem) => {
     if (!user || item.seller_id === user.id) return;
-
     if (!isVerified) {
       toast({ title: "Verification Required", description: "Please complete your KYC verification to start chatting.", variant: "destructive" });
       navigate('/kyc');
       return;
     }
-    
     try {
       let { data: existingConversation } = await supabase
         .from('conversations')
@@ -650,7 +647,6 @@ const Dashboard = () => {
       navigate('/kyc');
       return;
     }
-    
     try {
       const { data: existing } = await supabase
         .from('favorites')
@@ -684,8 +680,27 @@ const Dashboard = () => {
     onLoadMore: loadMorePg,
   });
 
+  // Effects
+  useEffect(() => {
+    if (!user) return;
+    fetchProfile(user.id);
+    fetchAllCategories();
+  }, [user, fetchProfile, fetchAllCategories]);
 
+  useEffect(() => {
+    if (!categoriesLoaded) return;
+    if (activeTab !== 'products') return;
+    const timer = setTimeout(fetchItems, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm, selectedCategory, priceRange, condition, sort, fetchItems, categoriesLoaded, activeTab]);
 
+  useEffect(() => {
+    if (activeTab !== 'pg') return;
+    const timer = setTimeout(fetchPGListings, 300);
+    return () => clearTimeout(timer);
+  }, [activeTab, pgFilters, fetchPGListings]);
+
+  // Filter UI components
   const PriceRangeSelect = ({ className }: { className?: string }) => (
     <Select value={priceRange} onValueChange={(val) => handleFilterChange('priceRange', val)}>
       <SelectTrigger className={`w-full ${className}`}>
@@ -699,6 +714,34 @@ const Dashboard = () => {
         <SelectItem value="1000-5000">₹1,000 - ₹5,000</SelectItem>
         <SelectItem value="5000-10000">₹5,000 - ₹10,000</SelectItem>
         <SelectItem value="10000">₹10,000+</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const ConditionSelect = ({ className }: { className?: string }) => (
+    <Select value={condition} onValueChange={(val) => handleFilterChange('condition', val)}>
+      <SelectTrigger className={`w-full ${className}`}>
+        <SelectValue placeholder="Condition" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">Any Condition</SelectItem>
+        <SelectItem value="new">Brand New</SelectItem>
+        <SelectItem value="like_new">Like New</SelectItem>
+        <SelectItem value="good">Good</SelectItem>
+        <SelectItem value="fair">Fair</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const SortSelect = ({ className }: { className?: string }) => (
+    <Select value={sort} onValueChange={(val) => handleFilterChange('sort', val)}>
+      <SelectTrigger className={`w-full ${className}`}>
+        <SelectValue placeholder="Sort" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="recent">Newest First</SelectItem>
+        <SelectItem value="price_asc">Price: Low to High</SelectItem>
+        <SelectItem value="price_desc">Price: High to Low</SelectItem>
       </SelectContent>
     </Select>
   );
@@ -723,10 +766,29 @@ const Dashboard = () => {
     </Select>
   );
 
+  // Dynamic SEO
+  const seoTitle = activeCategory
+    ? `${activeCategory.name} for Sale on Campus | MyCampusKart`
+    : "Dashboard | MyCampusKart — Buy & Sell on Your Campus";
+  const seoDesc = activeCategory
+    ? `Shop verified student listings in ${activeCategory.name}. Browse, filter by price & condition, and buy directly from peers.`
+    : "Your campus marketplace dashboard. Browse items, manage favorites, and connect with sellers.";
+
+  // Active filter chips
+  const activeFilterChips: { label: string; onClear: () => void }[] = [];
+  if (activeCategory) activeFilterChips.push({ label: activeCategory.name, onClear: () => handleFilterChange('selectedCategory', 'all') });
+  if (priceRange !== 'all') activeFilterChips.push({ label: `₹${priceRange.replace('-', ' - ₹')}`, onClear: () => handleFilterChange('priceRange', 'all') });
+  if (condition !== 'all') activeFilterChips.push({ label: condition.replace('_', ' '), onClear: () => handleFilterChange('condition', 'all') });
+  if (searchTerm) activeFilterChips.push({ label: `"${searchTerm}"`, onClear: () => handleFilterChange('searchTerm', '') });
 
   return (
     <div className="flex-1 bg-gray-50">
-      <SEOHead title="Dashboard | MyCampusKart" noindex />
+      <SEOHead
+        title={seoTitle}
+        description={seoDesc}
+        canonical={canonical('/dashboard')}
+        noindex={!activeCategory} // index only when browsing specific category
+      />
 
       {/* Verification Alert */}
       {!isVerified && (
@@ -739,7 +801,6 @@ const Dashboard = () => {
                   Action Required: Please verify your student identity to unlock buying/selling features.
                 </span>
               </div>
-              {/* Button Color Changed Below */}
               <Button 
                 size="sm" 
                 variant="default" 
@@ -753,25 +814,6 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Verification Alert */}
-      {/* {!isVerified && (
-        <div className="bg-orange-50 border-orange-200 border-b text-orange-700 sticky top-0 z-40">
-          <div className="container mx-auto px-4 py-3">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center space-x-3">
-                <Upload className="h-5 w-5 text-warning" />
-                <span className="text-sm font-medium">
-                  Action Required: Please verify your student identity to unlock buying/selling features.
-                </span>
-              </div>
-              <Button size="sm" variant="default" className="bg-warning text-white hover:bg-warning/90" onClick={() => navigate('/kyc')}>
-                Verify Now
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}  */}
-
       {/* Image Slider Section */}
       <ImageSliderSection />
 
@@ -782,6 +824,7 @@ const Dashboard = () => {
             <DailyLoginReward />
           </div>
         )}
+
         {/* Tab Switcher */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'products' | 'pg')} className="mb-6">
           <TabsList className="grid w-full max-w-md grid-cols-2">
@@ -799,16 +842,52 @@ const Dashboard = () => {
         {/* Products Tab Content */}
         {activeTab === 'products' && (
           <>
+            {/* Category Cards Grid */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-800">Shop by Category</h2>
+                {activeCategory && (
+                  <Link to="/dashboard" className="text-sm text-primary hover:underline">View all →</Link>
+                )}
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-3">
+                <Link
+                  to="/dashboard"
+                  className={`group flex flex-col items-center justify-center gap-1 p-3 rounded-xl border bg-white hover:border-primary/50 hover:shadow-md transition-all ${!activeCategory ? 'border-primary bg-primary/5' : 'border-gray-100'}`}
+                >
+                  <span className="text-2xl sm:text-3xl">🛍️</span>
+                  <span className="text-[11px] sm:text-xs font-semibold text-gray-800 text-center line-clamp-1">All</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {(allCategories || []).reduce((a, c) => a + (c.count || 0), 0)} items
+                  </span>
+                </Link>
+                {(allCategories || []).map(cat => {
+                  const isActive = activeCategory?.id === cat.id;
+                  return (
+                    <Link
+                      key={cat.id}
+                      to={`/categories/${cat.slug}`}
+                      className={`group flex flex-col items-center justify-center gap-1 p-3 rounded-xl border bg-white hover:border-primary/50 hover:shadow-md transition-all ${isActive ? 'border-primary bg-primary/5' : 'border-gray-100'}`}
+                    >
+                      <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{cat.icon}</span>
+                      <span className="text-[11px] sm:text-xs font-semibold text-gray-800 text-center line-clamp-1">{cat.name}</span>
+                      <span className="text-[10px] text-muted-foreground">{cat.count ?? 0} items</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Search and Filters */}
             <div className="mb-10 space-y-4 p-6 rounded-2xl shadow-xl bg-white/95 backdrop-blur-sm border border-gray-100">
               <h2 className="text-3xl font-extrabold text-gray-800 flex items-center gap-2">
                 <Search className="h-7 w-7 text-primary" />
-                Discover Campus Deals
+                {activeCategory ? `${activeCategory.icon} ${activeCategory.name}` : 'Discover Campus Deals'}
               </h2>
 
               {/* Desktop Filters */}
-              <div className="hidden lg:flex gap-4">
-                <div className="relative flex-1">
+              <div className="hidden lg:flex gap-3 flex-wrap">
+                <div className="relative flex-1 min-w-[260px]">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     placeholder="Search for items, categories, descriptions..."
@@ -817,8 +896,10 @@ const Dashboard = () => {
                     className="pl-10 h-11 border-gray-300 focus:border-primary/50 text-base"
                   />
                 </div>
-                <CategorySelect className="lg:w-60" />
-                <PriceRangeSelect className="lg:w-60" />
+                <CategorySelect className="lg:w-48" />
+                <PriceRangeSelect className="lg:w-44" />
+                <ConditionSelect className="lg:w-40" />
+                <SortSelect className="lg:w-48" />
               </div>
 
               {/* Mobile Filters */}
@@ -845,71 +926,93 @@ const Dashboard = () => {
                     <div className="flex flex-col gap-4 mt-6">
                       <CategorySelect />
                       <PriceRangeSelect />
+                      <ConditionSelect />
+                      <SortSelect />
                       <Button>Apply Filters</Button>
                     </div>
                   </SheetContent>
                 </Sheet>
               </div>
-            </div>
 
-        {/* Items Grid - OLX Style: 2 columns on mobile, 3 on tablet, 4 on desktop */}
-        {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-            {[...Array(10)].map((_, i) => (
-              <div key={i} className="animate-pulse bg-card border border-border rounded-lg overflow-hidden">
-                <div className="aspect-[4/3] bg-muted"></div>
-                <div className="p-3 space-y-2">
-                  <div className="h-5 bg-muted rounded w-2/3"></div>
-                  <div className="h-4 bg-muted rounded w-full"></div>
-                  <div className="h-3 bg-muted rounded w-1/2"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : items.length === 0 ? (
-          <div className="text-center py-16 bg-card rounded-xl border border-dashed border-border">
-            <ShoppingBag className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2 text-foreground">No items found</h3>
-            <p className="text-muted-foreground text-sm mb-4">
-              Try adjusting your search or filters
-            </p>
-            <Button onClick={() => navigate('/sell')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Sell Something
-            </Button>
-          </div>
-        ) : (
-          <TooltipProvider>
-            {/* OLX-Style Grid: 2 cols mobile, scales up */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-                {items.map((item) => (
-                  <ItemCard
-                    key={item.id}
-                    item={item}
-                    user={user}
-                    isVerified={isVerified}
-                    navigate={navigate}
-                    handleStartConversation={handleStartConversation}
-                    handleFavoriteToggle={handleFavoriteToggle}
-                  />
-                ))}
-              </div>
-              <div ref={itemsSentinelRef} className="h-10" aria-hidden="true" />
-              {itemsHasMore && (
-                <div className="flex justify-center mt-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              {/* Active Filter Chips */}
+              {activeFilterChips.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
+                  <span className="text-xs text-muted-foreground self-center">Filters:</span>
+                  {activeFilterChips.map((chip, i) => (
+                    <button
+                      key={i}
+                      onClick={chip.onClear}
+                      className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-1 rounded-full hover:bg-primary/20 transition-colors capitalize"
+                    >
+                      {chip.label}
+                      <span className="text-sm leading-none">×</span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => navigate('/dashboard')}
+                    className="text-xs text-muted-foreground hover:text-foreground underline self-center"
+                  >
+                    Clear all
+                  </button>
                 </div>
               )}
+            </div>
 
-            </TooltipProvider>
-          )}
+            {/* Items Grid */}
+            {loading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+                {[...Array(10)].map((_, i) => (
+                  <div key={i} className="animate-pulse bg-card border border-border rounded-lg overflow-hidden">
+                    <div className="aspect-[4/3] bg-muted"></div>
+                    <div className="p-3 space-y-2">
+                      <div className="h-5 bg-muted rounded w-2/3"></div>
+                      <div className="h-4 bg-muted rounded w-full"></div>
+                      <div className="h-3 bg-muted rounded w-1/2"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : items.length === 0 ? (
+              <div className="text-center py-16 bg-card rounded-xl border border-dashed border-border">
+                <ShoppingBag className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2 text-foreground">No items found</h3>
+                <p className="text-muted-foreground text-sm mb-4">
+                  Try adjusting your search or filters
+                </p>
+                <Button onClick={() => navigate('/sell')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Sell Something
+                </Button>
+              </div>
+            ) : (
+              <TooltipProvider>
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+                  {items.map((item) => (
+                    <ItemCard
+                      key={item.id}
+                      item={item}
+                      user={user}
+                      isVerified={isVerified}
+                      navigate={navigate}
+                      handleStartConversation={handleStartConversation}
+                      handleFavoriteToggle={handleFavoriteToggle}
+                    />
+                  ))}
+                </div>
+                <div ref={itemsSentinelRef} className="h-10" aria-hidden="true" />
+                {itemsHasMore && (
+                  <div className="flex justify-center mt-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+              </TooltipProvider>
+            )}
           </>
         )}
 
         {/* PG/Rooms Tab Content */}
         {activeTab === 'pg' && (
           <>
-            {/* PG Filters */}
             <div className="mb-10 space-y-4 p-6 rounded-2xl shadow-xl bg-white/95 backdrop-blur-sm border border-gray-100">
               <h2 className="text-3xl font-extrabold text-gray-800 flex items-center gap-2">
                 <Home className="h-7 w-7 text-orange-500" />
