@@ -764,16 +764,52 @@ const Browse = () => {
         {/* Products Tab */}
         {activeTab === 'products' && (
           <>
+            {/* Category Cards Grid — e-commerce style, with product counts */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg sm:text-xl font-bold text-foreground">Shop by Category</h2>
+                {activeCategory && (
+                  <Link to="/" className="text-sm text-primary hover:underline">View all →</Link>
+                )}
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-3">
+                <Link
+                  to="/"
+                  className={`group flex flex-col items-center justify-center gap-1 p-3 rounded-xl border bg-card hover:border-primary/50 hover:shadow-md transition-all ${!activeCategory ? 'border-primary bg-primary/5' : 'border-border'}`}
+                >
+                  <span className="text-2xl sm:text-3xl">🛍️</span>
+                  <span className="text-[11px] sm:text-xs font-semibold text-foreground text-center line-clamp-1">All</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {(allCategories || []).reduce((a, c) => a + (c.count || 0), 0)} items
+                  </span>
+                </Link>
+                {(allCategories || []).map(cat => {
+                  const isActive = activeCategory?.id === cat.id;
+                  return (
+                    <Link
+                      key={cat.id}
+                      to={`/categories/${cat.slug}`}
+                      className={`group flex flex-col items-center justify-center gap-1 p-3 rounded-xl border bg-card hover:border-primary/50 hover:shadow-md transition-all ${isActive ? 'border-primary bg-primary/5' : 'border-border'}`}
+                    >
+                      <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{cat.icon}</span>
+                      <span className="text-[11px] sm:text-xs font-semibold text-foreground text-center line-clamp-1">{cat.name}</span>
+                      <span className="text-[10px] text-muted-foreground">{cat.count ?? 0} items</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Search and Filters */}
-            <div className="mb-8 space-y-4 p-4 sm:p-6 rounded-2xl shadow-lg bg-card border border-border">
+            <div className="mb-6 space-y-4 p-4 sm:p-6 rounded-2xl shadow-lg bg-card border border-border">
               <h2 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
                 <Search className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                Discover Campus Deals
+                {activeCategory ? `${activeCategory.icon} ${activeCategory.name}` : 'Discover Campus Deals'}
               </h2>
 
               {/* Desktop Filters */}
-              <div className="hidden lg:flex gap-4">
-                <div className="relative flex-1">
+              <div className="hidden lg:flex gap-3 flex-wrap">
+                <div className="relative flex-1 min-w-[260px]">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     placeholder="Search for items, categories, descriptions..."
@@ -782,8 +818,10 @@ const Browse = () => {
                     className="pl-10 h-11"
                   />
                 </div>
-                <CategorySelect className="lg:w-60" />
-                <PriceRangeSelect className="lg:w-60" />
+                <CategorySelect className="lg:w-48" />
+                <PriceRangeSelect className="lg:w-44" />
+                <ConditionSelect className="lg:w-40" />
+                <SortSelect className="lg:w-48" />
               </div>
 
               {/* Mobile Filters */}
@@ -810,11 +848,37 @@ const Browse = () => {
                     <div className="flex flex-col gap-4 mt-6">
                       <CategorySelect />
                       <PriceRangeSelect />
+                      <ConditionSelect />
+                      <SortSelect />
                     </div>
                   </SheetContent>
                 </Sheet>
               </div>
+
+              {/* Active Filter Chips */}
+              {activeFilterChips.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
+                  <span className="text-xs text-muted-foreground self-center">Filters:</span>
+                  {activeFilterChips.map((chip, i) => (
+                    <button
+                      key={i}
+                      onClick={chip.onClear}
+                      className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-1 rounded-full hover:bg-primary/20 transition-colors capitalize"
+                    >
+                      {chip.label}
+                      <span className="text-sm leading-none">×</span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => navigate('/')}
+                    className="text-xs text-muted-foreground hover:text-foreground underline self-center"
+                  >
+                    Clear all
+                  </button>
+                </div>
+              )}
             </div>
+
 
             {/* Items Grid */}
             {loading ? (
