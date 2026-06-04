@@ -40,6 +40,7 @@ interface Entry {
 const staticEntries: Entry[] = [
   { path: "/", changefreq: "daily", priority: "1.0" },
   { path: "/browse", changefreq: "daily", priority: "0.9" },
+  { path: "/categories", changefreq: "daily", priority: "0.9" },
   { path: "/downloadmycampuskartapp", changefreq: "weekly", priority: "0.9" },
   { path: "/leaderboard", changefreq: "daily", priority: "0.6" },
   { path: "/about", changefreq: "monthly", priority: "0.5" },
