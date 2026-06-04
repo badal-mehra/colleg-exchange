@@ -352,6 +352,8 @@ const Browse = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const params = useParams<{ slug?: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const isLoggedIn = !!user;
 
@@ -367,11 +369,6 @@ const Browse = () => {
   const [itemsHasMore, setItemsHasMore] = useState(true);
   const [pgHasMore, setPgHasMore] = useState(true);
   const PAGE_SIZE = 60;
-  const [filters, setFilters] = useState<FilterState>({
-    searchTerm: '',
-    selectedCategory: 'all',
-    priceRange: 'all',
-  });
 
   // PG Filters
   const [pgFilters, setPgFilters] = useState({
@@ -380,7 +377,22 @@ const Browse = () => {
     rentRange: 'all',
   });
 
-  const { searchTerm, selectedCategory, priceRange } = filters;
+  // Derive filters from URL (URL is source of truth — e-commerce style)
+  const activeCategorySlug = (params.slug || searchParams.get('category') || '').toLowerCase();
+  const activeCategory = useMemo(
+    () => allCategories?.find(c => c.slug === activeCategorySlug) || null,
+    [allCategories, activeCategorySlug]
+  );
+
+  const filters: FilterState = useMemo(() => ({
+    searchTerm: searchParams.get('q') || '',
+    selectedCategory: activeCategory?.id || 'all',
+    priceRange: searchParams.get('price') || 'all',
+    condition: searchParams.get('condition') || 'all',
+    sort: searchParams.get('sort') || 'recent',
+  }), [searchParams, activeCategory]);
+
+  const { searchTerm, selectedCategory, priceRange, condition, sort } = filters;
   const categoriesLoaded = allCategories !== null;
 
   // Prompt login
@@ -392,22 +404,70 @@ const Browse = () => {
     navigate('/auth');
   }, [toast, navigate]);
 
-  // Fetch Categories
+  // Fetch Categories (with product counts)
   const fetchAllCategories = useCallback(async () => {
-    const { data, error } = await supabase.from('categories').select('id, name, icon').order('name');
-    if (!error) {
-      setAllCategories(data as MinimalCategory[]);
+    const { data: cats } = await supabase
+      .from('categories')
+      .select('id, name, slug, icon')
+      .order('name');
+    if (!cats) { setAllCategories([]); return; }
+
+    // Aggregate counts client-side via a single query
+    const { data: counts } = await supabase
+      .from('items')
+      .select('category_id')
+      .eq('is_sold', false)
+      .eq('status', 'available')
+      .limit(10000);
+    const countMap = new Map<string, number>();
+    for (const row of counts || []) {
+      if (!row.category_id) continue;
+      countMap.set(row.category_id, (countMap.get(row.category_id) || 0) + 1);
     }
+    setAllCategories(
+      (cats as any[]).map(c => ({ ...c, count: countMap.get(c.id) || 0 })) as MinimalCategory[]
+    );
   }, []);
+
+  // URL update helper — merges new filter values into the URL, keeping path slug.
+  const updateFilters = useCallback((patch: Partial<FilterState & { categorySlug: string | null }>) => {
+    const next = new URLSearchParams(searchParams);
+    if ('searchTerm' in patch) patch.searchTerm ? next.set('q', patch.searchTerm) : next.delete('q');
+    if ('priceRange' in patch) patch.priceRange && patch.priceRange !== 'all' ? next.set('price', patch.priceRange) : next.delete('price');
+    if ('condition' in patch) patch.condition && patch.condition !== 'all' ? next.set('condition', patch.condition) : next.delete('condition');
+    if ('sort' in patch) patch.sort && patch.sort !== 'recent' ? next.set('sort', patch.sort) : next.delete('sort');
+
+    if ('categorySlug' in patch) {
+      // Navigate to /categories/<slug> or / when 'all'
+      const slug = patch.categorySlug;
+      const qs = next.toString();
+      const base = slug ? `/categories/${slug}` : '/';
+      navigate(qs ? `${base}?${qs}` : base);
+      return;
+    }
+    setSearchParams(next, { replace: false });
+  }, [searchParams, setSearchParams, navigate]);
+
+  const handleFilterChange = useCallback((key: keyof FilterState, value: string) => {
+    if (key === 'selectedCategory') {
+      const cat = allCategories?.find(c => c.id === value);
+      updateFilters({ categorySlug: value === 'all' ? null : (cat?.slug || null) });
+    } else {
+      updateFilters({ [key]: value } as any);
+    }
+  }, [allCategories, updateFilters]);
 
   // Query builders
   const buildItemsQuery = useCallback((from: number, to: number) => {
     let query = supabase.from('items').select('*')
       .eq('is_sold', false)
-      .eq('status', 'available')
-      .order('ad_priority', { ascending: false })
-      .order('created_at', { ascending: false })
-      .range(from, to);
+      .eq('status', 'available');
+
+    if (sort === 'price_asc') query = query.order('price', { ascending: true });
+    else if (sort === 'price_desc') query = query.order('price', { ascending: false });
+    else query = query.order('ad_priority', { ascending: false }).order('created_at', { ascending: false });
+
+    query = query.range(from, to);
 
     if (selectedCategory !== 'all') {
       query = query.eq('category_id', selectedCategory);
@@ -419,8 +479,11 @@ const Browse = () => {
       const [min, max] = priceRange.split('-').map(Number);
       query = max ? query.gte('price', min).lte('price', max) : query.gte('price', min);
     }
+    if (condition !== 'all') {
+      query = query.eq('condition', condition);
+    }
     return query;
-  }, [selectedCategory, searchTerm, priceRange]);
+  }, [selectedCategory, searchTerm, priceRange, condition, sort]);
 
   const fetchItems = useCallback(async () => {
     if (!categoriesLoaded) return;
@@ -515,7 +578,7 @@ const Browse = () => {
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [searchTerm, selectedCategory, priceRange, fetchItems, categoriesLoaded, activeTab]);
+  }, [searchTerm, selectedCategory, priceRange, condition, sort, fetchItems, categoriesLoaded, activeTab]);
 
   // Fetch PG when tab changes
   useEffect(() => {
@@ -528,10 +591,6 @@ const Browse = () => {
     return () => clearTimeout(debounceTimer);
   }, [activeTab, pgFilters, searchTerm, fetchPGListings]);
 
-  const handleFilterChange = useCallback((key: keyof FilterState, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  }, []);
-
   // Infinite scroll sentinels
   const itemsSentinelRef = useInfiniteScroll<HTMLDivElement>({
     hasMore: itemsHasMore,
@@ -543,6 +602,7 @@ const Browse = () => {
     loading: loading || loadingMore,
     onLoadMore: loadMorePg,
   });
+
 
 
   const PriceRangeSelect = ({ className }: { className?: string }) => (
