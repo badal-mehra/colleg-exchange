@@ -99,7 +99,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Categories / tags
+    // Marketplace categories — indexable e-commerce-style listing pages
+    const { data: marketplaceCats } = await supabase.from("categories").select("slug, name");
+    for (const c of marketplaceCats || []) {
+      if (!c.slug) continue;
+      entries.push({ path: `/categories/${c.slug}`, changefreq: "daily", priority: "0.8" });
+    }
+
+    // Blog categories / tags
     const { data: cats } = await supabase.from("blog_categories").select("slug");
     for (const c of cats || []) entries.push({ path: `/blog/category/${c.slug}`, changefreq: "weekly", priority: "0.6" });
     const { data: tags } = await supabase.from("blog_tags").select("slug");
