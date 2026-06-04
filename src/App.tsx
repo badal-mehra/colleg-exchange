@@ -121,6 +121,8 @@ const App = () => (
     <Route path="/profile/:mckId" element={<PublicProfile />} />
     <Route path="/u/:mckId" element={<PublicProfile />} />
     <Route path="/category/:slug" element={<Browse />} />
+    <Route path="/categories" element={<Browse />} />
+    <Route path="/categories/:slug" element={<Browse />} />
     <Route path="/campus-marketplace/:city" element={<Browse />} />
 
 

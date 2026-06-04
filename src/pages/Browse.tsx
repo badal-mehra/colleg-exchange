@@ -13,7 +13,7 @@ import {
   Star, MapPin, ChevronLeft, ChevronRight, Crown, Zap, Clock, Loader2, Home, LogIn, User
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -31,7 +31,9 @@ import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 interface MinimalCategory {
   id: string;
   name: string;
+  slug: string;
   icon: string;
+  count?: number;
 }
 
 interface RawItem {
@@ -64,8 +66,10 @@ interface SliderImage {
 
 interface FilterState {
   searchTerm: string;
-  selectedCategory: string;
+  selectedCategory: string; // category id or 'all'
   priceRange: string;
+  condition: string; // 'all' | new | like_new | good | fair
+  sort: string; // 'recent' | 'price_asc' | 'price_desc'
 }
 
 // --- UTILITY FUNCTIONS ---
@@ -348,6 +352,8 @@ const Browse = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const params = useParams<{ slug?: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const isLoggedIn = !!user;
 
@@ -363,11 +369,6 @@ const Browse = () => {
   const [itemsHasMore, setItemsHasMore] = useState(true);
   const [pgHasMore, setPgHasMore] = useState(true);
   const PAGE_SIZE = 60;
-  const [filters, setFilters] = useState<FilterState>({
-    searchTerm: '',
-    selectedCategory: 'all',
-    priceRange: 'all',
-  });
 
   // PG Filters
   const [pgFilters, setPgFilters] = useState({
@@ -376,7 +377,22 @@ const Browse = () => {
     rentRange: 'all',
   });
 
-  const { searchTerm, selectedCategory, priceRange } = filters;
+  // Derive filters from URL (URL is source of truth — e-commerce style)
+  const activeCategorySlug = (params.slug || searchParams.get('category') || '').toLowerCase();
+  const activeCategory = useMemo(
+    () => allCategories?.find(c => c.slug === activeCategorySlug) || null,
+    [allCategories, activeCategorySlug]
+  );
+
+  const filters: FilterState = useMemo(() => ({
+    searchTerm: searchParams.get('q') || '',
+    selectedCategory: activeCategory?.id || 'all',
+    priceRange: searchParams.get('price') || 'all',
+    condition: searchParams.get('condition') || 'all',
+    sort: searchParams.get('sort') || 'recent',
+  }), [searchParams, activeCategory]);
+
+  const { searchTerm, selectedCategory, priceRange, condition, sort } = filters;
   const categoriesLoaded = allCategories !== null;
 
   // Prompt login
@@ -388,22 +404,70 @@ const Browse = () => {
     navigate('/auth');
   }, [toast, navigate]);
 
-  // Fetch Categories
+  // Fetch Categories (with product counts)
   const fetchAllCategories = useCallback(async () => {
-    const { data, error } = await supabase.from('categories').select('id, name, icon').order('name');
-    if (!error) {
-      setAllCategories(data as MinimalCategory[]);
+    const { data: cats } = await supabase
+      .from('categories')
+      .select('id, name, slug, icon')
+      .order('name');
+    if (!cats) { setAllCategories([]); return; }
+
+    // Aggregate counts client-side via a single query
+    const { data: counts } = await supabase
+      .from('items')
+      .select('category_id')
+      .eq('is_sold', false)
+      .eq('status', 'available')
+      .limit(10000);
+    const countMap = new Map<string, number>();
+    for (const row of counts || []) {
+      if (!row.category_id) continue;
+      countMap.set(row.category_id, (countMap.get(row.category_id) || 0) + 1);
     }
+    setAllCategories(
+      (cats as any[]).map(c => ({ ...c, count: countMap.get(c.id) || 0 })) as MinimalCategory[]
+    );
   }, []);
+
+  // URL update helper — merges new filter values into the URL, keeping path slug.
+  const updateFilters = useCallback((patch: Partial<FilterState & { categorySlug: string | null }>) => {
+    const next = new URLSearchParams(searchParams);
+    if ('searchTerm' in patch) patch.searchTerm ? next.set('q', patch.searchTerm) : next.delete('q');
+    if ('priceRange' in patch) patch.priceRange && patch.priceRange !== 'all' ? next.set('price', patch.priceRange) : next.delete('price');
+    if ('condition' in patch) patch.condition && patch.condition !== 'all' ? next.set('condition', patch.condition) : next.delete('condition');
+    if ('sort' in patch) patch.sort && patch.sort !== 'recent' ? next.set('sort', patch.sort) : next.delete('sort');
+
+    if ('categorySlug' in patch) {
+      // Navigate to /categories/<slug> or / when 'all'
+      const slug = patch.categorySlug;
+      const qs = next.toString();
+      const base = slug ? `/categories/${slug}` : '/';
+      navigate(qs ? `${base}?${qs}` : base);
+      return;
+    }
+    setSearchParams(next, { replace: false });
+  }, [searchParams, setSearchParams, navigate]);
+
+  const handleFilterChange = useCallback((key: keyof FilterState, value: string) => {
+    if (key === 'selectedCategory') {
+      const cat = allCategories?.find(c => c.id === value);
+      updateFilters({ categorySlug: value === 'all' ? null : (cat?.slug || null) });
+    } else {
+      updateFilters({ [key]: value } as any);
+    }
+  }, [allCategories, updateFilters]);
 
   // Query builders
   const buildItemsQuery = useCallback((from: number, to: number) => {
     let query = supabase.from('items').select('*')
       .eq('is_sold', false)
-      .eq('status', 'available')
-      .order('ad_priority', { ascending: false })
-      .order('created_at', { ascending: false })
-      .range(from, to);
+      .eq('status', 'available');
+
+    if (sort === 'price_asc') query = query.order('price', { ascending: true });
+    else if (sort === 'price_desc') query = query.order('price', { ascending: false });
+    else query = query.order('ad_priority', { ascending: false }).order('created_at', { ascending: false });
+
+    query = query.range(from, to);
 
     if (selectedCategory !== 'all') {
       query = query.eq('category_id', selectedCategory);
@@ -415,8 +479,11 @@ const Browse = () => {
       const [min, max] = priceRange.split('-').map(Number);
       query = max ? query.gte('price', min).lte('price', max) : query.gte('price', min);
     }
+    if (condition !== 'all') {
+      query = query.eq('condition', condition);
+    }
     return query;
-  }, [selectedCategory, searchTerm, priceRange]);
+  }, [selectedCategory, searchTerm, priceRange, condition, sort]);
 
   const fetchItems = useCallback(async () => {
     if (!categoriesLoaded) return;
@@ -511,7 +578,7 @@ const Browse = () => {
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [searchTerm, selectedCategory, priceRange, fetchItems, categoriesLoaded, activeTab]);
+  }, [searchTerm, selectedCategory, priceRange, condition, sort, fetchItems, categoriesLoaded, activeTab]);
 
   // Fetch PG when tab changes
   useEffect(() => {
@@ -524,10 +591,6 @@ const Browse = () => {
     return () => clearTimeout(debounceTimer);
   }, [activeTab, pgFilters, searchTerm, fetchPGListings]);
 
-  const handleFilterChange = useCallback((key: keyof FilterState, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  }, []);
-
   // Infinite scroll sentinels
   const itemsSentinelRef = useInfiniteScroll<HTMLDivElement>({
     hasMore: itemsHasMore,
@@ -539,6 +602,7 @@ const Browse = () => {
     loading: loading || loadingMore,
     onLoadMore: loadMorePg,
   });
+
 
 
   const PriceRangeSelect = ({ className }: { className?: string }) => (
@@ -554,6 +618,34 @@ const Browse = () => {
         <SelectItem value="1000-5000">₹1,000 - ₹5,000</SelectItem>
         <SelectItem value="5000-10000">₹5,000 - ₹10,000</SelectItem>
         <SelectItem value="10000">₹10,000+</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const ConditionSelect = ({ className }: { className?: string }) => (
+    <Select value={condition} onValueChange={(val) => handleFilterChange('condition', val)}>
+      <SelectTrigger className={`w-full ${className}`}>
+        <SelectValue placeholder="Condition" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">Any Condition</SelectItem>
+        <SelectItem value="new">Brand New</SelectItem>
+        <SelectItem value="like_new">Like New</SelectItem>
+        <SelectItem value="good">Good</SelectItem>
+        <SelectItem value="fair">Fair</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const SortSelect = ({ className }: { className?: string }) => (
+    <Select value={sort} onValueChange={(val) => handleFilterChange('sort', val)}>
+      <SelectTrigger className={`w-full ${className}`}>
+        <SelectValue placeholder="Sort" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="recent">Newest First</SelectItem>
+        <SelectItem value="price_asc">Price: Low to High</SelectItem>
+        <SelectItem value="price_desc">Price: High to Low</SelectItem>
       </SelectContent>
     </Select>
   );
@@ -576,12 +668,36 @@ const Browse = () => {
     </Select>
   );
 
+  // Dynamic SEO based on active category
+  const seoTitle = activeCategory
+    ? `${activeCategory.name} for Sale on Campus | MyCampusKart`
+    : "MyCampusKart — Buy & Sell on Your Campus | Verified Student Marketplace";
+  const seoDesc = activeCategory
+    ? `Shop verified student listings in ${activeCategory.name}. Browse, filter by price & condition, and buy directly from peers on your campus.`
+    : "Browse verified student listings on MyCampusKart. Buy & sell textbooks, electronics, cycles, lab coats and PG rooms inside Indian campuses. Free, secure, student-only.";
+  const seoPath = activeCategory ? `/categories/${activeCategory.slug}` : '/';
+
+  const activeFilterChips: { label: string; onClear: () => void }[] = [];
+  if (activeCategory) activeFilterChips.push({ label: activeCategory.name, onClear: () => handleFilterChange('selectedCategory', 'all') });
+  if (priceRange !== 'all') activeFilterChips.push({ label: `₹${priceRange.replace('-', ' - ₹')}`, onClear: () => handleFilterChange('priceRange', 'all') });
+  if (condition !== 'all') activeFilterChips.push({ label: condition.replace('_', ' '), onClear: () => handleFilterChange('condition', 'all') });
+  if (searchTerm) activeFilterChips.push({ label: `"${searchTerm}"`, onClear: () => handleFilterChange('searchTerm', '') });
+
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <SEOHead
-        title="MyCampusKart — Buy & Sell on Your Campus | Verified Student Marketplace"
-        description="Browse verified student listings on MyCampusKart. Buy & sell textbooks, electronics, cycles, lab coats and PG rooms inside Indian campuses. Free, secure, student-only."
-        canonical={canonical('/')}
+        title={seoTitle}
+        description={seoDesc}
+        canonical={canonical(seoPath)}
+        jsonLd={activeCategory ? {
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: `${activeCategory.name} on MyCampusKart`,
+          url: `${canonical(seoPath)}`,
+          isPartOf: { "@type": "WebSite", name: "MyCampusKart", url: canonical('/') },
+          about: { "@type": "Thing", name: activeCategory.name },
+        } : undefined}
       />
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -648,16 +764,52 @@ const Browse = () => {
         {/* Products Tab */}
         {activeTab === 'products' && (
           <>
+            {/* Category Cards Grid — e-commerce style, with product counts */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg sm:text-xl font-bold text-foreground">Shop by Category</h2>
+                {activeCategory && (
+                  <Link to="/" className="text-sm text-primary hover:underline">View all →</Link>
+                )}
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-3">
+                <Link
+                  to="/"
+                  className={`group flex flex-col items-center justify-center gap-1 p-3 rounded-xl border bg-card hover:border-primary/50 hover:shadow-md transition-all ${!activeCategory ? 'border-primary bg-primary/5' : 'border-border'}`}
+                >
+                  <span className="text-2xl sm:text-3xl">🛍️</span>
+                  <span className="text-[11px] sm:text-xs font-semibold text-foreground text-center line-clamp-1">All</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {(allCategories || []).reduce((a, c) => a + (c.count || 0), 0)} items
+                  </span>
+                </Link>
+                {(allCategories || []).map(cat => {
+                  const isActive = activeCategory?.id === cat.id;
+                  return (
+                    <Link
+                      key={cat.id}
+                      to={`/categories/${cat.slug}`}
+                      className={`group flex flex-col items-center justify-center gap-1 p-3 rounded-xl border bg-card hover:border-primary/50 hover:shadow-md transition-all ${isActive ? 'border-primary bg-primary/5' : 'border-border'}`}
+                    >
+                      <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{cat.icon}</span>
+                      <span className="text-[11px] sm:text-xs font-semibold text-foreground text-center line-clamp-1">{cat.name}</span>
+                      <span className="text-[10px] text-muted-foreground">{cat.count ?? 0} items</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Search and Filters */}
-            <div className="mb-8 space-y-4 p-4 sm:p-6 rounded-2xl shadow-lg bg-card border border-border">
+            <div className="mb-6 space-y-4 p-4 sm:p-6 rounded-2xl shadow-lg bg-card border border-border">
               <h2 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
                 <Search className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                Discover Campus Deals
+                {activeCategory ? `${activeCategory.icon} ${activeCategory.name}` : 'Discover Campus Deals'}
               </h2>
 
               {/* Desktop Filters */}
-              <div className="hidden lg:flex gap-4">
-                <div className="relative flex-1">
+              <div className="hidden lg:flex gap-3 flex-wrap">
+                <div className="relative flex-1 min-w-[260px]">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     placeholder="Search for items, categories, descriptions..."
@@ -666,8 +818,10 @@ const Browse = () => {
                     className="pl-10 h-11"
                   />
                 </div>
-                <CategorySelect className="lg:w-60" />
-                <PriceRangeSelect className="lg:w-60" />
+                <CategorySelect className="lg:w-48" />
+                <PriceRangeSelect className="lg:w-44" />
+                <ConditionSelect className="lg:w-40" />
+                <SortSelect className="lg:w-48" />
               </div>
 
               {/* Mobile Filters */}
@@ -694,11 +848,37 @@ const Browse = () => {
                     <div className="flex flex-col gap-4 mt-6">
                       <CategorySelect />
                       <PriceRangeSelect />
+                      <ConditionSelect />
+                      <SortSelect />
                     </div>
                   </SheetContent>
                 </Sheet>
               </div>
+
+              {/* Active Filter Chips */}
+              {activeFilterChips.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
+                  <span className="text-xs text-muted-foreground self-center">Filters:</span>
+                  {activeFilterChips.map((chip, i) => (
+                    <button
+                      key={i}
+                      onClick={chip.onClear}
+                      className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-1 rounded-full hover:bg-primary/20 transition-colors capitalize"
+                    >
+                      {chip.label}
+                      <span className="text-sm leading-none">×</span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => navigate('/')}
+                    className="text-xs text-muted-foreground hover:text-foreground underline self-center"
+                  >
+                    Clear all
+                  </button>
+                </div>
+              )}
             </div>
+
 
             {/* Items Grid */}
             {loading ? (
