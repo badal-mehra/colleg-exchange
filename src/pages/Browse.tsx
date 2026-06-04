@@ -31,7 +31,9 @@ import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 interface MinimalCategory {
   id: string;
   name: string;
+  slug: string;
   icon: string;
+  count?: number;
 }
 
 interface RawItem {
