@@ -622,6 +622,34 @@ const Browse = () => {
     </Select>
   );
 
+  const ConditionSelect = ({ className }: { className?: string }) => (
+    <Select value={condition} onValueChange={(val) => handleFilterChange('condition', val)}>
+      <SelectTrigger className={`w-full ${className}`}>
+        <SelectValue placeholder="Condition" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">Any Condition</SelectItem>
+        <SelectItem value="new">Brand New</SelectItem>
+        <SelectItem value="like_new">Like New</SelectItem>
+        <SelectItem value="good">Good</SelectItem>
+        <SelectItem value="fair">Fair</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const SortSelect = ({ className }: { className?: string }) => (
+    <Select value={sort} onValueChange={(val) => handleFilterChange('sort', val)}>
+      <SelectTrigger className={`w-full ${className}`}>
+        <SelectValue placeholder="Sort" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="recent">Newest First</SelectItem>
+        <SelectItem value="price_asc">Price: Low to High</SelectItem>
+        <SelectItem value="price_desc">Price: High to Low</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
   const CategorySelect = ({ className }: { className?: string }) => (
     <Select value={selectedCategory} onValueChange={(val) => handleFilterChange('selectedCategory', val)} disabled={!categoriesLoaded}>
       <SelectTrigger className={`w-full ${className}`}>
@@ -639,6 +667,22 @@ const Browse = () => {
       </SelectContent>
     </Select>
   );
+
+  // Dynamic SEO based on active category
+  const seoTitle = activeCategory
+    ? `${activeCategory.name} for Sale on Campus | MyCampusKart`
+    : "MyCampusKart — Buy & Sell on Your Campus | Verified Student Marketplace";
+  const seoDesc = activeCategory
+    ? `Shop verified student listings in ${activeCategory.name}. Browse, filter by price & condition, and buy directly from peers on your campus.`
+    : "Browse verified student listings on MyCampusKart. Buy & sell textbooks, electronics, cycles, lab coats and PG rooms inside Indian campuses. Free, secure, student-only.";
+  const seoPath = activeCategory ? `/categories/${activeCategory.slug}` : '/';
+
+  const activeFilterChips: { label: string; onClear: () => void }[] = [];
+  if (activeCategory) activeFilterChips.push({ label: activeCategory.name, onClear: () => handleFilterChange('selectedCategory', 'all') });
+  if (priceRange !== 'all') activeFilterChips.push({ label: `₹${priceRange.replace('-', ' - ₹')}`, onClear: () => handleFilterChange('priceRange', 'all') });
+  if (condition !== 'all') activeFilterChips.push({ label: condition.replace('_', ' '), onClear: () => handleFilterChange('condition', 'all') });
+  if (searchTerm) activeFilterChips.push({ label: `"${searchTerm}"`, onClear: () => handleFilterChange('searchTerm', '') });
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
