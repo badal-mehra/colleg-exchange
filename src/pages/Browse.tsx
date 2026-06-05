@@ -431,14 +431,23 @@ const Browse = () => {
   // URL update helper — merges new filter values into the URL, keeping path slug.
   const updateFilters = useCallback((patch: Partial<FilterState & { categorySlug: string | null }>) => {
     const next = new URLSearchParams(searchParams);
-    if ('searchTerm' in patch) patch.searchTerm ? next.set('q', patch.searchTerm) : next.delete('q');
-    if ('priceRange' in patch) patch.priceRange && patch.priceRange !== 'all' ? next.set('price', patch.priceRange) : next.delete('price');
-    if ('condition' in patch) patch.condition && patch.condition !== 'all' ? next.set('condition', patch.condition) : next.delete('condition');
-    if ('sort' in patch) patch.sort && patch.sort !== 'recent' ? next.set('sort', patch.sort) : next.delete('sort');
+    if ('searchTerm' in patch) {
+      patch.searchTerm ? next.set('q', patch.searchTerm) : next.delete('q');
+    }
+    if ('priceRange' in patch) {
+      patch.priceRange && patch.priceRange !== 'all' ? next.set('price', patch.priceRange) : next.delete('price');
+    }
+    if ('condition' in patch) {
+      patch.condition && patch.condition !== 'all' ? next.set('condition', patch.condition) : next.delete('condition');
+    }
+    if ('sort' in patch) {
+      patch.sort && patch.sort !== 'recent' ? next.set('sort', patch.sort) : next.delete('sort');
+    }
 
     if ('categorySlug' in patch) {
       const slug = patch.categorySlug;
-      slug ? next.set('category', slug) : next.delete('category');
+      if (slug) next.set('category', slug);
+      else next.delete('category');
       const qs = next.toString();
       navigate(qs ? `/?${qs}` : '/');
       return;
@@ -683,7 +692,8 @@ const Browse = () => {
 
   const categoryHref = (slug?: string) => {
     const next = new URLSearchParams(searchParams);
-    slug ? next.set('category', slug) : next.delete('category');
+    if (slug) next.set('category', slug);
+    else next.delete('category');
     const qs = next.toString();
     return qs ? `/?${qs}` : '/';
   };

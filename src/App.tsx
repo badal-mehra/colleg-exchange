@@ -49,10 +49,14 @@ import BlogEditor from "./pages/admin/blog/BlogEditor";
 import { CategoryAdmin, TagAdmin } from "./pages/admin/blog/TaxonomyAdmin";
 import CampusAdmin from "./pages/admin/campus/CampusAdmin";
 
+interface StandaloneNavigator extends Navigator {
+  standalone?: boolean;
+}
+
 // Check if running as PWA
 const isPWA = () => typeof window !== 'undefined' && (
   window.matchMedia("(display-mode: standalone)").matches ||
-  (window.navigator as any).standalone === true
+  (window.navigator as StandaloneNavigator).standalone === true
 );
 
 // Unified marketplace home: only `/` renders the marketplace UI.
