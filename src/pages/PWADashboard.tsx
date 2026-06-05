@@ -46,6 +46,7 @@ import PWAListingCard from "@/components/PWAListingCard";
 import PGListingCard from "@/components/PGListingCard";
 import PWAImageSlider from "@/components/PWAImageSlider";
 import DailyLoginReward from "@/components/DailyLoginReward";
+import BottomNavBar from "@/components/BottomNavBar";
 import { SEOHead } from "@/components/seo/SEOHead";
 import { canonical } from "@/lib/seo";
 
@@ -844,6 +845,8 @@ const PWADashboard = () => {
       >
         <Plus className="h-6 w-6 stroke-[2.5]" />
       </button>
+
+      <BottomNavBar />
 
       {/* ══════════════════════════════════════════════════
           SORT SHEET
