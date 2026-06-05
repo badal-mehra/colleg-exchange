@@ -1,6 +1,6 @@
 
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { Routes, Route } from "react-router-dom";
+import { Navigate, Routes, Route, useLocation, useParams } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 
 // Import Pages
@@ -58,11 +58,18 @@ const isPWA = () => typeof window !== 'undefined' && (
   (window.navigator as any).standalone === true
 );
 
-// Unified home: PWA users (standalone display) get the native PWA dashboard,
-// everyone else (logged in or not) gets the Browse marketplace. This single
-// switcher backs `/`, `/home`, `/browse`, `/dashboard`, `/categories`, etc.
+// Unified marketplace home: only `/` renders the marketplace UI.
 const SmartHome = () => (isPWA() ? <PWADashboard /> : <Browse />);
 const SmartDashboard = SmartHome;
+
+const MarketplaceRedirect = () => {
+  const location = useLocation();
+  const { slug } = useParams<{ slug?: string }>();
+  const searchParams = new URLSearchParams(location.search);
+  if (slug) searchParams.set("category", slug);
+  const query = searchParams.toString();
+  return <Navigate to={`/${query ? `?${query}` : ""}`} replace />;
+};
 
 // PWA Sell wrapper
 const SmartSellItem = () => isPWA() ? <PWASellItem /> : <SellItem />;
@@ -104,8 +111,8 @@ const App = () => (
 
     {/** FULLSCREEN ROUTES (NO HEADER / NO FOOTER) */}
     <Route path="/" element={<SmartHome />} />
-    <Route path="/home" element={<SmartHome />} />
-    <Route path="/browse" element={<SmartHome />} />
+    <Route path="/home" element={<MarketplaceRedirect />} />
+    <Route path="/browse" element={<MarketplaceRedirect />} />
     <Route path="/auth" element={<Auth />} />
     <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/downloadmycampuskartapp" element={<DownloadApp />} />
@@ -123,10 +130,10 @@ const App = () => (
     <Route path="/pg/:slugId" element={<PGDetail />} />
     <Route path="/profile/:mckId" element={<PublicProfile />} />
     <Route path="/u/:mckId" element={<PublicProfile />} />
-    <Route path="/category/:slug" element={<SmartHome />} />
-    <Route path="/categories" element={<SmartHome />} />
-    <Route path="/categories/:slug" element={<SmartHome />} />
-    <Route path="/campus-marketplace/:city" element={<SmartHome />} />
+    <Route path="/category/:slug" element={<MarketplaceRedirect />} />
+    <Route path="/categories" element={<MarketplaceRedirect />} />
+    <Route path="/categories/:slug" element={<MarketplaceRedirect />} />
+    <Route path="/campus-marketplace/:city" element={<MarketplaceRedirect />} />
 
 
 
