@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -468,7 +468,7 @@ const PWADashboard = () => {
   const clearProductFilters = () => {
     updateFilters({
       searchTerm: "",
-      selectedCategory: "all",
+      categorySlug: null,
       priceRange: "all",
       condition: "all",
       sort: "newest",

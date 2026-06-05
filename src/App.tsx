@@ -5,12 +5,9 @@ import MainLayout from "./layouts/MainLayout";
 
 // Import Pages
 import AuthCallback from "./pages/AuthCallback";
-import Index from "./pages/Index";
-import Home from "./pages/Home";
 import Browse from "./pages/Browse";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
-import Dashboard from "./pages/Dashboard";
 import PWADashboard from "./pages/PWADashboard";
 import ItemDetail from "./pages/ItemDetail";
 import PGDetail from "./pages/PGDetail";
@@ -60,7 +57,6 @@ const isPWA = () => typeof window !== 'undefined' && (
 
 // Unified marketplace home: only `/` renders the marketplace UI.
 const SmartHome = () => (isPWA() ? <PWADashboard /> : <Browse />);
-const SmartDashboard = SmartHome;
 
 const MarketplaceRedirect = () => {
   const location = useLocation();
@@ -92,14 +88,6 @@ const App = () => (
     {/** ROUTES WITH HEADER + FOOTER (MainLayout) */}
     <Route element={<MainLayout />}>
       <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <SmartHome />
-          </ProtectedRoute>
-        }
-      />
         </Route>
       {/* FIX: Removed ProtectedRoute wrapper. PWAProfile now handles its own auth check to prevent white-screen race conditions. */}
       <Route path="/pwa-profile" element={<PWAProfile />} />
@@ -111,6 +99,7 @@ const App = () => (
 
     {/** FULLSCREEN ROUTES (NO HEADER / NO FOOTER) */}
     <Route path="/" element={<SmartHome />} />
+    <Route path="/dashboard" element={<MarketplaceRedirect />} />
     <Route path="/home" element={<MarketplaceRedirect />} />
     <Route path="/browse" element={<MarketplaceRedirect />} />
     <Route path="/auth" element={<Auth />} />
