@@ -58,8 +58,11 @@ const isPWA = () => typeof window !== 'undefined' && (
   (window.navigator as any).standalone === true
 );
 
-// PWA Dashboard wrapper that checks display mode
-const SmartDashboard = () => isPWA() ? <PWADashboard /> : <Dashboard />;
+// Unified home: PWA users (standalone display) get the native PWA dashboard,
+// everyone else (logged in or not) gets the Browse marketplace. This single
+// switcher backs `/`, `/home`, `/browse`, `/dashboard`, `/categories`, etc.
+const SmartHome = () => (isPWA() ? <PWADashboard /> : <Browse />);
+const SmartDashboard = SmartHome;
 
 // PWA Sell wrapper
 const SmartSellItem = () => isPWA() ? <PWASellItem /> : <SellItem />;
@@ -86,7 +89,7 @@ const App = () => (
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <SmartDashboard />
+            <SmartHome />
           </ProtectedRoute>
         }
       />
@@ -100,9 +103,9 @@ const App = () => (
   
 
     {/** FULLSCREEN ROUTES (NO HEADER / NO FOOTER) */}
-    <Route path="/" element={<Browse />} />
-    <Route path="/home" element={<Browse />} />
-    <Route path="/browse" element={<Browse />} />
+    <Route path="/" element={<SmartHome />} />
+    <Route path="/home" element={<SmartHome />} />
+    <Route path="/browse" element={<SmartHome />} />
     <Route path="/auth" element={<Auth />} />
     <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/downloadmycampuskartapp" element={<DownloadApp />} />
@@ -120,10 +123,10 @@ const App = () => (
     <Route path="/pg/:slugId" element={<PGDetail />} />
     <Route path="/profile/:mckId" element={<PublicProfile />} />
     <Route path="/u/:mckId" element={<PublicProfile />} />
-    <Route path="/category/:slug" element={<Browse />} />
-    <Route path="/categories" element={<Browse />} />
-    <Route path="/categories/:slug" element={<Browse />} />
-    <Route path="/campus-marketplace/:city" element={<Browse />} />
+    <Route path="/category/:slug" element={<SmartHome />} />
+    <Route path="/categories" element={<SmartHome />} />
+    <Route path="/categories/:slug" element={<SmartHome />} />
+    <Route path="/campus-marketplace/:city" element={<SmartHome />} />
 
 
 
