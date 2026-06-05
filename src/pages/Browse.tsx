@@ -438,6 +438,7 @@ const Browse = () => {
 
     if ('categorySlug' in patch) {
       const slug = patch.categorySlug;
+      slug ? next.set('category', slug) : next.delete('category');
       const qs = next.toString();
       navigate(qs ? `/?${qs}` : '/');
       return;
