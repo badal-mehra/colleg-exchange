@@ -255,7 +255,7 @@ const PWADashboard = () => {
       if ("categorySlug" in patch) {
         const slug = patch.categorySlug;
         const qs = next.toString();
-        const base = slug ? `/categories/${slug}` : "/pwa-dashboard"; // or just "/"
+        const base = slug ? `/categories/${slug}` : "/";
         navigate(qs ? `${base}?${qs}` : base);
         return;
       }
@@ -492,7 +492,7 @@ const PWADashboard = () => {
   const seoDesc = activeCategory
     ? `Shop verified student listings in ${activeCategory.name}. Browse, filter by price & condition, and buy directly from peers.`
     : "Browse verified student listings on MyCampusKart. Buy & sell textbooks, electronics, cycles, lab coats and PG rooms inside Indian campuses. Free, secure, student-only.";
-  const seoPath = activeCategory ? `/categories/${activeCategory.slug}` : "/pwa-dashboard";
+  const seoPath = activeCategory ? `/categories/${activeCategory.slug}` : "/";
 
   // Active filter chips
   const activeFilterChips: { label: string; onClear: () => void }[] = [];
@@ -682,51 +682,7 @@ const PWADashboard = () => {
         {/* Daily Login Reward */}
         {user && <DailyLoginReward />}
 
-        {/* ══════════════════════════════════════════════════
-            SHOP BY CATEGORY CARDS (Products tab only)
-        ══════════════════════════════════════════════════ */}
-        {activeTab === "products" && (
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base sm:text-lg font-bold text-foreground">Shop by Category</h2>
-              {activeCategory && (
-                <Link to="/pwa-dashboard" className="text-xs text-primary font-medium hover:underline">
-                  View all →
-                </Link>
-              )}
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <Link
-                to="/pwa-dashboard"
-                className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border bg-card hover:border-primary/50 hover:shadow-sm transition-all ${
-                  !activeCategory ? "border-primary bg-primary/5" : "border-border"
-                }`}
-              >
-                <span className="text-xl">🛍️</span>
-                <span className="text-[11px] font-semibold text-foreground text-center line-clamp-1">All</span>
-                <span className="text-[10px] text-muted-foreground">
-                  {categories.reduce((a, c) => a + (c.count || 0), 0)} items
-                </span>
-              </Link>
-              {categories.map((cat) => {
-                const isActive = activeCategory?.id === cat.id;
-                return (
-                  <Link
-                    key={cat.id}
-                    to={`/categories/${cat.slug}`}
-                    className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border bg-card hover:border-primary/50 hover:shadow-sm transition-all ${
-                      isActive ? "border-primary bg-primary/5" : "border-border"
-                    }`}
-                  >
-                    <span className="text-xl">{cat.icon ?? "📦"}</span>
-                    <span className="text-[11px] font-semibold text-foreground text-center line-clamp-1">{cat.name}</span>
-                    <span className="text-[10px] text-muted-foreground">{cat.count ?? 0} items</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {/* Category cards removed — chip row in header is the single category UI on PWA */}
 
         {/* Active filter chips */}
         {activeFilterChips.length > 0 && activeTab === "products" && (
