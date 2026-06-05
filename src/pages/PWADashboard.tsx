@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -166,8 +166,6 @@ const PWADashboard = () => {
   const { toast } = useToast();
   const { unreadChats } = useNotificationCounts();
 
-  // URL params for category pages (e.g. /categories/:slug)
-  const params = useParams<{ slug?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // ── Data state ──────────────────────────────────────────────────────────────
@@ -193,7 +191,7 @@ const PWADashboard = () => {
 
   // ─── Derive filters from URL (mirrors Browse.tsx logic) ─────────────────────
 
-  const activeCategorySlug = (params.slug || searchParams.get("category") || "").toLowerCase();
+  const activeCategorySlug = (searchParams.get("category") || "").toLowerCase();
   const activeCategory = useMemo(
     () => categories.find((c) => c.slug === activeCategorySlug) || null,
     [categories, activeCategorySlug]
@@ -255,8 +253,7 @@ const PWADashboard = () => {
       if ("categorySlug" in patch) {
         const slug = patch.categorySlug;
         const qs = next.toString();
-        const base = slug ? `/categories/${slug}` : "/";
-        navigate(qs ? `${base}?${qs}` : base);
+        navigate(qs ? `/?${qs}` : "/");
         return;
       }
       setSearchParams(next, { replace: false });
@@ -492,7 +489,7 @@ const PWADashboard = () => {
   const seoDesc = activeCategory
     ? `Shop verified student listings in ${activeCategory.name}. Browse, filter by price & condition, and buy directly from peers.`
     : "Browse verified student listings on MyCampusKart. Buy & sell textbooks, electronics, cycles, lab coats and PG rooms inside Indian campuses. Free, secure, student-only.";
-  const seoPath = activeCategory ? `/categories/${activeCategory.slug}` : "/";
+  const seoPath = activeCategory ? `/?category=${activeCategory.slug}` : "/";
 
   // Active filter chips
   const activeFilterChips: { label: string; onClear: () => void }[] = [];
