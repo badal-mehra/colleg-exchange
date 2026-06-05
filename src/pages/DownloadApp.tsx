@@ -314,7 +314,7 @@ const DownloadApp = () => {
                 <button
                   className="pulse-cta group relative w-full max-w-[380px] h-[72px] rounded-2xl font-extrabold text-xl text-primary-foreground flex flex-col items-center justify-center gap-0.5 transition-all active:scale-[0.98] hover:opacity-95"
                   style={{ background: 'hsl(var(--primary))' }}
-                  onClick={canInstall ? installApp : () => navigate('/dashboard')}
+                  onClick={canInstall ? installApp : () => navigate('/')}
                   aria-label={canInstall ? 'Install MyCampusKart app for free' : 'Open MyCampusKart app for free'}
                 >
                   <span className="flex items-center gap-2.5">
@@ -603,7 +603,7 @@ const DownloadApp = () => {
             <button
               className="pulse-cta mx-auto h-[76px] px-16 rounded-2xl font-extrabold text-2xl text-primary-foreground flex items-center justify-center gap-3 transition-all hover:opacity-90 active:scale-[0.97]"
               style={{ background: 'hsl(var(--primary))' }}
-              onClick={canInstall ? installApp : () => navigate('/dashboard')}
+              onClick={canInstall ? installApp : () => navigate('/')}
               aria-label="Download MyCampusKart for free"
             >
               <Download className="h-6 w-6" aria-hidden="true" />

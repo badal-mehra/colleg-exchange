@@ -128,7 +128,7 @@ export default function CampusPage() {
               {sections.popular_categories.map((c: string) => (
                 <Link
                   key={c}
-                  to={`/browse?q=${encodeURIComponent(c)}`}
+                  to={`/?q=${encodeURIComponent(c)}`}
                   className="px-4 py-2 rounded-full bg-card border border-border hover:bg-primary hover:text-primary-foreground transition-colors text-sm font-medium"
                 >
                   {c}

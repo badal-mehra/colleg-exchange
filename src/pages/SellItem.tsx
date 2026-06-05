@@ -344,7 +344,7 @@ const SellItem = () => {
       description: `Item listed with ${selectedPackage.name} promotion!`,
     });
 
-    navigate('/dashboard');
+    navigate('/');
     setLoading(false);
   };
 
@@ -353,7 +353,7 @@ const SellItem = () => {
     if (listingType) {
       setListingType(null);
     } else {
-      navigate('/dashboard');
+      navigate('/');
     }
   };
 

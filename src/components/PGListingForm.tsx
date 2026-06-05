@@ -163,7 +163,7 @@ const PGListingForm: React.FC<PGListingFormProps> = ({ onBack }) => {
       if (error) throw error;
 
       toast({ title: "Success!", description: "Your PG/Room listing has been created." });
-      navigate('/dashboard');
+      navigate('/');
     } catch (error: any) {
       console.error('Error creating listing:', error);
       toast({ title: "Error", description: error.message || "Failed to create listing.", variant: "destructive" });
