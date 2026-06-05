@@ -185,7 +185,7 @@ const PublicProfile = () => {
           personJsonLd({ name: profile.full_name, url: profileUrl, image: avatarUrl, mckId: profile.mck_id }),
           breadcrumbJsonLd([
             { name: 'Home', path: '/' },
-            { name: 'Sellers', path: '/browse' },
+            { name: 'Sellers', path: '/' },
             { name: profile.full_name, path: `/profile/${profile.mck_id}` },
           ]),
         ]}

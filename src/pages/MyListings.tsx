@@ -189,9 +189,9 @@ const MyListings = () => {
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-3">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="w-fit px-0 hover:bg-transparent">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="w-fit px-0 hover:bg-transparent">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
+              Back Home
             </Button>
             <div>
               <h1 className="text-3xl font-bold tracking-normal">My Listings</h1>

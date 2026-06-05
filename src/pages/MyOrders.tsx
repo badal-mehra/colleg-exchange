@@ -355,7 +355,7 @@ export default function MyOrders() {
                     <p className="text-muted-foreground mb-4">
                         When you buy items, they'll appear here. Find something great!
                     </p>
-                    <Button onClick={() => navigate("/dashboard")}>
+                    <Button onClick={() => navigate("/")}>
                         Browse Items
                     </Button>
                 </CardContent>
