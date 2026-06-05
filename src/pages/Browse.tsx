@@ -681,6 +681,13 @@ const Browse = () => {
   if (condition !== 'all') activeFilterChips.push({ label: condition.replace('_', ' '), onClear: () => handleFilterChange('condition', 'all') });
   if (searchTerm) activeFilterChips.push({ label: `"${searchTerm}"`, onClear: () => handleFilterChange('searchTerm', '') });
 
+  const categoryHref = (slug?: string) => {
+    const next = new URLSearchParams(searchParams);
+    slug ? next.set('category', slug) : next.delete('category');
+    const qs = next.toString();
+    return qs ? `/?${qs}` : '/';
+  };
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -767,12 +774,12 @@ const Browse = () => {
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-lg sm:text-xl font-bold text-foreground">Shop by Category</h2>
                 {activeCategory && (
-                  <Link to="/" className="text-sm text-primary hover:underline">View all →</Link>
+                  <Link to={categoryHref()} className="text-sm text-primary hover:underline">View all →</Link>
                 )}
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-3">
-                <Link
-                  to="/"
+                  <Link
+                  to={categoryHref()}
                   className={`group flex flex-col items-center justify-center gap-1 p-3 rounded-xl border bg-card hover:border-primary/50 hover:shadow-md transition-all ${!activeCategory ? 'border-primary bg-primary/5' : 'border-border'}`}
                 >
                   <span className="text-2xl sm:text-3xl">🛍️</span>
@@ -786,7 +793,7 @@ const Browse = () => {
                   return (
                     <Link
                       key={cat.id}
-                      to={`/?category=${cat.slug}`}
+                      to={categoryHref(cat.slug)}
                       className={`group flex flex-col items-center justify-center gap-1 p-3 rounded-xl border bg-card hover:border-primary/50 hover:shadow-md transition-all ${isActive ? 'border-primary bg-primary/5' : 'border-border'}`}
                     >
                       <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{cat.icon}</span>
