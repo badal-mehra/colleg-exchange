@@ -246,7 +246,7 @@ const PGDetail = () => {
         <SEOHead title="PG Listing Not Found | MyCampusKart" noindex />
         <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
           <p className="text-muted-foreground">PG listing not found</p>
-          <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
+          <Button onClick={() => navigate('/')}>Go Home</Button>
         </div>
       </>
     );
@@ -282,7 +282,7 @@ const PGDetail = () => {
           }),
           breadcrumbJsonLd([
             { name: 'Home', path: '/' },
-            { name: 'PG & Rooms', path: '/browse' },
+            { name: 'PG & Rooms', path: '/' },
             { name: pgTitle, path: buildPGPath(listing.id, `${propertyLabel}-${listing.area_locality}`) },
           ]),
         ]}
