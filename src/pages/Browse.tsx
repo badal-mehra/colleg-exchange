@@ -13,7 +13,7 @@ import {
   Star, MapPin, ChevronLeft, ChevronRight, Crown, Zap, Clock, Loader2, Home, LogIn, User
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -352,7 +352,6 @@ const Browse = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const params = useParams<{ slug?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const isLoggedIn = !!user;
@@ -378,7 +377,7 @@ const Browse = () => {
   });
 
   // Derive filters from URL (URL is source of truth — e-commerce style)
-  const activeCategorySlug = (params.slug || searchParams.get('category') || '').toLowerCase();
+  const activeCategorySlug = (searchParams.get('category') || '').toLowerCase();
   const activeCategory = useMemo(
     () => allCategories?.find(c => c.slug === activeCategorySlug) || null,
     [allCategories, activeCategorySlug]
@@ -438,11 +437,9 @@ const Browse = () => {
     if ('sort' in patch) patch.sort && patch.sort !== 'recent' ? next.set('sort', patch.sort) : next.delete('sort');
 
     if ('categorySlug' in patch) {
-      // Navigate to /categories/<slug> or / when 'all'
       const slug = patch.categorySlug;
       const qs = next.toString();
-      const base = slug ? `/categories/${slug}` : '/';
-      navigate(qs ? `${base}?${qs}` : base);
+      navigate(qs ? `/?${qs}` : '/');
       return;
     }
     setSearchParams(next, { replace: false });
@@ -675,7 +672,7 @@ const Browse = () => {
   const seoDesc = activeCategory
     ? `Shop verified student listings in ${activeCategory.name}. Browse, filter by price & condition, and buy directly from peers on your campus.`
     : "Browse verified student listings on MyCampusKart. Buy & sell textbooks, electronics, cycles, lab coats and PG rooms inside Indian campuses. Free, secure, student-only.";
-  const seoPath = activeCategory ? `/categories/${activeCategory.slug}` : '/';
+  const seoPath = activeCategory ? `/?category=${activeCategory.slug}` : '/';
 
   const activeFilterChips: { label: string; onClear: () => void }[] = [];
   if (activeCategory) activeFilterChips.push({ label: activeCategory.name, onClear: () => handleFilterChange('selectedCategory', 'all') });
@@ -718,8 +715,8 @@ const Browse = () => {
             <div className="flex items-center space-x-2">
               {isLoggedIn ? (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => navigate('/dashboard')}>
-                    Dashboard
+                  <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+                    Home
                   </Button>
                   <Button size="sm" onClick={() => navigate('/sell')}>
                     <Plus className="h-4 w-4 mr-1" />
@@ -788,7 +785,7 @@ const Browse = () => {
                   return (
                     <Link
                       key={cat.id}
-                      to={`/categories/${cat.slug}`}
+                      to={`/?category=${cat.slug}`}
                       className={`group flex flex-col items-center justify-center gap-1 p-3 rounded-xl border bg-card hover:border-primary/50 hover:shadow-md transition-all ${isActive ? 'border-primary bg-primary/5' : 'border-border'}`}
                     >
                       <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{cat.icon}</span>
