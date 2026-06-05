@@ -8,7 +8,7 @@ const BottomNavBar = () => {
   const { unreadChats, pendingOrders } = useNotificationCounts();
 
   const navItems = [
-    { to: "/dashboard", icon: Home, label: "Home", badge: 0 },
+    { to: "/", icon: Home, label: "Home", badge: 0 },
     { to: "/my-chats", icon: MessageCircle, label: "Chats", badge: unreadChats },
     { to: "/sell", icon: PlusCircle, label: "Sell", badge: 0 },
     { to: "/my-orders", icon: ShoppingBag, label: "Orders", badge: pendingOrders },
@@ -19,8 +19,7 @@ const BottomNavBar = () => {
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t border-border/50 safe-area-bottom md:hidden">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2 pb-safe">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.to || 
-            (item.to === "/dashboard" && location.pathname === "/");
+          const isActive = location.pathname === item.to;
           const Icon = item.icon;
           
           return (

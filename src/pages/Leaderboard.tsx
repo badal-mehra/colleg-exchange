@@ -335,7 +335,7 @@ const Leaderboard = () => {
       {/* --- Sticky PWA Header --- */}
       <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50 px-4 py-3 shadow-sm pt-safe-top">
          <div className="container mx-auto max-w-5xl flex items-center justify-between gap-3">
-             <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="h-10 w-10 flex-shrink-0 active:bg-primary/10 rounded-full">
+             <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="h-10 w-10 flex-shrink-0 active:bg-primary/10 rounded-full">
                 <ArrowLeft className="h-5 w-5" />
              </Button>
              

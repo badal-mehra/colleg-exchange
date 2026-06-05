@@ -113,7 +113,7 @@ const ResetPassword = () => {
       toast({ title: 'Password Update Failed', description: error.message || 'An unexpected error occurred.', variant: 'destructive' });
     } else {
       toast({ title: 'Success!', description: 'Your password has been updated. Redirecting...' });
-      setTimeout(() => navigate('/dashboard'), REDIRECT_DELAY_MS);
+      setTimeout(() => navigate('/'), REDIRECT_DELAY_MS);
     }
     setIsLoading(false);
   }, [newPassword, confirmPassword, navigate, toast]);

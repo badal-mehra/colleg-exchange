@@ -97,7 +97,7 @@ const Auth = () => {
     return () => clearInterval(interval);
   }, []);
 
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to="/" replace />;
 
   // Helper to trigger the red shake animation
   const triggerTermsError = () => {

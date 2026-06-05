@@ -1,16 +1,13 @@
 
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { Routes, Route } from "react-router-dom";
+import { Navigate, Routes, Route, useLocation, useParams } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 
 // Import Pages
 import AuthCallback from "./pages/AuthCallback";
-import Index from "./pages/Index";
-import Home from "./pages/Home";
 import Browse from "./pages/Browse";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
-import Dashboard from "./pages/Dashboard";
 import PWADashboard from "./pages/PWADashboard";
 import ItemDetail from "./pages/ItemDetail";
 import PGDetail from "./pages/PGDetail";
@@ -52,17 +49,27 @@ import BlogEditor from "./pages/admin/blog/BlogEditor";
 import { CategoryAdmin, TagAdmin } from "./pages/admin/blog/TaxonomyAdmin";
 import CampusAdmin from "./pages/admin/campus/CampusAdmin";
 
+interface StandaloneNavigator extends Navigator {
+  standalone?: boolean;
+}
+
 // Check if running as PWA
 const isPWA = () => typeof window !== 'undefined' && (
   window.matchMedia("(display-mode: standalone)").matches ||
-  (window.navigator as any).standalone === true
+  (window.navigator as StandaloneNavigator).standalone === true
 );
 
-// Unified home: PWA users (standalone display) get the native PWA dashboard,
-// everyone else (logged in or not) gets the Browse marketplace. This single
-// switcher backs `/`, `/home`, `/browse`, `/dashboard`, `/categories`, etc.
+// Unified marketplace home: only `/` renders the marketplace UI.
 const SmartHome = () => (isPWA() ? <PWADashboard /> : <Browse />);
-const SmartDashboard = SmartHome;
+
+const MarketplaceRedirect = () => {
+  const location = useLocation();
+  const { slug } = useParams<{ slug?: string }>();
+  const searchParams = new URLSearchParams(location.search);
+  if (slug) searchParams.set("category", slug);
+  const query = searchParams.toString();
+  return <Navigate to={`/${query ? `?${query}` : ""}`} replace />;
+};
 
 // PWA Sell wrapper
 const SmartSellItem = () => isPWA() ? <PWASellItem /> : <SellItem />;
@@ -85,14 +92,6 @@ const App = () => (
     {/** ROUTES WITH HEADER + FOOTER (MainLayout) */}
     <Route element={<MainLayout />}>
       <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <SmartHome />
-          </ProtectedRoute>
-        }
-      />
         </Route>
       {/* FIX: Removed ProtectedRoute wrapper. PWAProfile now handles its own auth check to prevent white-screen race conditions. */}
       <Route path="/pwa-profile" element={<PWAProfile />} />
@@ -104,8 +103,9 @@ const App = () => (
 
     {/** FULLSCREEN ROUTES (NO HEADER / NO FOOTER) */}
     <Route path="/" element={<SmartHome />} />
-    <Route path="/home" element={<SmartHome />} />
-    <Route path="/browse" element={<SmartHome />} />
+    <Route path="/dashboard" element={<MarketplaceRedirect />} />
+    <Route path="/home" element={<MarketplaceRedirect />} />
+    <Route path="/browse" element={<MarketplaceRedirect />} />
     <Route path="/auth" element={<Auth />} />
     <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/downloadmycampuskartapp" element={<DownloadApp />} />
@@ -123,10 +123,10 @@ const App = () => (
     <Route path="/pg/:slugId" element={<PGDetail />} />
     <Route path="/profile/:mckId" element={<PublicProfile />} />
     <Route path="/u/:mckId" element={<PublicProfile />} />
-    <Route path="/category/:slug" element={<SmartHome />} />
-    <Route path="/categories" element={<SmartHome />} />
-    <Route path="/categories/:slug" element={<SmartHome />} />
-    <Route path="/campus-marketplace/:city" element={<SmartHome />} />
+    <Route path="/category/:slug" element={<MarketplaceRedirect />} />
+    <Route path="/categories" element={<MarketplaceRedirect />} />
+    <Route path="/categories/:slug" element={<MarketplaceRedirect />} />
+    <Route path="/campus-marketplace/:city" element={<MarketplaceRedirect />} />
 
 
 

@@ -88,7 +88,7 @@ const Header = () => {
         title: "Logged Out",
         description: "You have been securely logged out.",
     });
-    navigate('/home');
+    navigate('/');
   };
 
   return (
@@ -101,7 +101,7 @@ const Header = () => {
                 src={logo} 
                 alt="MyCampusKart" 
                 className="h-10 sm:h-12 cursor-pointer"
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/')}
               />
             </div>
             <Button size="sm" onClick={() => navigate('/sell')} className="lg:hidden bg-gradient-to-r from-primary to-primary/80 hover-scale">

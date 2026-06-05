@@ -6,7 +6,7 @@ export function CTABlock({
   title = "Ready to declutter your hostel?",
   description = "List items in 60 seconds and reach thousands of students on your campus.",
   primary = { label: "Start Selling", href: "/sell" },
-  secondary = { label: "Explore Marketplace", href: "/browse" },
+  secondary = { label: "Explore Marketplace", href: "/" },
 }: {
   title?: string;
   description?: string;

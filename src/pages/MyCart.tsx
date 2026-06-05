@@ -166,7 +166,7 @@ const MyCart = () => {
             <Button 
               variant="ghost" 
               size="icon"
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/')}
               className="active:scale-95 transition-transform"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -208,7 +208,7 @@ const MyCart = () => {
             </div>
             <Button 
               size="lg"
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/')}
               className="rounded-full px-8 active:scale-95 transition-transform"
             >
               Explore Items

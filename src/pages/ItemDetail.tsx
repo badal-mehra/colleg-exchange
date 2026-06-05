@@ -406,8 +406,7 @@ const ItemDetail = () => {
           }),
           breadcrumbJsonLd([
             { name: 'Home', path: '/' },
-            { name: 'Browse', path: '/browse' },
-            ...(item.categories?.slug ? [{ name: item.categories.name, path: `/category/${item.categories.slug}` }] : []),
+            ...(item.categories?.slug ? [{ name: item.categories.name, path: `/?category=${item.categories.slug}` }] : []),
             { name: item.title, path: buildItemPath(item.id, item.title) },
           ]),
         ]}
@@ -470,7 +469,7 @@ const ItemDetail = () => {
             {item.categories && (
               <>
                 <ChevronRight className="h-3 w-3 flex-shrink-0" />
-                <Link to={`/category/${item.categories.slug}`} className="hover:text-gray-600 transition-colors">
+                <Link to={`/?category=${item.categories.slug}`} className="hover:text-gray-600 transition-colors">
                   {item.categories.name}
                 </Link>
               </>
@@ -878,7 +877,7 @@ const ItemDetail = () => {
                   <Button
                     variant="outline"
                     className="w-full h-11 rounded-xl font-semibold border-gray-200"
-                    onClick={() => navigate('/dashboard')}
+                    onClick={() => navigate('/my-listings')}
                   >
                     <Sparkles className="h-4 w-4 mr-2" /> Manage Your Listing
                   </Button>

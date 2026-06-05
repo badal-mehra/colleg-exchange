@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -46,6 +46,7 @@ import PWAListingCard from "@/components/PWAListingCard";
 import PGListingCard from "@/components/PGListingCard";
 import PWAImageSlider from "@/components/PWAImageSlider";
 import DailyLoginReward from "@/components/DailyLoginReward";
+import BottomNavBar from "@/components/BottomNavBar";
 import { SEOHead } from "@/components/seo/SEOHead";
 import { canonical } from "@/lib/seo";
 
@@ -166,8 +167,6 @@ const PWADashboard = () => {
   const { toast } = useToast();
   const { unreadChats } = useNotificationCounts();
 
-  // URL params for category pages (e.g. /categories/:slug)
-  const params = useParams<{ slug?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // ── Data state ──────────────────────────────────────────────────────────────
@@ -193,7 +192,7 @@ const PWADashboard = () => {
 
   // ─── Derive filters from URL (mirrors Browse.tsx logic) ─────────────────────
 
-  const activeCategorySlug = (params.slug || searchParams.get("category") || "").toLowerCase();
+  const activeCategorySlug = (searchParams.get("category") || "").toLowerCase();
   const activeCategory = useMemo(
     () => categories.find((c) => c.slug === activeCategorySlug) || null,
     [categories, activeCategorySlug]
@@ -247,16 +246,29 @@ const PWADashboard = () => {
   const updateFilters = useCallback(
     (patch: Partial<typeof filters & { categorySlug: string | null }>) => {
       const next = new URLSearchParams(searchParams);
-      if ("searchTerm" in patch) patch.searchTerm ? next.set("q", patch.searchTerm) : next.delete("q");
-      if ("priceRange" in patch) patch.priceRange && patch.priceRange !== "all" ? next.set("price", patch.priceRange) : next.delete("price");
-      if ("condition" in patch) patch.condition && patch.condition !== "all" ? next.set("condition", patch.condition) : next.delete("condition");
-      if ("sort" in patch) patch.sort && patch.sort !== "newest" ? next.set("sort", patch.sort) : next.delete("sort");
+      if ("searchTerm" in patch) {
+        if (patch.searchTerm) next.set("q", patch.searchTerm);
+        else next.delete("q");
+      }
+      if ("priceRange" in patch) {
+        if (patch.priceRange && patch.priceRange !== "all") next.set("price", patch.priceRange);
+        else next.delete("price");
+      }
+      if ("condition" in patch) {
+        if (patch.condition && patch.condition !== "all") next.set("condition", patch.condition);
+        else next.delete("condition");
+      }
+      if ("sort" in patch) {
+        if (patch.sort && patch.sort !== "newest") next.set("sort", patch.sort);
+        else next.delete("sort");
+      }
 
       if ("categorySlug" in patch) {
         const slug = patch.categorySlug;
+        if (slug) next.set("category", slug);
+        else next.delete("category");
         const qs = next.toString();
-        const base = slug ? `/categories/${slug}` : "/";
-        navigate(qs ? `${base}?${qs}` : base);
+        navigate(qs ? `/?${qs}` : "/");
         return;
       }
       setSearchParams(next, { replace: false });
@@ -471,7 +483,7 @@ const PWADashboard = () => {
   const clearProductFilters = () => {
     updateFilters({
       searchTerm: "",
-      selectedCategory: "all",
+      categorySlug: null,
       priceRange: "all",
       condition: "all",
       sort: "newest",
@@ -492,7 +504,7 @@ const PWADashboard = () => {
   const seoDesc = activeCategory
     ? `Shop verified student listings in ${activeCategory.name}. Browse, filter by price & condition, and buy directly from peers.`
     : "Browse verified student listings on MyCampusKart. Buy & sell textbooks, electronics, cycles, lab coats and PG rooms inside Indian campuses. Free, secure, student-only.";
-  const seoPath = activeCategory ? `/categories/${activeCategory.slug}` : "/";
+  const seoPath = activeCategory ? `/?category=${activeCategory.slug}` : "/";
 
   // Active filter chips
   const activeFilterChips: { label: string; onClear: () => void }[] = [];
@@ -833,6 +845,8 @@ const PWADashboard = () => {
       >
         <Plus className="h-6 w-6 stroke-[2.5]" />
       </button>
+
+      <BottomNavBar />
 
       {/* ══════════════════════════════════════════════════
           SORT SHEET

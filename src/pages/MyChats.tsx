@@ -468,7 +468,7 @@ const MyChats = () => {
           <Button 
             variant="ghost" 
             size="icon"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/')}
             className="h-9 w-9 rounded-full hover:bg-muted/80 active:scale-95 transition-all flex-shrink-0"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -490,7 +490,7 @@ const MyChats = () => {
               Start browsing items and chat with sellers to see your conversations here.
             </p>
             <Button 
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/')}
               className="shadow-lg hover:shadow-xl transition-all"
             >
               Browse Items

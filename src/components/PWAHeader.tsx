@@ -34,11 +34,11 @@ const PWAHeader: React.FC<PWAHeaderProps> = ({
   const location = useLocation();
 
   const handleBack = () => {
-    // If we came from somewhere, go back. Otherwise go to dashboard
+    // If we came from somewhere, go back. Otherwise go home.
     if (window.history.length > 2) {
       navigate(-1);
     } else {
-      navigate("/dashboard");
+      navigate("/");
     }
   };
 
