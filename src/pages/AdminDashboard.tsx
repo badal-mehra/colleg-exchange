@@ -137,7 +137,7 @@ const AdminDashboard = () => {
           description: "You don't have admin privileges",
           variant: "destructive",
         });
-        navigate('/dashboard');
+        navigate('/');
         return;
       }
 
@@ -154,7 +154,7 @@ const AdminDashboard = () => {
         ]);
     } catch (error) {
       console.error('Error checking admin status:', error);
-      navigate('/dashboard');
+      navigate('/');
     } finally {
       setLoading(false);
     }
@@ -514,8 +514,8 @@ const AdminDashboard = () => {
               <p className="text-muted-foreground">Manage users, listings, and platform settings</p>
             </div>
           </div>
-          <Button variant="outline" onClick={() => navigate('/dashboard')}>
-            Back to Dashboard
+          <Button variant="outline" onClick={() => navigate('/')}>
+            Back Home
           </Button>
         </div>
 
