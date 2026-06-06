@@ -18,7 +18,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PGListingCard from '@/components/PGListingCard';
-import Header from "@/components/Header"; // i added
+// import Header from "@/components/Header"; // i added
 import { Footer } from '@/components/Footer';
 import logo from '@/assets/mycampuskart-logo.png';
 import { getSliderImageUrl } from '@/utils/cloudinaryUpload';
