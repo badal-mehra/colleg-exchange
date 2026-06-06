@@ -719,9 +719,9 @@ const Browse = () => {
           about: { "@type": "Thing", name: activeCategory.name },
         } : undefined}
       /> 
-      <Header />
+      {/* <Header /> */}
       {/* Header */}
-      {/* <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      {<header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -739,7 +739,7 @@ const Browse = () => {
             <div className="flex items-center space-x-2">
               {isLoggedIn ? (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/dashboard')}>
                     Home
                   </Button>
                   <Button size="sm" onClick={() => navigate('/sell')}>
@@ -762,7 +762,7 @@ const Browse = () => {
             </div>
           </div>
         </div>
-      </header> */}
+      </header> 
 
       {/* Image Slider */}
       <ImageSliderSection />
