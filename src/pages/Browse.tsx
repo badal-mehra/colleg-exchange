@@ -18,7 +18,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PGListingCard from '@/components/PGListingCard';
-// import Header from "@/components/Header"; // i added
+import Header from "@/components/Header"; // i added
 import { Footer } from '@/components/Footer';
 import logo from '@/assets/mycampuskart-logo.png';
 import { getSliderImageUrl } from '@/utils/cloudinaryUpload';
@@ -719,50 +719,9 @@ const Browse = () => {
           about: { "@type": "Thing", name: activeCategory.name },
         } : undefined}
       /> 
-      {/* <Header /> */}
+      <Header /> 
       {/* Header */}
-      {<header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <img 
-                src={logo} 
-                alt="MyCampusKart" 
-                className="h-10 sm:h-12 cursor-pointer"
-                onClick={() => navigate('/')}
-              />
-              <Badge variant="outline" className="hidden md:flex">
-                Campus Marketplace
-              </Badge>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              {isLoggedIn ? (
-                <>
-                  <Button variant="outline" size="sm" onClick={() => navigate('/dashboard')}>
-                    Home
-                  </Button>
-                  <Button size="sm" onClick={() => navigate('/sell')}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Sell
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="outline" size="sm" onClick={() => navigate('/auth')}>
-                    <LogIn className="h-4 w-4 mr-2" />
-                    Login
-                  </Button>
-                  <Button size="sm" onClick={() => navigate('/auth')}>
-                    <User className="h-4 w-4 mr-2" />
-                    Sign Up
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </header> 
+    
 
       {/* Image Slider */}
       <ImageSliderSection />
